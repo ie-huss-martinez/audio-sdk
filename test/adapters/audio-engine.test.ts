@@ -9,6 +9,7 @@ import { type AudioEngine, audioLimits, isAudioError } from "../../src/index.js"
 import { describeAudioEngineContract } from "../contracts/audio-engine.contract.js";
 import { fakeDecoded } from "../fakes/fake-audio.js";
 import { flacFile } from "../fixtures/flac-files.js";
+import { adtsFile } from "../fixtures/mpeg-files.js";
 import { wavFile } from "../fixtures/pcm-files.js";
 import { wavEngineHarness } from "./engine-harness.js";
 import { startInProcessWorker } from "./in-process-worker.js";
@@ -244,6 +245,15 @@ describe("decoding compressed files on the page (sdk-core ADR 0031)", () => {
       expect(isAudioError(error, "INVALID_AUDIO")).toBe(true);
       await engine.destroy();
     }
+  });
+
+  it("accepts fewer channels than the probe allows, as for mono AAC without parametric stereo", async () => {
+    const engine = nodeEngine(memoryBuffer, returning(20 * 1_024, { channels: 1 }));
+    const file = new Blob([adtsFile(20, { sampleRate: 48_000, channelConfiguration: 1 })]);
+    const probe = await engine.probe(file);
+    expect(probe.channels).toBe(2);
+    await expect(engine.decode(file, probe)).resolves.toHaveProperty("numberOfChannels", 1);
+    await engine.destroy();
   });
 
   it("reports a decoder failure by code, never with the browser's text", async () => {

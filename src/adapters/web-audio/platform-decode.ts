@@ -74,8 +74,9 @@ function untilAborted<T>(work: Promise<T>, signal: AbortSignal | undefined): Pro
  *   file's packets, and the limits have been checked against its bound.
  * - **A fresh buffer:** the decoder gets bytes read from the `Blob` for it,
  *   which it may detach; no caller-owned buffer is ever handed over.
- * - **The output is checked against the bound:** a different rate or
- *   channel count, or more frames than the bound plus the codec's tolerance,
+ * - **The output is checked against the bound:** a different rate, more
+ *   channels than the probe allows, or more frames than the bound plus the
+ *   codec's tolerance,
  *   fails with `INVALID_AUDIO`, and the output is discarded. A result within
  *   the tolerance but past the bound is shortened to the bound.
  * - **Never the decoder's errors:** a failure becomes `DECODE_FAILED`, with
@@ -118,13 +119,19 @@ export async function decodeOnPage(
       details: { container, codec, reason: `decoded ${reason}` },
     });
   if (decoded.sampleRate !== sampleRate) throw invalid("rate differs from the probe");
-  if (decoded.numberOfChannels !== channels) throw invalid("channel count differs from the probe");
+  // The probe allows for the most channels a decoder may output, such as
+  // stereo for mono AAC that may carry parametric stereo; fewer is fine.
+  if (decoded.numberOfChannels > channels) throw invalid("channel count exceeds the probe");
   if (decoded.length > frameBound + frameTolerance) throw invalid("length exceeds the bound");
   if (decoded.length <= frameBound) return decoded;
 
   // Within the tolerance but past the bound: the source is the bound's length.
-  const capped = createBuffer({ numberOfChannels: channels, length: frameBound, sampleRate });
-  for (let c = 0; c < channels; c += 1) {
+  const capped = createBuffer({
+    numberOfChannels: decoded.numberOfChannels,
+    length: frameBound,
+    sampleRate,
+  });
+  for (let c = 0; c < decoded.numberOfChannels; c += 1) {
     capped.copyToChannel(decoded.getChannelData(c).subarray(0, frameBound), c, 0);
   }
   return capped;

@@ -53,10 +53,11 @@ export interface EngineEnvironment {
 
 /**
  * Creates the SDK's audio engine (docs/adr/0001, docs/adr/0002). It probes
- * files in its worker: WAV and AIFF, and FLAC, native or in Ogg, whose
- * every frame it walks to bound the decoded length. It parses WAV and AIFF
+ * files in its worker: WAV and AIFF, FLAC, native or in Ogg, MP3, and AAC in
+ * ADTS, walking every frame of a compressed file to bound its decoded
+ * length. It parses WAV and AIFF
  * block by block into an `AudioBuffer`, building the waveform overview as it
- * goes. It decodes FLAC with the browser's own decoder, on the page, under
+ * goes. It decodes compressed files with the browser's own decoder, on the page, under
  * sdk-core ADR 0031's rules: only probed files, a fresh buffer, the output
  * checked against the probe's bound, errors by code, and the time limit of
  * the caller's signal. Other containers fail with `UNSUPPORTED_FORMAT` until

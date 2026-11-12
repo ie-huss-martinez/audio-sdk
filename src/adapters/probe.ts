@@ -1,9 +1,11 @@
 import { AudioError } from "../core/errors/audio-error.js";
 import type { AudioProbe } from "../core/model/source.js";
+import { findAdts, probeAdts } from "./aac/adts.js";
 import { WindowReader } from "./bytes/window-reader.js";
 import { skipId3v2 } from "./flac/flac.js";
 import { probeNativeFlac } from "./flac/native-flac.js";
 import { isOggFlac, probeOggFlac } from "./flac/ogg-flac.js";
+import { findMp3, probeMp3 } from "./mpeg/mp3.js";
 import type { PcmLayout } from "./pcm/layout.js";
 import { probePcm } from "./pcm/probe.js";
 
@@ -41,7 +43,6 @@ export async function probeFile(
   if (afterId3 > 0) {
     const marker = await reader.bytes(afterId3, 4);
     if (String.fromCharCode(...marker) === "fLaC") return { probe: await probeNativeFlac(file) };
-    throw unsupported("unknown");
   }
   if (magic === "OggS") {
     // The first packet starts after the first page's segment table.
@@ -50,5 +51,10 @@ export async function probeFile(
     if (isOggFlac(first)) return { probe: await probeOggFlac(file) };
     throw unsupported("ogg");
   }
+  // MPEG audio and ADTS have no magic number: a run of consistent frame
+  // headers at the start, or after an ID3v2 tag, identifies them.
+  const [mp3, adts] = await Promise.all([findMp3(file, afterId3), findAdts(file, afterId3)]);
+  if (mp3 && (!adts || mp3.offset <= adts.offset)) return { probe: await probeMp3(file, afterId3) };
+  if (adts) return { probe: await probeAdts(file, afterId3) };
   throw unsupported("unknown");
 }
