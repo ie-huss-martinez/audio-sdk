@@ -114,6 +114,14 @@ export async function decodeOnPage(
     });
   }
 
+  // A decoder that "succeeds" with no audio, as WebKit does on some crafted
+  // Opus, hasn't decoded the file.
+  if (decoded.length === 0) {
+    throw new AudioError("DECODE_FAILED", "The browser decoded no audio from this file.", {
+      details: { container, codec, reason: "no audio decoded" },
+    });
+  }
+
   const invalid = (reason: string) =>
     new AudioError("INVALID_AUDIO", `The decoded audio ${reason}.`, {
       details: { container, codec, reason: `decoded ${reason}` },

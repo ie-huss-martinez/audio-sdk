@@ -256,6 +256,14 @@ describe("decoding compressed files on the page (sdk-core ADR 0031)", () => {
     await engine.destroy();
   });
 
+  it("treats a decode that returns no audio as a failure", async () => {
+    const engine = nodeEngine(memoryBuffer, returning(0));
+    const file = flac();
+    const error = await rejection(engine.decode(file, await engine.probe(file)));
+    expect(isAudioError(error, "DECODE_FAILED")).toBe(true);
+    await engine.destroy();
+  });
+
   it("reports a decoder failure by code, never with the browser's text", async () => {
     const engine = nodeEngine(memoryBuffer, async () => {
       throw new DOMException("Internal FFmpeg detail: invalid residual", "EncodingError");

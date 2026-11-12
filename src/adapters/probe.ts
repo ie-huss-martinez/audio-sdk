@@ -7,6 +7,8 @@ import { probeNativeFlac } from "./flac/native-flac.js";
 import { isOggFlac, probeOggFlac } from "./flac/ogg-flac.js";
 import { probeMp4 } from "./mp4/mp4.js";
 import { findMp3, probeMp3 } from "./mpeg/mp3.js";
+import { isOggOpus, probeOggOpus } from "./ogg/ogg-opus.js";
+import { isOggVorbis, probeOggVorbis } from "./ogg/ogg-vorbis.js";
 import type { PcmLayout } from "./pcm/layout.js";
 import { probePcm } from "./pcm/probe.js";
 
@@ -54,6 +56,8 @@ export async function probeFile(
     const segments = head[26] ?? 0;
     const first = await reader.bytes(27 + segments, 8);
     if (isOggFlac(first)) return { probe: await probeOggFlac(file) };
+    if (isOggOpus(first)) return { probe: await probeOggOpus(file) };
+    if (isOggVorbis(first)) return { probe: await probeOggVorbis(file) };
     throw unsupported("ogg");
   }
   // MPEG audio and ADTS have no magic number: a run of consistent frame
