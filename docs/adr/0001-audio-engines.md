@@ -22,7 +22,7 @@ The first releases bundle **no third-party runtime code**: the SDK's own code pr
 
 ### Probing: our own header readers, in the worker
 
-- **Every file is probed before anything decodes it.** The worker reads the container's headers, with `Blob.slice` and streaming, never by loading the whole file for the probe. It returns the format, codec, sample rate, channel count and frame count, which the limits are checked against ([ADR 0004](0004-audio-limits.md)).
+- **Every file is probed before anything decodes it.** The worker reads the container's headers, with `Blob.slice` and streaming, never by loading the whole file for the probe. It returns the format, codec, the sample rate and channel count the decoder will output, and an upper bound on the frames it will output. The limits are checked against that bound ([ADR 0004](0004-audio-limits.md)).
 - **Containers:**
   - WAV (RIFF and RF64) and AIFF/AIFC;
   - FLAC;
@@ -31,13 +31,29 @@ The first releases bundle **no third-party runtime code**: the SDK's own code pr
   - ADTS AAC;
   - MP4/M4A;
   - WebM and Matroska.
-- **Duration is established, not guessed.** Each reader uses the container's own count where it has one: WAV's data size, FLAC's `STREAMINFO`, MP4's `mdhd`, the last Ogg page's granule position, an MP3 Xing, Info or VBRI header. Where it doesn't, the reader walks the frames or clusters and counts them: MP3 and ADTS frame headers, and Matroska clusters, which `MediaRecorder` often writes without a duration. A walk is linear in the file's size and runs under `maxProcessingTime`.
-- **Unknown fails closed.** A file whose container isn't recognised, or whose duration can't be established, fails with `UNSUPPORTED_FORMAT` and is never handed to the browser's decoder. So only files whose decoded size is known, and within limits, are ever decoded.
+- **Uncompressed files have an exact length:** the size of WAV's `data` chunk or AIFF's `SSND` chunk, divided by the frame size, and cross-checked against the bytes the file actually has.
+- **Compressed files are bounded by their packets, never by a header's count.** A header can declare a short duration and carry far more packets, and the decoder decodes the packets. Opus at 6 kbit/s expands about 500 times, so a file under the file-size limit could decode to hundreds of gigabytes. So each reader walks every packet and adds up an upper bound:
+
+  | Codec | Frames per packet |
+  |---|---|
+  | MP3 | Exact, from each frame header (1,152 or 576). Free-format MP3 isn't supported |
+  | AAC in ADTS | 1,024 per raw data block, from each frame header, doubled for HE-AAC |
+  | AAC in MP4 | 1,024 per `stsz` sample, doubled for HE-AAC. Every sample's offset and size, from `stco`/`co64` and `stsz`, must lie inside the file |
+  | ALAC in MP4 | The `frameLength` of its magic cookie, per `stsz` sample, with the same check |
+  | Opus | Exact, from each packet's TOC byte, at 48 kHz |
+  | Vorbis | At most half of `blocksize_1`, from the setup header, per packet |
+  | FLAC, native or in Ogg | Exact, from each frame header's block size |
+  | Any codec in WebM or Matroska | Each block's laced packets, counted as above |
+
+  The bound uses the sample rate and channel count the decoder will output, which can differ from the header's. Opus always decodes at 48 kHz, and HE-AAC v2's parametric stereo turns a mono stream into stereo, so AAC is counted as at least two channels.
+- **A header's count gives the expected duration only when it's within the bound.** A Xing, Info or VBRI header, `STREAMINFO`'s total, MP4's `mdhd`, or the last Ogg granule position that claims more than the packets can carry fails with `INVALID_AUDIO`. With no header count, such as the Matroska files `MediaRecorder` writes, the bound is the expected duration.
+- **The walk is linear in the file's size** and runs under `maxProcessingTime`. It's the code the fuzz tests guard most.
+- **Unknown fails closed.** A file whose container or codec isn't recognised, or whose packets can't be walked to a bound, fails with `UNSUPPORTED_FORMAT` and is never handed to the browser's decoder. So only files whose decoded size is bounded, and within limits, are ever decoded.
 - **Malformed fails with a code.** A truncated or inconsistent header fails with `INVALID_AUDIO`, and `details` name the container and what was wrong, never data from the file.
 
 ### The readers are hostile-input code
 
-The header readers are the SDK's own parsers for untrusted bytes, so they're held to a stricter bar than the rest of the code:
+The header readers and packet walkers are the SDK's own parsers for untrusted bytes, so they're held to a stricter bar than the rest of the code:
 
 - **Bounded by construction:**
   - every loop advances by at least one byte;
@@ -47,16 +63,27 @@ The header readers are the SDK's own parsers for untrusted bytes, so they're hel
 - **Tested against garbage:** each reader has:
   - tests that truncate every fixture at every byte offset;
   - tests on random bytes, and on fixtures with headers corrupted on purpose;
-  - a property-based fuzz test with `fast-check` (MIT, a devDependency only) that mutates valid fixtures.
+  - a property-based fuzz test with `fast-check` (MIT, a devDependency only) that mutates valid fixtures;
+  - fixtures whose headers declare far fewer frames than their packets carry, which must fail rather than pass the limits.
 
-  Each case must settle within a fixed time with a result, `INVALID_AUDIO` or `UNSUPPORTED_FORMAT`, and never hang, throw anything else or crash the worker.
+  Each case must settle within a fixed time with a result, a bound, `INVALID_AUDIO` or `UNSUPPORTED_FORMAT`, and never hang, throw anything else or crash the worker.
 - **Fixtures are generated** by code in the tests, never real recordings.
 
 ### Decoding
 
 - **Uncompressed formats, WAV and AIFF in PCM or float, are parsed by our own code in the worker,** at their own sample rate and channel count, with no browser decoder involved. This is most files people edit, and it keeps them out of the page entirely.
-- **Compressed formats use `decodeAudioData` on an `OfflineAudioContext` created at the file's probed sample rate,** so nothing is resampled. Its input is a copy, because `decodeAudioData` detaches the buffer it's given.
-  - **Why this meets the worker rule:** the browser's decoders are hardened, sandboxed platform code, in the same position as image decoding behind `<img>`. The SDK's own parsing of the file, the probe, still runs in the worker, and only probed files within limits reach the decoder. This is recorded here as this SDK's interpretation of [ADR 0020](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0020-file-policy.md)'s rule. It's raised in `sdk-core`, so that its standards can say how SDKs treat platform decoders, as [ADR 0028](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0028-third-party-engines.md) did for third-party engines' workers.
+- **Compressed formats use `decodeAudioData` on an `OfflineAudioContext` created at the file's probed sample rate,** so nothing is resampled. Its input is a fresh `ArrayBuffer` read from the file's `Blob` with `blob.arrayBuffer()`, which `decodeAudioData` is free to detach, so the file's bytes are never copied a second time.
+  - **Why this meets the worker rule:** the browser's decoders are hardened, sandboxed platform code, in the same position as image decoding behind `<img>`. The SDK's own parsing of the file, the probe, still runs in the worker, and only probed files within limits reach the decoder. This is recorded here as this SDK's interpretation of [ADR 0020](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0020-file-policy.md)'s rule, and proposed as a family rule in [sdk-core#57](https://github.com/ie-huss-martinez/sdk-core/issues/57), as [ADR 0028](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0028-third-party-engines.md) did for third-party engines' workers.
+  - **The decoded length is checked against the bound, with a tolerance.** Decoders legitimately return a little more or fewer frames than a container's count: MP3 encoder delay and padding, AAC priming of 1,024 to 2,112 frames, Opus pre-skip, and browsers differ in which of these they trim. A decoded result longer than the bound plus the codec's tolerance fails with `INVALID_AUDIO` and is discarded. Otherwise the source's length is the decoded length, capped at the bound.
+
+    | Codec | Tolerance |
+    |---|---|
+    | MP3 | 2 frames (2,304 samples) |
+    | AAC | 2 access units, at the output rate |
+    | Opus | 1 maximum packet (5,760 samples) |
+    | Vorbis | 1 `blocksize_1` |
+    | FLAC, ALAC | 1 maximum block |
+
   - **Codec support follows the browser.** A file the browser can't decode fails with `DECODE_FAILED` and `details.codec`, never with the browser's message. The end-to-end suites keep a capability matrix of each codec in Chromium, Firefox and WebKit.
   - **Sample rates a browser can't create a context for** fail with `UNSUPPORTED_FORMAT` and `details.sampleRate`. The specification requires 8 to 96 kHz, and browsers support more.
 
@@ -89,10 +116,12 @@ The header readers are the SDK's own parsers for untrusted bytes, so they're hel
 - **MP3 export with LAME:** LAME is LGPL, which is awkward to bundle in an Apache-2.0 package and to replace as the LGPL requires. MP3 export isn't offered.
 - **Render exports in an `OfflineAudioContext`:** it would share the playback graph exactly, but it runs only on the page, can't be cancelled midway or report progress, and holds the whole result in memory. It's used as the test oracle instead.
 - **Accept files whose duration is unknown, and check the decoded size afterwards:** a compressed file can decode to gigabytes before any check could run, inside the page.
+- **Trust a header's frame count:** cheap, but a crafted file can declare a short duration and carry hours of packets.
 
 ## Consequences
 
 - No bundled engine means no `NOTICE` entries, no WebAssembly and no `'wasm-unsafe-eval'` for the first releases.
-- The SDK owns eight container readers. They're small, but each is new hostile-input code with its own fuzz tests, and the formats' corner cases are ours to get right.
+- The SDK owns eight container readers and their packet walkers. They're small, but each is new hostile-input code with its own fuzz tests, and the formats' corner cases are ours to get right.
+- Probing reads every packet header of a compressed file, which costs a linear pass over the file before it opens. That's the price of a bound that a crafted header can't lie about.
 - Codec support for compressed files differs between browsers, and the editor says so with `DECODE_FAILED` rather than hiding it.
 - Uncompressed files are never touched by a browser decoder, which is the strongest guarantee the SDK can give for the formats people edit most.
