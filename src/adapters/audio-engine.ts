@@ -6,6 +6,11 @@ import type { AudioEngine } from "../core/ports/audio-engine.js";
 import type { AudioWorkerContract } from "./audio-worker/contract.js";
 import type { PcmLayout } from "./pcm/layout.js";
 import { type BucketPeaks, buildPyramid, FINEST_BUCKET } from "./peaks.js";
+import {
+  decodeOnPage,
+  type PlatformDecoder,
+  webAudioDecoder,
+} from "./web-audio/platform-decode.js";
 
 /**
  * Frames per block between the page and the worker: at most 2¹⁶ per
@@ -41,6 +46,8 @@ export interface EngineEnvironment {
     length: number;
     sampleRate: number;
   }) => WritableAudio;
+  /** Decodes compressed files on the page (sdk-core ADR 0031). */
+  readonly decodePlatform: PlatformDecoder;
   readonly idleTimeout?: number;
 }
 
@@ -49,8 +56,11 @@ export interface EngineEnvironment {
  * files in its worker: WAV and AIFF, and FLAC, native or in Ogg, whose
  * every frame it walks to bound the decoded length. It parses WAV and AIFF
  * block by block into an `AudioBuffer`, building the waveform overview as it
- * goes. Decoding compressed formats, and probing other containers, fail with
- * `UNSUPPORTED_FORMAT` until their decoders and readers are added.
+ * goes. It decodes FLAC with the browser's own decoder, on the page, under
+ * sdk-core ADR 0031's rules: only probed files, a fresh buffer, the output
+ * checked against the probe's bound, errors by code, and the time limit of
+ * the caller's signal. Other containers fail with `UNSUPPORTED_FORMAT` until
+ * their readers are added.
  *
  * Nothing starts until the first call. The worker is inlined, which needs
  * `worker-src blob:` in a Content Security Policy, and it makes no requests.
@@ -69,6 +79,7 @@ export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine
   return createEngine({
     loadWorker: async () => (await import("./audio-worker/inline-worker.js")).createInlineWorker,
     createBuffer: (bufferOptions) => new AudioBuffer(bufferOptions),
+    decodePlatform: webAudioDecoder,
     ...(options.idleTimeout === undefined ? {} : { idleTimeout: options.idleTimeout }),
   });
 }
@@ -82,6 +93,8 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
   let startWorker: (() => WorkerLike) | undefined;
   let destroyed = false;
   const layouts = new WeakMap<AudioProbe, PcmLayout>();
+  /** Probes of compressed files this engine made, which decode can trust. */
+  const compressedProbes = new WeakSet<AudioProbe>();
   const finestPeaks = new WeakMap<DecodedAudio, BucketPeaks>();
 
   const newClient = () =>
@@ -112,6 +125,27 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
     } catch (error) {
       throw error instanceof RangeError || error instanceof TypeError ? error : asAudioError(error);
     }
+  }
+
+  /**
+   * Probes the file again for a probe this engine didn't make, such as a
+   * copy, and requires it to describe the same audio: a decoder only ever
+   * runs on a file whose bound this engine established (sdk-core ADR 0031).
+   */
+  async function reprobe(file: Blob, probe: AudioProbe, signal?: AbortSignal) {
+    main ??= newClient();
+    const fresh = await main.call("probe", { file }, signal ? { signal } : {});
+    const same =
+      fresh.probe.codec === probe.codec &&
+      fresh.probe.sampleRate === probe.sampleRate &&
+      fresh.probe.channels === probe.channels &&
+      fresh.probe.frameBound === probe.frameBound;
+    if (!same) {
+      throw new AudioError("INVALID_AUDIO", "The probe doesn't describe this file.", {
+        details: { container: probe.container },
+      });
+    }
+    return fresh.probe;
   }
 
   async function layoutOf(file: Blob, probe: AudioProbe, signal?: AbortSignal) {
@@ -150,6 +184,7 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
           options.signal ? { signal: options.signal } : {},
         );
         if (result.layout) layouts.set(result.probe, result.layout);
+        else compressedProbes.add(result.probe);
         return result.probe;
       });
     },
@@ -159,9 +194,18 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
         throwIfAborted(options.signal);
         await ready();
         if (probe.codec !== "pcm") {
-          throw new AudioError("UNSUPPORTED_FORMAT", "Compressed formats aren't supported yet.", {
-            details: { container: probe.container, codec: probe.codec },
-          });
+          const trusted = compressedProbes.has(probe)
+            ? probe
+            : await reprobe(file, probe, options.signal);
+          const audio = await decodeOnPage(
+            file,
+            trusted,
+            environment.decodePlatform,
+            environment.createBuffer,
+            options.signal,
+          );
+          options.onProgress?.(1);
+          return audio;
         }
         const layout = await layoutOf(file, probe, options.signal);
         const { frames, channels, sampleRate } = layout;

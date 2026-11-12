@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createEngine, type WritableAudio } from "../../src/adapters/audio-engine.js";
 import { blockPeaks, buildPyramid } from "../../src/adapters/peaks.js";
+import {
+  type PlatformDecoder,
+  webAudioDecoder,
+} from "../../src/adapters/web-audio/platform-decode.js";
 import { type AudioEngine, audioLimits, isAudioError } from "../../src/index.js";
 import { describeAudioEngineContract } from "../contracts/audio-engine.contract.js";
 import { fakeDecoded } from "../fakes/fake-audio.js";
@@ -28,10 +32,17 @@ function memoryBuffer(options: {
   };
 }
 
-function nodeEngine(createBuffer = memoryBuffer): AudioEngine {
+/** Node has no Web Audio: tests that decode compressed files pass their own decoder. */
+const noPlatformDecoder: PlatformDecoder = webAudioDecoder;
+
+function nodeEngine(
+  createBuffer = memoryBuffer,
+  decodePlatform: PlatformDecoder = noPlatformDecoder,
+): AudioEngine {
   return createEngine({
     loadWorker: async () => startInProcessWorker,
     createBuffer,
+    decodePlatform,
     idleTimeout: 0,
   });
 }
@@ -93,14 +104,15 @@ describe("the audio engine", () => {
     await engine.destroy();
   });
 
-  it("refuses compressed codecs until their decoders arrive, and rates the buffer can't hold", async () => {
+  it("refuses a probe whose codec doesn't match the file, and rates the buffer can't hold", async () => {
     const engine = nodeEngine(() => {
       throw new DOMException("Unsupported rate", "NotSupportedError");
     });
     const file = longFile();
     const probe = await engine.probe(file);
-    const compressed = await rejection(engine.decode(file, { ...probe, codec: "opus" }));
-    expect(isAudioError(compressed, "UNSUPPORTED_FORMAT")).toBe(true);
+    // A WAV file passed off as Opus is probed again, and refused.
+    const forged = await rejection(engine.decode(file, { ...probe, codec: "opus" }));
+    expect(isAudioError(forged, "INVALID_AUDIO")).toBe(true);
     const rate = await rejection(engine.decode(file, probe));
     expect(isAudioError(rate, "UNSUPPORTED_FORMAT")).toBe(true);
     expect((rate as { details?: unknown }).details).toEqual({
@@ -143,16 +155,6 @@ describe("the audio engine", () => {
     await engine.destroy();
   });
 
-  it("probes FLAC through the worker, and refuses to decode it until its decoder arrives", async () => {
-    const engine = nodeEngine();
-    const file = new Blob([flacFile([LONG.slice(0, 5_000)])]);
-    const probe = await engine.probe(file);
-    expect(probe).toMatchObject({ container: "flac", codec: "flac", frameBound: 5_000 });
-    const error = await rejection(engine.decode(file, probe));
-    expect(isAudioError(error, "UNSUPPORTED_FORMAT")).toBe(true);
-    await engine.destroy();
-  });
-
   it("stops decoding when cancelled midway", async () => {
     const engine = nodeEngine();
     const file = longFile();
@@ -165,6 +167,144 @@ describe("the audio engine", () => {
       }),
     );
     expect(isAudioError(error, "ABORTED")).toBe(true);
+    await engine.destroy();
+  });
+});
+
+describe("decoding compressed files on the page (sdk-core ADR 0031)", () => {
+  const TONE = Array.from({ length: 5_000 }, (_, i) => Math.sin(i / 11) * 0.5);
+  const flac = () => new Blob([flacFile([TONE, TONE], { sampleRate: 48_000, blockSize: 1_000 })]);
+
+  /** A decoder that returns `length` frames of silence in the requested format. */
+  const returning =
+    (length: number, override: { channels?: number; sampleRate?: number } = {}): PlatformDecoder =>
+    async (_bytes, format) =>
+      memoryBuffer({
+        numberOfChannels: override.channels ?? format.channels,
+        length,
+        sampleRate: override.sampleRate ?? format.sampleRate,
+      });
+
+  it("decodes a probed file with the platform decoder, at the probe's format", async () => {
+    const seen: { bytes: number; sampleRate: number; channels: number }[] = [];
+    const engine = nodeEngine(memoryBuffer, async (bytes, format) => {
+      seen.push({ bytes: bytes.byteLength, ...format });
+      return returning(5_000)(bytes, format);
+    });
+    const file = flac();
+    const progress: number[] = [];
+    const audio = await engine.decode(file, await engine.probe(file), {
+      onProgress: (fraction) => progress.push(fraction),
+    });
+    expect(audio).toMatchObject({ length: 5_000, numberOfChannels: 2, sampleRate: 48_000 });
+    expect(seen).toEqual([{ bytes: file.size, sampleRate: 48_000, channels: 2 }]);
+    expect(progress).toEqual([1]);
+    await engine.destroy();
+  });
+
+  it("gives the decoder a fresh buffer it may detach", async () => {
+    const engine = nodeEngine(memoryBuffer, async (bytes, format) => {
+      structuredClone(bytes, { transfer: [bytes] }); // detaches it, as decodeAudioData does
+      return returning(5_000)(new ArrayBuffer(0), format);
+    });
+    const file = flac();
+    const probe = await engine.probe(file);
+    await engine.decode(file, probe);
+    // The file is untouched, so it decodes again.
+    await expect(engine.decode(file, probe)).resolves.toHaveProperty("length", 5_000);
+    await engine.destroy();
+  });
+
+  it("shortens output within the tolerance to the bound, and refuses output beyond it", async () => {
+    const file = flac();
+    const within = nodeEngine(memoryBuffer, returning(5_000 + 1_000));
+    const capped = await within.decode(file, await within.probe(file));
+    expect(capped.length).toBe(5_000);
+    await within.destroy();
+
+    const beyond = nodeEngine(memoryBuffer, returning(5_000 + 1_001));
+    const error = await rejection(beyond.decode(file, await beyond.probe(file)));
+    expect(isAudioError(error, "INVALID_AUDIO")).toBe(true);
+    expect((error as { details?: unknown }).details).toEqual({
+      container: "flac",
+      codec: "flac",
+      reason: "decoded length exceeds the bound",
+    });
+    await beyond.destroy();
+  });
+
+  it("refuses output in another channel count or rate", async () => {
+    const file = flac();
+    for (const decoder of [
+      returning(5_000, { channels: 8 }),
+      returning(5_000, { sampleRate: 8_000 }),
+    ]) {
+      const engine = nodeEngine(memoryBuffer, decoder);
+      const error = await rejection(engine.decode(file, await engine.probe(file)));
+      expect(isAudioError(error, "INVALID_AUDIO")).toBe(true);
+      await engine.destroy();
+    }
+  });
+
+  it("reports a decoder failure by code, never with the browser's text", async () => {
+    const engine = nodeEngine(memoryBuffer, async () => {
+      throw new DOMException("Internal FFmpeg detail: invalid residual", "EncodingError");
+    });
+    const file = flac();
+    const error = await rejection(engine.decode(file, await engine.probe(file)));
+    expect(isAudioError(error, "DECODE_FAILED")).toBe(true);
+    expect((error as { details?: unknown }).details).toEqual({ container: "flac", codec: "flac" });
+    expect((error as Error).message).not.toContain("FFmpeg");
+    await engine.destroy();
+  });
+
+  it("stops waiting for a decoder that never settles when the time limit runs out, and drops its late result", async () => {
+    let finish: (audio: ReturnType<typeof memoryBuffer>) => void = () => {};
+    const engine = nodeEngine(
+      memoryBuffer,
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const file = flac();
+    const probe = await engine.probe(file);
+    let limit: unknown;
+    try {
+      audioLimits.resolve({ maxProcessingTime: 1 }).check("maxProcessingTime", 2);
+    } catch (error) {
+      limit = error;
+    }
+    const controller = new AbortController();
+    const decoding = engine.decode(file, probe, { signal: controller.signal });
+    setTimeout(() => controller.abort(limit), 20);
+    const error = await rejection(decoding);
+    expect(isAudioError(error, "PROCESSING_TIME_EXCEEDED")).toBe(true);
+    // The decoder finishes later: nothing happens, and nothing is reported.
+    finish(memoryBuffer({ numberOfChannels: 2, length: 5_000, sampleRate: 48_000 }));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await engine.destroy();
+  });
+
+  it("refuses to run without Web Audio, naming the missing feature", async () => {
+    const engine = nodeEngine(memoryBuffer, webAudioDecoder);
+    const file = flac();
+    const error = await rejection(engine.decode(file, await engine.probe(file)));
+    expect(isAudioError(error, "UNSUPPORTED_ENVIRONMENT")).toBe(true);
+    expect((error as { details?: unknown }).details).toEqual({ feature: "OfflineAudioContext" });
+    await engine.destroy();
+  });
+
+  it("decodes only files it probed itself: a copied probe is checked against the file", async () => {
+    const engine = nodeEngine(memoryBuffer, returning(5_000));
+    const file = flac();
+    const probe = await engine.probe(file);
+    await expect(engine.decode(file, structuredClone(probe))).resolves.toHaveProperty(
+      "length",
+      5_000,
+    );
+    const forged = await rejection(engine.decode(file, { ...probe, frameBound: 50_000_000 }));
+    expect(isAudioError(forged, "INVALID_AUDIO")).toBe(true);
     await engine.destroy();
   });
 });
