@@ -3,10 +3,10 @@ import type { AudioProbe } from "../../core/model/source.js";
 import { invalid } from "../pcm/layout.js";
 import { walkOgg } from "./ogg.js";
 
-/** Opus always decodes at 48 kHz, whatever rate its header records (RFC 7845). */
-const OPUS_RATE = 48_000;
-/** The longest an Opus packet can decode to: 120 ms at 48 kHz (RFC 6716). */
-const MAX_PACKET = 5_760;
+/** Opus always decodes at 48 kHz, whatever rate its header records (RFC 7845). @internal */
+export const OPUS_RATE = 48_000;
+/** The longest an Opus packet can decode to: 120 ms at 48 kHz (RFC 6716). @internal */
+export const MAX_PACKET = 5_760;
 
 /** Whether a first Ogg packet is an Opus identification header. @internal */
 export function isOggOpus(head: Uint8Array): boolean {
@@ -45,6 +45,30 @@ export function opusPacketSamples(head: Uint8Array, length: number): number {
 }
 
 /**
+ * Reads an Opus identification header (`OpusHead`): its channels and
+ * pre-skip, refusing versions and channel mappings the SDK doesn't support.
+ *
+ * @internal
+ */
+export function readOpusHead(
+  head: Uint8Array,
+  container: string,
+): { channels: number; preSkip: number } {
+  if (!isOggOpus(head) || head.length < 19) throw invalid(container, "malformed OpusHead");
+  if (((head[8] as number) & 0xf0) !== 0) throw invalid(container, "unsupported OpusHead version");
+  const channels = head[9] as number;
+  const preSkip = (head[10] as number) | ((head[11] as number) << 8);
+  const family = head[18] as number;
+  if (channels === 0) throw invalid(container, "no channels");
+  if (family === 0 ? channels > 2 : family !== 1 || channels > 8) {
+    throw new AudioError("UNSUPPORTED_FORMAT", "Unsupported Opus channel mapping.", {
+      details: { container, codec: "opus", reason: `channel mapping family ${family}` },
+    });
+  }
+  return { channels, preSkip };
+}
+
+/**
  * Probes Opus in Ogg (docs/adr/0001). Opus decodes at 48 kHz. The bound is
  * the sum of every audio packet's samples, read from its TOC byte, so it's
  * exact. The last granule position, which counts the pre-skip, is the
@@ -61,17 +85,7 @@ export async function probeOggOpus(file: Blob): Promise<AudioProbe> {
   const { lastGranule } = await walkOgg(file, ({ head, length }) => {
     packets += 1;
     if (packets === 1) {
-      if (!isOggOpus(head) || head.length < 19) throw invalid("ogg", "malformed OpusHead");
-      if (((head[8] as number) & 0xf0) !== 0) throw invalid("ogg", "unsupported OpusHead version");
-      channels = head[9] as number;
-      preSkip = (head[10] as number) | ((head[11] as number) << 8);
-      const family = head[18] as number;
-      if (channels === 0) throw invalid("ogg", "no channels");
-      if (family === 0 ? channels > 2 : family !== 1 || channels > 8) {
-        throw new AudioError("UNSUPPORTED_FORMAT", "Unsupported Opus channel mapping.", {
-          details: { container: "ogg", codec: "opus", reason: `channel mapping family ${family}` },
-        });
-      }
+      ({ channels, preSkip } = readOpusHead(head, "ogg"));
       return;
     }
     if (packets === 2) {
