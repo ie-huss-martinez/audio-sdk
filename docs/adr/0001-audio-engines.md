@@ -6,6 +6,7 @@
 - **Amended:** 2026-11-12, so that native FLAC counts every frame header at its worst case in output terms, whatever its CRC-16, which decoders don't check by default (#12).
 - **Amended:** 2026-11-12, so that MP3 and ADTS count every frame header at its worst case too, AAC decodes at twice its core rate at 24 kHz or less, and decoded output may have fewer channels than the probe allows (#14).
 - **Amended:** 2026-11-12, so that AAC in MP4 follows ADTS's decode rate, fragmented MP4 and MP4 with several audio tracks are unsupported, and only edit lists that encoders write are accepted (#15).
+- **Amended:** 2026-11-12, for Opus and Vorbis in Ogg, with Vorbis's block sizes read from its identification header, and a decode that returns no audio treated as a failure (#16).
 
 ## Context
 
@@ -44,8 +45,8 @@ The first releases bundle **no third-party runtime code**: the SDK's own code pr
   | AAC in ADTS | Every valid frame header at its worst case: 1,024 per raw data block × `ceil(decode rate ÷ its core rate)`, × its channel ratio. The decode rate is twice the core rate at 24 kHz or less, as HE-AAC streams are, so implicit SBR, which no header signals, still fits |
   | AAC in MP4 | 1,024 × `ceil(decode rate ÷ core rate)` per `stsz` sample, with the decode rate chosen as for ADTS, so every sample counts as possibly HE-AAC. Every sample's offset and size, from `stco`/`co64`, `stsc` and `stsz`, must lie inside the file, and the tables must account for exactly `stsz`'s samples. Fragmented files (`moof`) and files with several audio tracks are unsupported, rather than bounded by a guess. **Edit lists** can repeat media or add empty time, and FFmpeg, which Chromium decodes through, applies them (Chromium decodes a list that plays the media three times to three times the samples, #15). So only what encoders write is accepted: at most one empty edit no longer than the tolerance, then at most one media edit at rate 1 within the media's duration. Anything else is `UNSUPPORTED_FORMAT` |
   | ALAC in MP4 | The `frameLength` of its configuration, per `stsz` sample, with the same checks |
-  | Opus | Exact, from each packet's TOC byte, at 48 kHz |
-  | Vorbis | At most half of `blocksize_1`, from the setup header, per packet |
+  | Opus | Exact, from each packet's TOC byte and, for code 3, its frame count, at 48 kHz. A packet that can't be read this way, or that claims more than 120 ms, counts as 120 ms. The granule position counts the pre-skip, so the expected length is the last granule less the pre-skip |
+  | Vorbis | At most half of `blocksize_1` per audio packet. The block sizes are in the identification header (packet 1), not the setup header, which holds the codebooks; an identification header that can't be read fails closed |
   | FLAC in Ogg | Exact, from each packet's frame header. A header that disagrees with `STREAMINFO` fails |
   | Native FLAC | Every frame header with a valid CRC-8, found by searching as decoders do, whatever its CRC-16, at its worst case: its block size, × `ceil(stream rate ÷ frame rate)` when it declares a lower rate, × `ceil(frame channels ÷ stream channels)` when it declares more channels. False syncs in the audio data only raise the bound |
   | Any codec in WebM or Matroska | Each block's laced packets, counted as above |
@@ -90,6 +91,7 @@ The header readers and packet walkers are the SDK's own parsers for untrusted by
     | Vorbis | 1 `blocksize_1` |
     | FLAC, ALAC | 1 maximum block |
 
+  - **A decode that returns no audio is a failure,** `DECODE_FAILED`: WebKit returns an empty buffer for some crafted Opus (#16).
   - **Codec support follows the browser.** A file the browser can't decode fails with `DECODE_FAILED` and `details.codec`, never with the browser's message. The end-to-end suites keep a capability matrix of each codec in Chromium, Firefox and WebKit.
   - **Sample rates a browser can't create a context for** fail with `UNSUPPORTED_FORMAT` and `details.sampleRate`. The specification requires 8 to 96 kHz, and browsers support more.
 

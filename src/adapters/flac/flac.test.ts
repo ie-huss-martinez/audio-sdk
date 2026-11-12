@@ -185,15 +185,15 @@ describe("FLAC in Ogg", () => {
   });
 
   it("leaves Ogg streams of other codecs to their own readers", async () => {
-    const vorbis = Uint8Array.from(
-      oggPage([[1, ...new TextEncoder().encode("vorbis")]], {
+    const speex = Uint8Array.from(
+      oggPage([[...new TextEncoder().encode("Speex   ")]], {
         serial: 1,
         sequence: 0,
         granule: 0,
         type: 2,
       }),
     );
-    const error = await failure(probeFile(blob(vorbis)));
+    const error = await failure(probeFile(blob(speex)));
     expect(isAudioError(error, "UNSUPPORTED_FORMAT")).toBe(true);
   });
 });
