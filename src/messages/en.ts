@@ -28,6 +28,8 @@ export const audioMessages = /* @__PURE__ */ defineMessages({
   "errors.DECODE_FAILED":
     "This browser can't play this kind of audio. Try another browser, or convert the file to WAV.",
   "errors.INVALID_COMMAND": "This edit couldn't be made. Please try again.",
+  // TODO(sdk-core#59): state the length and the limit once messages have a
+  // duration format. https://github.com/ie-huss-martinez/sdk-core/issues/59
   "errors.DURATION_TOO_LONG": "This recording is longer than the editor can open.",
   "errors.TOO_MANY_CHANNELS":
     "This recording has {actual, number} channels, which is over the {maximum, number}-channel limit.",

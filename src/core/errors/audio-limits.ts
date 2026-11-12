@@ -40,6 +40,9 @@ export const audioLimitDefinitions = {
     warning: 60 * 60 * 1_000,
   },
   maxChannels: { code: "TOO_MANY_CHANNELS", unit: "count", default: 8 },
+  // TODO(sdk-core#59): use a "hertz" unit once LimitUnit has one, before the
+  // first release, since `details.unit` is public.
+  // https://github.com/ie-huss-martinez/sdk-core/issues/59
   maxSampleRate: { code: "SAMPLE_RATE_TOO_HIGH", unit: "count", default: 192_000 },
   maxSessionSize: {
     code: "SESSION_TOO_LARGE",
