@@ -43,6 +43,11 @@ export interface AudioEngine {
 }
 
 // @public
+export interface AudioEngineOptions {
+    readonly idleTimeout?: number;
+}
+
+// @public
 export class AudioError extends SdkError<AudioErrorCode> {
     readonly name = "AudioError";
 }
@@ -309,6 +314,9 @@ export function clipLength(clip: AudioClip): number;
 
 // @public
 export function clipOffsets(plan: AudioPlan): readonly number[];
+
+// @public
+export function createAudioEngine(options?: AudioEngineOptions): AudioEngine;
 
 // @public
 export function dbToGain(db: number): number;

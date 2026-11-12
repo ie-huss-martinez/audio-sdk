@@ -12,10 +12,14 @@ export interface AudioEngineHarness {
   file(sampleRate: number, channels: readonly (readonly number[])[]): Promise<Blob>;
   /** A file whose header declares more frames than its packets carry. */
   lyingHeader(): Promise<Blob>;
-  /** A file that decodes to a few frames more than its bound, within the tolerance. */
-  slightlyLong(): Promise<Blob>;
-  /** A file that decodes to far more than its bound plus the tolerance. */
-  overlong(): Promise<Blob>;
+  /**
+   * A file that decodes to a few frames more than its bound, within the
+   * tolerance. Omitted for engines whose decoders can't return more than
+   * the bound, such as the uncompressed parser.
+   */
+  readonly slightlyLong?: () => Promise<Blob>;
+  /** A file that decodes to more than its bound plus the tolerance. Omitted as above. */
+  readonly overlong?: () => Promise<Blob>;
   /** A file in a recognised container that's malformed. */
   malformed(): Promise<Blob>;
   /** A file in a container the engine doesn't recognise. */
@@ -95,22 +99,28 @@ export function describeAudioEngineContract(name: string, harness: AudioEngineHa
       await engine.destroy();
     });
 
-    it("accepts a decode within the tolerance, capped at the bound", async () => {
-      const engine = harness.createEngine();
-      const file = await harness.slightlyLong();
-      const probe = await engine.probe(file);
-      const audio = await engine.decode(file, probe);
-      expect(audio.length).toBeLessThanOrEqual(probe.frameBound);
-      await engine.destroy();
-    });
+    it.runIf(harness.slightlyLong)(
+      "accepts a decode within the tolerance, capped at the bound",
+      async () => {
+        const engine = harness.createEngine();
+        const file = await (harness.slightlyLong as () => Promise<Blob>)();
+        const probe = await engine.probe(file);
+        const audio = await engine.decode(file, probe);
+        expect(audio.length).toBeLessThanOrEqual(probe.frameBound);
+        await engine.destroy();
+      },
+    );
 
-    it("rejects a decode longer than the bound plus the tolerance", async () => {
-      const engine = harness.createEngine();
-      const file = await harness.overlong();
-      const error = await rejection(engine.decode(file, await engine.probe(file)));
-      expect(isAudioError(error, "INVALID_AUDIO")).toBe(true);
-      await engine.destroy();
-    });
+    it.runIf(harness.overlong)(
+      "rejects a decode longer than the bound plus the tolerance",
+      async () => {
+        const engine = harness.createEngine();
+        const file = await (harness.overlong as () => Promise<Blob>)();
+        const error = await rejection(engine.decode(file, await engine.probe(file)));
+        expect(isAudioError(error, "INVALID_AUDIO")).toBe(true);
+        await engine.destroy();
+      },
+    );
 
     it("fails malformed and unknown files with their codes", async () => {
       const engine = harness.createEngine();
