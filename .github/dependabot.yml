@@ -1,0 +1,46 @@
+version: 2
+
+# Updates wait 7 days after a release, so a compromised version is usually
+# caught and pulled before it is proposed. This also stays well above pnpm's
+# one-day minimumReleaseAge, so a proposed version can always be installed.
+updates:
+  # Keeps the commit SHAs that actions are pinned to current (ADR 0015).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Workspace dependencies, including the pnpm catalog in pnpm-workspace.yaml.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: build
+      include: scope
+    ignore:
+      # TypeScript 7 has no JavaScript compiler API yet. dependency-cruiser
+      # supports only TypeScript below 7 and silently skips .ts files without
+      # it, and api-extractor bundles TypeScript 6. Remove this once both
+      # support TypeScript 7.
+      - dependency-name: typescript
+        versions: [">=7"]
+      # Node's types follow the runtime major in .node-version (24). Raise
+      # this bound together with .node-version.
+      - dependency-name: "@types/node"
+        versions: [">=25"]
+    groups:
+      # Minor and patch updates arrive together; each major gets its own pull
+      # request, because it may need code or configuration changes.
+      npm:
+        patterns: ["*"]
+        update-types: [minor, patch]
