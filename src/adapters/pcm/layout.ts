@@ -22,6 +22,12 @@ export interface PcmLayout {
   readonly blockAlign: number;
   /** Whole frames in the file. */
   readonly frames: number;
+  /**
+   * The frames the header declares, when it declares more than the file
+   * holds, as in an interrupted recording or download. The file opens with
+   * the frames it holds.
+   */
+  readonly declaredFrames?: number;
 }
 
 /** Highest channel count a header may declare before the limits are even consulted. */

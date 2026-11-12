@@ -1,5 +1,6 @@
 import type { AudioEngine } from "../../src/index.js";
 import type { AudioEngineHarness } from "../contracts/audio-engine.contract.js";
+import { flacFile } from "../fixtures/flac-files.js";
 import { wavFile } from "../fixtures/pcm-files.js";
 
 const SHORT = [[0.1, 0.2, 0.3, 0.4]];
@@ -11,8 +12,10 @@ export function wavEngineHarness(createEngine: () => AudioEngine): AudioEngineHa
     async file(sampleRate, channels) {
       return new Blob([wavFile(channels, { sampleRate, format: "float32" })]);
     },
+    // Truncated WAV files open with the frames they hold, so the lying
+    // header is a FLAC file whose STREAMINFO claims more than its frames.
     async lyingHeader() {
-      return new Blob([wavFile(SHORT, { dataSize: 1_000_000 })]);
+      return new Blob([flacFile(SHORT, { totalFrames: 1_000_000 })]);
     },
     async malformed() {
       const bytes = wavFile(SHORT);

@@ -41,6 +41,14 @@ export interface AudioProbe {
    */
   readonly expectedFrames: number;
   /**
+   * For a truncated uncompressed file, as from an interrupted recording or
+   * download, the frames its header declares. The file opens with the
+   * frames it holds, which are fewer; hosts can say that it's incomplete.
+   * Compressed files whose headers claim more than their packets carry fail
+   * instead (docs/adr/0001).
+   */
+  readonly declaredFrames?: number;
+  /**
    * How many frames beyond {@link AudioProbe.frameBound} a decoder may
    * legitimately return, such as one or two codec frames for encoder delay,
    * priming or pre-skip. A longer result fails with `INVALID_AUDIO`.
