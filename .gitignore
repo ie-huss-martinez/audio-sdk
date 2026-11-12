@@ -1,0 +1,22 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+playwright-report/
+test-results/
+.DS_Store
+temp/
+.vitest/
+# Release files. The release workflow writes them to $RUNNER_TEMP, but a
+# local run must not leave them where pnpm verify would lint them.
+publish-plan.json
+release-packs/
+release-assets/
+
+# Example application builds.
+.next/
+next-env.d.ts
+dist-server/
