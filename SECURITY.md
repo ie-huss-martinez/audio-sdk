@@ -30,15 +30,15 @@ The package is pre-1.0. Security fixes go into the latest release only. No versi
 In scope is everything in this repository: `@hussmartinez/audio-sdk`, its workers and its own parsers and encoders, the workflows that verify and release it, and the published package. Examples:
 
 - an audio file that runs script in the host page or a worker, or makes the SDK insert file-derived text, such as a tag or a file name, as HTML;
-- an audio file that freezes or crashes the page, hangs a header reader, or exhausts memory despite the file policy's limits, for example by declaring a small size and decoding to gigabytes; or one that the SDK parses outside a worker;
-- any network request the SDK makes, including for workers or codecs;
+- an audio file that freezes or crashes the page, hangs a header reader, or exhausts memory despite the file policy's limits ([ADR 0004](docs/adr/0004-audio-limits.md)), for example by declaring a small size and decoding to gigabytes; or one that the SDK parses outside a worker;
+- any network request the SDK makes, including for workers or codecs ([ADR 0002](docs/adr/0002-workers-and-assets.md));
 - file names, audio, tags or metadata reaching the host's `onEvent`, or anything else that leaks a recording's data;
-- an exported file that keeps audio the user removed, such as a trimmed or deleted range, or metadata the user cleared;
+- an exported file that keeps audio the user removed ([ADR 0003](docs/adr/0003-clip-plan-document-model.md)), such as a trimmed or deleted range, or metadata the user cleared;
 - styles from the standalone script that change the host page outside the editor;
 - anything that requires a weaker Content Security Policy than documented, such as `unsafe-eval`;
 - weaknesses in the build, release or publishing workflows, such as unpinned actions, excessive permissions, or a bundled dependency that doesn't match its pinned version.
 
-The SDK reads file headers, parses uncompressed formats and encodes exports with its own code, and it decodes compressed formats with the browser's built-in decoders. **A known vulnerability in any third-party code that the SDK bundles is in scope** when the SDK's latest release still ships the affected version, because applications can only get the fix from us.
+The SDK reads file headers, parses uncompressed formats and encodes exports with its own code, and it decodes compressed formats with the browser's built-in decoders ([ADR 0001](docs/adr/0001-audio-engines.md)). **A known vulnerability in any third-party code that the SDK bundles is in scope** when the SDK's latest release still ships the affected version, because applications can only get the fix from us.
 
 Out of scope:
 
