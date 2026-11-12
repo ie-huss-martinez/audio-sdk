@@ -84,14 +84,37 @@ describe("native FLAC", () => {
     );
   });
 
-  it("refuses real frames that disagree with STREAMINFO", async () => {
-    // Every frame says 48 kHz, and each one's CRC-16 verifies, so they're real.
-    expect(await reason(probeFile(blob(flacFile([TONE], { frameRateCode: 10 }))))).toBe(
-      "a frame's sample rate differs from STREAMINFO",
+  it("counts frames that declare a lower rate at their resampled worst case", async () => {
+    // A 48 kHz stream whose every frame says 8 kHz: a decoder that follows
+    // the change outputs six times as many frames once resampled.
+    const { probe } = await probeFile(
+      blob(flacFile([TONE], { sampleRate: 48_000, frameRateCode: 4 })),
     );
-    expect(await reason(probeFile(blob(flacFile([TONE, TONE], { streamInfoChannels: 1 }))))).toBe(
-      "a frame's channel count differs from STREAMINFO",
+    expect(probe).toMatchObject({ sampleRate: 48_000, frameBound: 6_000, expectedFrames: 1_000 });
+  });
+
+  it("counts frames that declare more channels than the stream as the frames that cover them", async () => {
+    const { probe } = await probeFile(blob(flacFile([TONE, TONE], { streamInfoChannels: 1 })));
+    expect(probe).toMatchObject({ channels: 1, frameBound: 2_000 });
+  });
+
+  it("counts crafted frames with a wrong CRC-16 at their worst case, whatever the CRC-16", async () => {
+    // Decoders don't check CRC-16 by default, so these frames would decode.
+    const eightKhz = flacFrame([TONE], 0, 4_096, 16, { frameRateCode: 4, breakCrc16: true });
+    const eightChannels = flacFrame(
+      Array.from({ length: 8 }, () => TONE),
+      0,
+      4_096,
+      17,
+      { breakCrc16: true },
     );
+    const crafted = flacFile([TONE, TONE], {
+      sampleRate: 48_000,
+      appendedFrames: [eightKhz, eightChannels],
+    });
+    const { probe } = await probeFile(blob(crafted));
+    expect(probe).toMatchObject({ sampleRate: 48_000, channels: 2 });
+    expect(probe.frameBound).toBe(1_000 + 4_096 * 6 + 4_096 * 4);
   });
 
   it("counts a false frame sync in the audio data without failing", async () => {

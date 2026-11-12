@@ -1,5 +1,4 @@
 import type { AudioProbe } from "../../core/model/source.js";
-import { crc16Step } from "../bytes/crc.js";
 import { WindowReader } from "../bytes/window-reader.js";
 import { invalid, MAX_CHUNKS } from "../pcm/layout.js";
 import {
@@ -12,32 +11,33 @@ import {
   skipId3v2,
 } from "./flac.js";
 
-/** Bytes walked per step: the window, less room to read a header that starts at its end. */
+/** Bytes walked per step; the window adds room to read a header that starts at its end. */
 const STEP = 1 << 20;
 
 /**
- * Frames whose CRC-16 is still open. A false sync inside a frame opens one
- * more; real files rarely have more than two open at once.
+ * The most a frame can add to the decoded output, in frames of the stream's
+ * own rate and channel count (docs/adr/0001):
+ *
+ * - **its block size,**
+ * - **times the resampling factor** when it declares a lower sample rate than
+ *   the stream's, because a decoder that follows the change is resampled to
+ *   the stream's rate by the `OfflineAudioContext`;
+ * - **times its channel ratio** when it declares more channels than the
+ *   stream, so that the decoded size, frames × the stream's channels, still
+ *   covers it.
+ *
+ * Nothing here depends on the frame's CRC-16, which the file controls and
+ * which decoders don't check by default.
+ *
+ * @internal
  */
-const MAX_OPEN_FRAMES = 8;
-
-interface OpenFrame {
-  readonly header: FrameHeader;
-  readonly start: number;
-  /** The CRC-16 after each of the last bytes, newest last. */
-  crc: number;
-  previous: number;
-  beforePrevious: number;
-}
-
-/** Checks a frame whose CRC-16 verified: a real frame must agree with STREAMINFO. */
-function checkVerified(frame: FrameHeader, info: StreamInfo): void {
-  if (frame.channels !== info.channels) {
-    throw invalid("flac", "a frame's channel count differs from STREAMINFO");
-  }
-  if (frame.sampleRate !== undefined && frame.sampleRate !== info.sampleRate) {
-    throw invalid("flac", "a frame's sample rate differs from STREAMINFO");
-  }
+export function worstCaseFrames(frame: FrameHeader, info: StreamInfo): number {
+  const rate =
+    frame.sampleRate !== undefined && frame.sampleRate < info.sampleRate
+      ? Math.ceil(info.sampleRate / frame.sampleRate)
+      : 1;
+  const channels = Math.ceil(frame.channels / info.channels);
+  return frame.blockSize * rate * channels;
 }
 
 /**
@@ -45,12 +45,11 @@ function checkVerified(frame: FrameHeader, info: StreamInfo): void {
  * so the walker searches for frame headers as decoders do: the sync code,
  * valid fields and a matching CRC-8.
  *
- * - **The bound** is the sum of the block sizes of every header found. A
- *   false sync inside audio data can only add to it, which is safe.
- * - **A frame whose CRC-16 also verifies** is certainly real, so it must
- *   agree with STREAMINFO's channels and sample rate; otherwise the file
- *   fails with `INVALID_AUDIO`, because a decoder could output more than the
- *   bound assumes.
+ * - **The bound** is the sum, over every header found, of the most that
+ *   frame could decode to ({@link worstCaseFrames}). Every candidate counts,
+ *   whatever its CRC-16: a crafted frame with a deliberately wrong CRC-16 is
+ *   still decoded by decoders that don't check it, which is the default in
+ *   ffmpeg. A false sync inside audio data only adds to the bound.
  * - **STREAMINFO's total** is used as the expected length only within the
  *   bound; one that claims more fails.
  *
@@ -75,8 +74,9 @@ export async function probeNativeFlac(file: Blob): Promise<AudioProbe> {
       ((header[1] as number) << 16) | ((header[2] as number) << 8) | (header[3] as number);
     if (type === 127) throw invalid("flac", "invalid metadata block type");
     if (blocks === 0) {
-      if (type !== 0 || length !== STREAMINFO_LENGTH)
+      if (type !== 0 || length !== STREAMINFO_LENGTH) {
         throw invalid("flac", "STREAMINFO isn't first");
+      }
       info = readStreamInfo(await reader.bytes(offset + 4, STREAMINFO_LENGTH), "flac");
     }
     offset += 4 + length;
@@ -87,55 +87,22 @@ export async function probeNativeFlac(file: Blob): Promise<AudioProbe> {
 
   let bound = 0;
   let frames = 0;
-  let open: OpenFrame[] = [];
-  // The two bytes before the current one, which hold a frame's CRC-16 when
-  // the next frame starts here.
-  let previousByte = 0;
-  let lastByte = 0;
-
   for (let base = offset; base < reader.size; base += STEP) {
     const bytes = await reader.bytes(base, STEP + MAX_FRAME_HEADER);
     const end = Math.min(STEP, reader.size - base);
     for (let i = 0; i < end; i += 1) {
-      const byte = bytes[i] as number;
-      if (byte === 0xff) {
-        const header = readFrameHeader(bytes, i);
-        if (header) {
-          const position = base + i;
-          // A frame that ends here verifies when the CRC-16 of its bytes,
-          // up to the two before this header, equals those two bytes.
-          const stored = (previousByte << 8) | lastByte;
-          const verified = open.findIndex(
-            (frame) =>
-              position - frame.start >= frame.header.length + 2 && frame.beforePrevious === stored,
-          );
-          if (verified >= 0) {
-            checkVerified((open[verified] as OpenFrame).header, info);
-            open = open.slice(verified + 1);
-          }
-          bound += header.blockSize;
-          frames += 1;
-          open.push({ header, start: position, crc: 0, previous: 0, beforePrevious: 0 });
-          if (open.length > MAX_OPEN_FRAMES) open.shift();
-        }
-      }
-      for (const frame of open) {
-        frame.beforePrevious = frame.previous;
-        frame.previous = frame.crc;
-        frame.crc = crc16Step(frame.crc, byte);
-      }
-      previousByte = lastByte;
-      lastByte = byte;
+      if (bytes[i] !== 0xff) continue;
+      const header = readFrameHeader(bytes, i);
+      if (!header) continue;
+      bound += worstCaseFrames(header, info);
+      frames += 1;
     }
   }
-  // The last frame ends at the end of the file.
-  const stored = (previousByte << 8) | lastByte;
-  const last = open.find((frame) => frame.beforePrevious === stored);
-  if (last) checkVerified(last.header, info);
 
   if (frames === 0) throw invalid("flac", "no audio frames");
-  if (info.totalFrames > bound)
+  if (info.totalFrames > bound) {
     throw invalid("flac", "STREAMINFO claims more than the frames carry");
+  }
   return {
     container: "flac",
     codec: "flac",

@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { probeFile } from "../../src/adapters/probe.js";
-import { flacFile, oggFlacFile } from "../fixtures/flac-files.js";
+import { flacFile, flacFrame, oggFlacFile } from "../fixtures/flac-files.js";
 
 const TONE = Array.from({ length: 3_000 }, (_, i) => Math.sin(i / 9) * 0.5);
 
@@ -10,10 +10,56 @@ const TONE = Array.from({ length: 3_000 }, (_, i) => Math.sin(i / 9) * 0.5);
  * plus the tolerance. This also proves the fixtures are valid FLAC.
  */
 describe("FLAC bounds against the browser's decoder", () => {
+  // Crafted frames: a valid CRC-8 header, a deliberately wrong CRC-16, and a
+  // lower rate or more channels than STREAMINFO declares.
+  const crafted = (options: { frameRateCode?: number; channels?: number; validCrc16?: boolean }) =>
+    Array.from({ length: 3 }, (_, k) =>
+      flacFrame(
+        Array.from({ length: options.channels ?? 2 }, () => TONE),
+        0,
+        2_048,
+        6 + k,
+        {
+          breakCrc16: true,
+          ...(options.frameRateCode ? { frameRateCode: options.frameRateCode } : {}),
+        },
+      ),
+    );
   const cases = {
     "native FLAC": flacFile([TONE, TONE], { sampleRate: 44_100, blockSize: 512 }),
     "FLAC in Ogg": oggFlacFile([TONE, TONE], { sampleRate: 44_100, blockSize: 512 }),
+    "8 kHz frames in a 48 kHz stream": flacFile([TONE, TONE], {
+      sampleRate: 48_000,
+      blockSize: 512,
+      appendedFrames: crafted({ frameRateCode: 4 }),
+    }),
+    "8-channel frames in a stereo stream": flacFile([TONE, TONE], {
+      sampleRate: 48_000,
+      blockSize: 512,
+      appendedFrames: crafted({ channels: 8 }),
+    }),
+    "8 kHz frames in a 48 kHz stream, valid CRC-16": flacFile([TONE, TONE], {
+      sampleRate: 48_000,
+      blockSize: 512,
+      appendedFrames: crafted({ frameRateCode: 4, validCrc16: true }),
+    }),
+    "8-channel frames in a stereo stream, valid CRC-16": flacFile([TONE, TONE], {
+      sampleRate: 48_000,
+      blockSize: 512,
+      appendedFrames: crafted({ channels: 8, validCrc16: true }),
+    }),
   };
+
+  // Whether this browser decodes FLAC at all, so that a crafted file's
+  // refusal is told apart from a missing decoder.
+  let decodesFlac = false;
+  beforeAll(async () => {
+    const offline = new OfflineAudioContext(2, 1, 44_100);
+    decodesFlac = await offline
+      .decodeAudioData(cases["native FLAC"].slice().buffer)
+      .then(() => true)
+      .catch(() => false);
+  });
 
   for (const [name, bytes] of Object.entries(cases)) {
     it(`decodes ${name} within the bound`, async (context) => {
@@ -23,15 +69,23 @@ describe("FLAC bounds against the browser's decoder", () => {
       try {
         decoded = await offline.decodeAudioData(bytes.slice().buffer);
       } catch {
+        if (decodesFlac && name.includes("frames in a")) {
+          // Refusing a crafted file is a safe outcome: nothing was decoded.
+          return;
+        }
         // Not every browser decodes every container; the capability matrix
         // in the end-to-end suites records which (docs/adr/0001).
         context.skip(`${name} isn't decodable in this browser`);
         return;
       }
       expect(decoded.sampleRate).toBe(probe.sampleRate);
-      expect(decoded.numberOfChannels).toBe(probe.channels);
-      expect(decoded.length).toBeLessThanOrEqual(probe.frameBound + probe.frameTolerance);
-      expect(decoded.length).toBeGreaterThanOrEqual(probe.expectedFrames - probe.frameTolerance);
+      // The decoded size must fit the bound, in samples, plus the tolerance.
+      expect(decoded.length * decoded.numberOfChannels).toBeLessThanOrEqual(
+        (probe.frameBound + probe.frameTolerance) * probe.channels,
+      );
+      expect(decoded.length).toBeGreaterThanOrEqual(
+        Math.min(probe.expectedFrames, TONE.length) - probe.frameTolerance,
+      );
       expect(decoded.getChannelData(0)[100]).toBeCloseTo(TONE[100] ?? 0, 3);
     });
   }

@@ -19,6 +19,10 @@ export interface FlacOptions {
   readonly streamInfoChannels?: number;
   /** An ID3v2 tag before the fLaC marker. */
   readonly id3?: boolean;
+  /** Write a wrong CRC-16 at the end of every frame. */
+  readonly breakCrc16?: boolean;
+  /** Extra frames, already encoded, appended after the audio frames. */
+  readonly appendedFrames?: readonly number[][];
 }
 
 const SIZE_CODES = { 8: 1, 16: 4, 24: 6 } as const;
@@ -62,6 +66,7 @@ export function flacFrame(
   }
   let crc = 0;
   for (const byte of frame) crc = crc16Step(crc, byte);
+  if (options.breakCrc16) crc ^= 0xffff;
   frame.push(crc >> 8, crc & 0xff);
   return frame;
 }
@@ -128,6 +133,7 @@ export function flacFile(
     0,
     0, // an empty vendor string and no comments
     ...flacFrames(channels, options).flat(),
+    ...(options.appendedFrames ?? []).flat(),
   ];
   return Uint8Array.from(bytes);
 }
