@@ -1,0 +1,9 @@
+/*
+ * All styles of @hussmartinez/audio-sdk. Applications import this file once;
+ * library code never imports CSS (ADR 0004).
+ *
+ * The layer order comes first, so it holds whichever stylesheet loads first,
+ * this one or @hussmartinez/ui's. The SDK writes only into hm.sdk, and a
+ * host's unlayered CSS beats every hm layer without !important (ADR 0005).
+ */
+@layer hm.tokens, hm.base, hm.components, hm.sdk;

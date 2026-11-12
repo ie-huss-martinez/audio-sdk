@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Unit tests and the Vite and Vitest configs run in Node. The library
+    // itself must not see Node's types.
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src", "*.test.ts", "vite.config.ts", "vitest.config.ts"],
+  "exclude": []
+}

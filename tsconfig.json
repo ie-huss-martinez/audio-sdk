@@ -1,0 +1,9 @@
+{
+  "extends": "@hussmartinez/sdk-config/tsconfig/browser",
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/fixtures", "src/test"]
+}
