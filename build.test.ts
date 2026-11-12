@@ -44,11 +44,17 @@ describe("the built package", () => {
     expect(styles?.type).toBe("asset");
   });
 
-  it("keeps React as a peer dependency, never bundled", () => {
-    expect(externalPackages).toEqual(expect.arrayContaining(["react", "react-dom"]));
+  it("imports sdk-core and React instead of bundling them", () => {
+    expect(externalPackages).toEqual(
+      expect.arrayContaining(["@hussmartinez/sdk-core", "react", "react-dom"]),
+    );
+    expect(chunk("index.js").code).toContain('from "@hussmartinez/sdk-core"');
     for (const file of files) {
       if (file.type === "chunk") {
+        // Bundled React or sdk-core would bring their own copies of these, and
+        // a page with several SDKs would load sdk-core more than once.
         expect(file.code, file.fileName).not.toContain("react.transitional.element");
+        expect(file.code, file.fileName).not.toContain("class SdkError");
       }
     }
   });

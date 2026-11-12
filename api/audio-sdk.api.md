@@ -4,4 +4,145 @@
 
 ```ts
 
+import { FilePolicy } from '@hussmartinez/sdk-core';
+import { FilePolicyOverrides } from '@hussmartinez/sdk-core';
+import { Limits } from '@hussmartinez/sdk-core';
+import { SdkCoreErrorCode } from '@hussmartinez/sdk-core';
+import { SdkError } from '@hussmartinez/sdk-core';
+
+// @public
+export class AudioError extends SdkError<AudioErrorCode> {
+    readonly name = "AudioError";
+}
+
+// @public
+export type AudioErrorCode = SdkCoreErrorCode | "INVALID_AUDIO" | "UNSUPPORTED_FORMAT" | "DECODE_FAILED" | "INVALID_COMMAND" | "DURATION_TOO_LONG" | "TOO_MANY_CHANNELS" | "SAMPLE_RATE_TOO_HIGH" | "SESSION_TOO_LARGE" | "TOO_MANY_CLIPS";
+
+// @public
+export type AudioFilePolicy = FilePolicy<AudioLimitDefinitions>;
+
+// @public
+export type AudioFilePolicyOverrides = FilePolicyOverrides<AudioLimitDefinitions>;
+
+// @public
+export type AudioLimitDefinitions = typeof audioLimitDefinitions;
+
+// @public
+export const audioLimitDefinitions: {
+    readonly maxFileSize: {
+        readonly default: 1000000000;
+        readonly warning: 250000000;
+        readonly code: "FILE_TOO_LARGE";
+        readonly unit: "bytes";
+    };
+    readonly maxDecodedSize: {
+        readonly default: 1000000000;
+        readonly warning: 400000000;
+        readonly code: "DECODED_SIZE_TOO_LARGE";
+        readonly unit: "bytes";
+    };
+    readonly maxDuration: {
+        readonly code: "DURATION_TOO_LONG";
+        readonly unit: "milliseconds";
+        readonly default: number;
+        readonly warning: number;
+    };
+    readonly maxChannels: {
+        readonly code: "TOO_MANY_CHANNELS";
+        readonly unit: "count";
+        readonly default: 8;
+    };
+    readonly maxSampleRate: {
+        readonly code: "SAMPLE_RATE_TOO_HIGH";
+        readonly unit: "count";
+        readonly default: 192000;
+    };
+    readonly maxSessionSize: {
+        readonly code: "SESSION_TOO_LARGE";
+        readonly unit: "bytes";
+        readonly default: 1500000000;
+        readonly warning: 750000000;
+    };
+    readonly maxClips: {
+        readonly code: "TOO_MANY_CLIPS";
+        readonly unit: "count";
+        readonly default: 2000;
+    };
+    readonly maxFiles: {
+        readonly code: "TOO_MANY_FILES";
+        readonly unit: "count";
+        readonly default: 20;
+    };
+    readonly maxProcessingTime: {
+        readonly code: "PROCESSING_TIME_EXCEEDED";
+        readonly unit: "milliseconds";
+        readonly default: 120000;
+    };
+};
+
+// @public
+export type AudioLimitName = keyof AudioLimitDefinitions;
+
+// @public
+export const audioLimits: Limits<AudioLimitDefinitions>;
+
+// @public
+export type AudioMessageCatalogue = typeof audioMessages;
+
+// @public
+export const audioMessages: {
+    readonly "errors.INVALID_AUDIO": "This file isn't valid audio, or it's too damaged to open.";
+    readonly "errors.UNSUPPORTED_FORMAT": "This audio format isn't supported. Try converting the file to WAV, then open it again.";
+    readonly "errors.DECODE_FAILED": "This browser can't play this kind of audio. Try another browser, or convert the file to WAV.";
+    readonly "errors.INVALID_COMMAND": "This edit couldn't be made. Please try again.";
+    readonly "errors.DURATION_TOO_LONG": "This recording is longer than the editor can open.";
+    readonly "errors.TOO_MANY_CHANNELS": "This recording has {actual, number} channels, which is over the {maximum, number}-channel limit.";
+    readonly "errors.SAMPLE_RATE_TOO_HIGH": "This recording's sample rate is {actual, number} Hz, which is over the {maximum, number} Hz limit.";
+    readonly "errors.SESSION_TOO_LARGE": "The open recordings would use {actual, fileSize} of memory, which is over the {maximum, fileSize} limit. Remove a recording, or clear the undo history, and try again.";
+    readonly "errors.TOO_MANY_CLIPS": {
+        readonly $plural: "maximum";
+    } & {
+        readonly one: "A recording can have {maximum} clip. Join or delete clips, and try again.";
+        readonly other: "A recording can have up to {maximum} clips. Join or delete clips, and try again.";
+    };
+    readonly "warnings.maxDuration": "This recording is long, and may be slow to open and edit.";
+    readonly "warnings.maxChannels": "This recording has {actual, number} channels, and may be slow to edit.";
+    readonly "warnings.maxSampleRate": "This recording's sample rate is {actual, number} Hz, and it may be slow to edit.";
+    readonly "warnings.maxSessionSize": "The open recordings use {actual, fileSize} of memory. Clearing the undo history frees memory.";
+    readonly "warnings.maxClips": {
+        readonly $plural: "actual";
+    } & {
+        readonly one: "This recording has {actual} clip. Many clips may be slow to play and export.";
+        readonly other: "This recording has {actual} clips. Many clips may be slow to play and export.";
+    };
+    readonly "errors.UNKNOWN": "Something went wrong. Please try again.";
+    readonly "errors.ABORTED": "The operation was cancelled.";
+    readonly "errors.TIMEOUT": "The operation took too long and was stopped.";
+    readonly "errors.WORKER_START_FAILED": "The file processor couldn't start. Reload the page and try again.";
+    readonly "errors.WORKER_PROTOCOL_MISMATCH": "The file processor is out of date. Reload the page to update it.";
+    readonly "errors.WORKER_CRASHED": "The file processor stopped unexpectedly. Please try again.";
+    readonly "errors.WORKER_TERMINATED": "The operation was stopped before it finished. Please try again.";
+    readonly "errors.WORKER_METHOD_NOT_FOUND": "This operation isn't available. Reload the page and try again.";
+    readonly "errors.WORKER_DATA_NOT_CLONEABLE": "Something went wrong while processing the file. Please try again.";
+    readonly "errors.UNSUPPORTED_ENVIRONMENT": "This browser doesn't support a feature this tool needs. Update your browser, or try another one.";
+    readonly "errors.FILE_TOO_LARGE": "This file is {actual, fileSize}, which is over the {maximum, fileSize} limit.";
+    readonly "errors.TOO_MANY_FILES": {
+        readonly $plural: "maximum";
+    } & {
+        readonly one: "You can add {maximum} file at a time.";
+        readonly other: "You can add up to {maximum} files at a time.";
+    };
+    readonly "errors.DECODED_SIZE_TOO_LARGE": "This file expands to more than {maximum, fileSize} when opened, which is over the limit.";
+    readonly "errors.PROCESSING_TIME_EXCEEDED": "Processing this file took too long and was stopped.";
+    readonly "warnings.maxFileSize": "This file is {actual, fileSize}. Large files may be slow to process.";
+    readonly "warnings.maxFiles": "Adding {actual} files at once may be slow.";
+    readonly "warnings.maxDecodedSize": "This file is very large once opened and may be slow to process.";
+    readonly "warnings.maxProcessingTime": "This is taking longer than usual.";
+};
+
+// @public
+export function isAudioError<Code extends AudioErrorCode = AudioErrorCode>(value: unknown, code?: Code): value is AudioError & {
+    readonly code: Code;
+};
+
 ```
