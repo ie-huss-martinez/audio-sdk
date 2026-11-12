@@ -2,6 +2,27 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { probeFile } from "../../src/adapters/probe.js";
 import { flacFile, flacFrame, oggFlacFile } from "../fixtures/flac-files.js";
 
+/**
+ * Decodes, or gives up after `ms`: a decoder may never settle on a crafted
+ * file, which is why the engine applies `maxProcessingTime` (sdk-core
+ * ADR 0031). WebKit's did, once, on the 8 kHz case below.
+ */
+async function decodeWithin(
+  bytes: Uint8Array<ArrayBuffer>,
+  offline: OfflineAudioContext,
+  ms = 5_000,
+) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<"timeout">((resolve) => {
+    timer = setTimeout(() => resolve("timeout"), ms);
+  });
+  try {
+    return await Promise.race([offline.decodeAudioData(bytes.slice().buffer), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const TONE = Array.from({ length: 3_000 }, (_, i) => Math.sin(i / 9) * 0.5);
 
 /**
@@ -55,9 +76,8 @@ describe("FLAC bounds against the browser's decoder", () => {
   let decodesFlac = false;
   beforeAll(async () => {
     const offline = new OfflineAudioContext(2, 1, 44_100);
-    decodesFlac = await offline
-      .decodeAudioData(cases["native FLAC"].slice().buffer)
-      .then(() => true)
+    decodesFlac = await decodeWithin(cases["native FLAC"], offline)
+      .then((result) => result !== "timeout")
       .catch(() => false);
   });
 
@@ -65,12 +85,14 @@ describe("FLAC bounds against the browser's decoder", () => {
     it(`decodes ${name} within the bound`, async (context) => {
       const { probe } = await probeFile(new Blob([bytes]));
       const offline = new OfflineAudioContext(probe.channels, 1, probe.sampleRate);
-      let decoded: AudioBuffer;
+      let decoded: AudioBuffer | "timeout";
       try {
-        decoded = await offline.decodeAudioData(bytes.slice().buffer);
+        decoded = await decodeWithin(bytes, offline);
+        if (decoded === "timeout") throw new Error("didn't settle");
       } catch {
         if (decodesFlac && name.includes("frames in a")) {
-          // Refusing a crafted file is a safe outcome: nothing was decoded.
+          // Refusing a crafted file, or never settling on it, is a safe
+          // outcome: nothing was decoded.
           return;
         }
         // Not every browser decodes every container; the capability matrix
