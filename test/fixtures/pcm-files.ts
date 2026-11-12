@@ -102,6 +102,8 @@ export interface WavOptions {
   readonly oddChunk?: boolean;
   /** The data chunk before the fmt chunk. */
   readonly dataFirst?: boolean;
+  /** A LIST chunk after the data chunk. */
+  readonly listAfterData?: boolean;
 }
 
 /** A WAV file holding these samples, one array per channel. */
@@ -146,6 +148,15 @@ export function wavFile(
   }
   if (options.oddChunk) body.text("LIST").u32(3, true).raw([1, 2, 3, 0]);
   const chunks = options.dataFirst ? [dataChunk, fmt] : [fmt, dataChunk];
+  if (options.listAfterData) {
+    const info = [..."INFOINAM"].map((c) => c.charCodeAt(0));
+    chunks.push(
+      new Writer()
+        .text("LIST")
+        .u32(info.length + 8, true)
+        .raw([...info, 4, 0, 0, 0, 0x54, 0x6f, 0x6e, 0x65]),
+    );
+  }
   for (const chunk of chunks) body.raw(chunk.bytes);
   const file = new Writer()
     .text(options.rf64 ? "RF64" : "RIFF")
