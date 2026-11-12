@@ -2,6 +2,9 @@
 # the family's standard layout. The examples consume its built output as
 # hosts do, and the end-to-end suite runs against them (ADR 0039 in sdk-core).
 packages:
+  # The root, the published package, listed so that tools reading this list,
+  # such as Changesets, still find it.
+  - "."
   - examples/*
   - e2e
 
