@@ -19,9 +19,6 @@ const TRACK_NUMBER = 0xd7;
 const TRACK_TYPE = 0x83;
 const CODEC_ID = 0x86;
 const CODEC_PRIVATE = 0x63a2;
-const AUDIO = 0xe1;
-const SAMPLING_FREQUENCY = 0xb5;
-const CHANNELS = 0x9f;
 const CLUSTER = 0x1f43b675;
 const SIMPLE_BLOCK = 0xa3;
 const BLOCK_GROUP = 0xa0;
@@ -138,7 +135,7 @@ interface Codec {
   frameSamples(head: Uint8Array, length: number): number;
 }
 
-function codecFor(id: string, priv: Uint8Array | undefined, rate: number, channels: number): Codec {
+function codecFor(id: string, priv: Uint8Array | undefined): Codec {
   if (id === "A_OPUS") {
     if (!priv) throw invalid("webm", "missing OpusHead");
     const head = readOpusHead(priv, "webm");
@@ -194,10 +191,12 @@ function codecFor(id: string, priv: Uint8Array | undefined, rate: number, channe
     };
   }
   if (id.startsWith("A_AAC")) {
-    const config = priv
-      ? parseAudioSpecificConfig(priv, "webm")
-      : { coreRate: rate, channelConfiguration: channels };
-    if (!config.coreRate) throw invalid("webm", "AAC sample rate out of range");
+    // Without an AudioSpecificConfig, only the Audio element's rate and
+    // channel count are known, and for HE-AAC muxers often write the output
+    // rate there, not the core rate: a bound from it could be half the
+    // decoder's output. Real files carry the config, so others are refused.
+    if (!priv) throw unsupported("AAC without an AudioSpecificConfig", "aac");
+    const config = parseAudioSpecificConfig(priv, "webm");
     const sampleRate = aacDecodeRate(config.coreRate);
     const perBlock = 1_024 * Math.ceil(sampleRate / config.coreRate);
     return {
@@ -228,19 +227,10 @@ function readTracks(data: Uint8Array): Track {
     const number = field(TRACK_NUMBER);
     const codecId = field(CODEC_ID);
     if (!number || !codecId) throw invalid("webm", "incomplete audio track");
-    const audioFields = field(AUDIO);
-    const audioChildren = audioFields ? children(audioFields) : [];
-    const rateField = audioChildren.find((f) => f.id === SAMPLING_FREQUENCY)?.data;
-    const channelField = audioChildren.find((f) => f.id === CHANNELS)?.data;
     const id = String.fromCharCode(...codecId).replace(/\0+$/, "");
     audio.push({
       number: readUint(number),
-      codec: codecFor(
-        id,
-        field(CODEC_PRIVATE),
-        rateField ? Math.round(readFloat(rateField)) : 0,
-        channelField ? readUint(channelField) : 0,
-      ),
+      codec: codecFor(id, field(CODEC_PRIVATE)),
     });
   }
   if (audio.length === 0) throw invalid("webm", "no audio track");
@@ -331,7 +321,8 @@ function countBlock(block: Uint8Array, track: Track): number {
  *   `INVALID_AUDIO`.
  * - **The bound** is the sum, over every block of the audio track, of each
  *   laced frame's most: Opus from its TOC byte, Vorbis half of
- *   `blocksize_1`, FLAC from its frame header, AAC as possibly HE-AAC.
+ *   `blocksize_1`, FLAC from its frame header, AAC as possibly HE-AAC from
+ *   its AudioSpecificConfig, which must be present.
  * - **The Duration,** when present, is the expected length only within the
  *   bound.
  * - **Several audio tracks, other codecs and other document types** are

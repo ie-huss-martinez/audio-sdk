@@ -79,7 +79,9 @@ export function simpleBlock(
 }
 
 export interface WebmOptions {
-  readonly codec?: "opus" | "vorbis";
+  readonly codec?: "opus" | "vorbis" | "aac";
+  /** For AAC, leave out the CodecPrivate (the AudioSpecificConfig). */
+  readonly withoutCodecPrivate?: boolean;
   readonly packets: number;
   readonly framesPerBlock?: number;
   readonly blocksPerCluster?: number;
@@ -97,7 +99,15 @@ export interface WebmOptions {
 
 const SILENT_OPUS = [0xfc, 0xff, 0xfe];
 
-function audioTrack(number: number, codec: "opus" | "vorbis"): number[] {
+/** AAC-LC at 24 kHz, stereo: object type 2, rate index 6, configuration 2. */
+const AAC_CONFIG = [0x13, 0x10];
+const SILENT_AAC = [0x21, 0x00, 0x49, 0x90, 0x02, 0x19, 0x00, 0x23, 0x80];
+
+function audioTrack(
+  number: number,
+  codec: "opus" | "vorbis" | "aac",
+  withoutPrivate = false,
+): number[] {
   const opusHead = [...text("OpusHead"), 1, 2, ...u16le(312), ...u32le(48_000), ...u16le(0), 0];
   const vorbisId = [
     0x01,
@@ -116,15 +126,19 @@ function audioTrack(number: number, codec: "opus" | "vorbis"): number[] {
   const priv =
     codec === "opus"
       ? opusHead
-      : [2, vorbisId.length, vorbisComment.length, ...vorbisId, ...vorbisComment, ...vorbisSetup];
+      : codec === "aac"
+        ? AAC_CONFIG
+        : [2, vorbisId.length, vorbisComment.length, ...vorbisId, ...vorbisComment, ...vorbisSetup];
+  const codecId = { opus: "A_OPUS", vorbis: "A_VORBIS", aac: "A_AAC" }[codec];
+  const rate = { opus: 48_000, vorbis: 44_100, aac: 48_000 }[codec];
   return element(
     0xae,
     uint(0xd7, number),
     uint(0x73c5, number),
     uint(0x83, 2),
-    string(0x86, codec === "opus" ? "A_OPUS" : "A_VORBIS"),
-    element(0x63a2, priv),
-    element(0xe1, float64(0xb5, codec === "opus" ? 48_000 : 44_100), uint(0x9f, 2)),
+    string(0x86, codecId),
+    ...(withoutPrivate ? [] : [element(0x63a2, priv)]),
+    element(0xe1, float64(0xb5, rate), uint(0x9f, 2)),
   );
 }
 
@@ -136,7 +150,11 @@ export function webmFile(options: WebmOptions): Uint8Array<ArrayBuffer> {
   const packets =
     options.customPackets ??
     Array.from({ length: options.packets }, () =>
-      codec === "opus" ? SILENT_OPUS : [0x00, ...new Array(20).fill(0x11)],
+      codec === "opus"
+        ? SILENT_OPUS
+        : codec === "aac"
+          ? SILENT_AAC
+          : [0x00, ...new Array(20).fill(0x11)],
     );
 
   const header = element(
@@ -156,7 +174,7 @@ export function webmFile(options: WebmOptions): Uint8Array<ArrayBuffer> {
     string(0x5741, "fixtures"),
     ...(options.durationMs === undefined ? [] : [float64(0x4489, options.durationMs)]),
   );
-  const entries = [audioTrack(1, codec)];
+  const entries = [audioTrack(1, codec, options.withoutCodecPrivate)];
   if (options.secondAudioTrack) entries.push(audioTrack(3, codec));
   if (options.videoTrack) {
     entries.push(

@@ -116,6 +116,28 @@ describe("WebM with Opus", () => {
   });
 });
 
+describe("Matroska with AAC", () => {
+  it("counts every block as possibly HE-AAC, from the AudioSpecificConfig", async () => {
+    // The config says 24 kHz core, so it decodes at 48 kHz, 2,048 frames a block,
+    // even though the Audio element says 48,000.
+    const { probe } = await probeFile(blob(webmFile({ codec: "aac", packets: 10 })));
+    expect(probe).toMatchObject({
+      codec: "aac",
+      sampleRate: 48_000,
+      channels: 2,
+      frameBound: 10 * 2_048,
+    });
+  });
+
+  it("refuses AAC without an AudioSpecificConfig, rather than trust the Audio element", async () => {
+    expect(
+      await failure(
+        probeFile(blob(webmFile({ codec: "aac", packets: 10, withoutCodecPrivate: true }))),
+      ),
+    ).toEqual({ code: "UNSUPPORTED_FORMAT", reason: "AAC without an AudioSpecificConfig" });
+  });
+});
+
 describe("WebM with Vorbis", () => {
   it("bounds every frame at half of blocksize_1, from the identification header", async () => {
     const { probe } = await probeFile(blob(webmFile({ codec: "vorbis", packets: 12 })));
