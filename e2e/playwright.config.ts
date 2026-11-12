@@ -27,8 +27,11 @@ export default defineConfig({
   )
     .filter(([name]) => allBrowsers || name === "chromium")
     .map(([name, device]) => ({ name, use: { ...devices[device] } })),
+  // Started with Node directly, so the suite also runs in the pinned browser
+  // image, which has no pnpm (tools/update-capabilities.sh).
   webServer: {
-    command: "pnpm --filter @hussmartinez/audio-sdk-example-vite start",
+    command: "node node_modules/vite/bin/vite.js preview --port 4310 --strictPort",
+    cwd: "../examples/vite",
     url: "http://localhost:4310",
     reuseExistingServer: !ci,
     timeout: 60_000,

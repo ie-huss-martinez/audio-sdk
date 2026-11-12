@@ -1,6 +1,13 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
-import { type Browser, cell, FORMATS, RESULTS, readTable } from "../capabilities.js";
+import {
+  type Browser,
+  cell,
+  FORMATS,
+  IN_PINNED_IMAGE,
+  RESULTS,
+  readTable,
+} from "../capabilities.js";
 
 const table = readTable();
 const update = Boolean(process.env["UPDATE_CAPABILITIES"]);
@@ -56,6 +63,15 @@ for (const format of FORMATS) {
             }),
           );
         }
+        return;
+      }
+      if (!IN_PINNED_IMAGE) {
+        // The table describes the pinned image's engines; this host's may
+        // have other codecs. The checks above still apply.
+        test.info().annotations.push({
+          type: "capabilities",
+          description: `${browserName}: ${observed}; compared with docs/capabilities.md only in the pinned image`,
+        });
         return;
       }
       const expected = table.get(format.name)?.[browserName as Browser];

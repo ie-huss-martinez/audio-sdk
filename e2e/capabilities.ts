@@ -10,6 +10,14 @@ export const BROWSERS = ["chromium", "firefox", "webkit"] as const;
 export type Browser = (typeof BROWSERS)[number];
 
 export const TABLE = new URL("../docs/capabilities.md", import.meta.url);
+
+/**
+ * Whether the suite runs in the pinned browser image of ci/Dockerfile (ADR
+ * 0025 in sdk-core), where the table is measured. Engines elsewhere are
+ * built with other codecs: Playwright's WebKit on a plain Linux host has no
+ * AAC, while the image's does.
+ */
+export const IN_PINNED_IMAGE = process.env["PLAYWRIGHT_BROWSERS_PATH"] === "/ms-playwright";
 /** Where each test writes what it saw, for regenerating the table. */
 export const RESULTS = new URL("./test-results/capabilities/", import.meta.url);
 
