@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-12
 - **Amended:** 2026-11-12, to follow `sdk-core` [ADR 0031](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0031-platform-decoders-on-the-page.md), which makes this record's reading of the worker rule a family rule, and to name [ADR 0012](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0012-hostile-input-and-no-network.md) as that rule's source.
+- **Amended:** 2026-11-12, so that native FLAC counts every frame header at its worst case in output terms, whatever its CRC-16, which decoders don't check by default (#12).
 
 ## Context
 
@@ -43,7 +44,8 @@ The first releases bundle **no third-party runtime code**: the SDK's own code pr
   | ALAC in MP4 | The `frameLength` of its magic cookie, per `stsz` sample, with the same check |
   | Opus | Exact, from each packet's TOC byte, at 48 kHz |
   | Vorbis | At most half of `blocksize_1`, from the setup header, per packet |
-  | FLAC, native or in Ogg | Exact, from each frame header's block size |
+  | FLAC in Ogg | Exact, from each packet's frame header. A header that disagrees with `STREAMINFO` fails |
+  | Native FLAC | Every frame header with a valid CRC-8, found by searching as decoders do, whatever its CRC-16, at its worst case: its block size, × `ceil(stream rate ÷ frame rate)` when it declares a lower rate, × `ceil(frame channels ÷ stream channels)` when it declares more channels. False syncs in the audio data only raise the bound |
   | Any codec in WebM or Matroska | Each block's laced packets, counted as above |
 
   The bound uses the sample rate and channel count the decoder will output, which can differ from the header's. Opus always decodes at 48 kHz, and HE-AAC v2's parametric stereo turns a mono stream into stereo, so AAC is counted as at least two channels.

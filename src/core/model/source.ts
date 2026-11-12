@@ -27,9 +27,12 @@ export interface AudioProbe {
   /** The channel count the decoder will output, which can differ from the header's. */
   readonly channels: number;
   /**
-   * The most frames the decoder can output: the exact length of an
-   * uncompressed file, or the sum over every packet of a compressed one,
-   * never a count declared in a header.
+   * The most frames the decoder can output, at {@link AudioProbe.sampleRate}
+   * and {@link AudioProbe.channels}: the exact length of an uncompressed
+   * file, or the sum over every packet of a compressed one, never a count
+   * declared in a header. A packet that could decode to more channels, or
+   * at a lower rate that's then resampled, counts as the frames that cover
+   * it, so `frameBound × channels × 4` bounds the decoded bytes.
    */
   readonly frameBound: number;
   /**

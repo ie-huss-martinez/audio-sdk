@@ -4,6 +4,7 @@ import { blockPeaks, buildPyramid } from "../../src/adapters/peaks.js";
 import { type AudioEngine, audioLimits, isAudioError } from "../../src/index.js";
 import { describeAudioEngineContract } from "../contracts/audio-engine.contract.js";
 import { fakeDecoded } from "../fakes/fake-audio.js";
+import { flacFile } from "../fixtures/flac-files.js";
 import { wavFile } from "../fixtures/pcm-files.js";
 import { wavEngineHarness } from "./engine-harness.js";
 import { startInProcessWorker } from "./in-process-worker.js";
@@ -139,6 +140,16 @@ describe("the audio engine", () => {
     const error = await rejection(engine.decode(file, await engine.probe(file)));
     expect((error as Error).message).not.toContain("Internal decoder detail");
     expect(JSON.stringify((error as { details?: unknown }).details)).not.toContain("Internal");
+    await engine.destroy();
+  });
+
+  it("probes FLAC through the worker, and refuses to decode it until its decoder arrives", async () => {
+    const engine = nodeEngine();
+    const file = new Blob([flacFile([LONG.slice(0, 5_000)])]);
+    const probe = await engine.probe(file);
+    expect(probe).toMatchObject({ container: "flac", codec: "flac", frameBound: 5_000 });
+    const error = await rejection(engine.decode(file, probe));
+    expect(isAudioError(error, "UNSUPPORTED_FORMAT")).toBe(true);
     await engine.destroy();
   });
 

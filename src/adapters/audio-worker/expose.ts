@@ -1,6 +1,7 @@
 import { type ExposeWorkerOptions, exposeWorker } from "@hussmartinez/sdk-core";
-import { probePcm, readPcmFrames } from "../pcm/probe.js";
+import { readPcmFrames } from "../pcm/probe.js";
 import { blockPeaks } from "../peaks.js";
+import { probeFile } from "../probe.js";
 import type { AudioWorkerContract } from "./contract.js";
 
 /**
@@ -11,7 +12,7 @@ import type { AudioWorkerContract } from "./contract.js";
 export function exposeAudioWorker(options?: ExposeWorkerOptions): void {
   exposeWorker<AudioWorkerContract>(
     {
-      probe: ({ file }) => probePcm(file),
+      probe: ({ file }) => probeFile(file),
       async readBlock({ file, layout, start, frames, bucket }) {
         const channels = await readPcmFrames(file, layout, start, frames);
         return { channels, ...blockPeaks(channels, bucket) };

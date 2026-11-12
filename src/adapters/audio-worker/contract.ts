@@ -15,10 +15,11 @@ export interface SampleBlock {
  * a `Blob` that crosses the boundary by reference, with every call.
  */
 export interface AudioWorkerContract {
-  /** Reads a file's headers (docs/adr/0001). */
+  /** Reads a file's headers, and walks its packets (docs/adr/0001). */
   readonly probe: {
     readonly input: { readonly file: Blob };
-    readonly output: { readonly probe: AudioProbe; readonly layout: PcmLayout };
+    /** Uncompressed files also get the layout their parser needs. */
+    readonly output: { readonly probe: AudioProbe; readonly layout?: PcmLayout };
   };
   /** Reads and converts a block of an uncompressed file, with its peaks. */
   readonly readBlock: {
