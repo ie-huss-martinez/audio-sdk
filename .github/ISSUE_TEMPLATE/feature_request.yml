@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest a tool, an export option, an API or another improvement.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        `@hussmartinez/audio-sdk` processes every file on the user's device, so features that need a server or a network request are out of scope ([ADR 0012](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0012-hostile-input-and-no-network.md)). Anything shared by several SDKs belongs in [`sdk-core`](https://github.com/ie-huss-martinez/sdk-core) or [`ui`](https://github.com/ie-huss-martinez/ui).
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How it could work, ideally with an example of the API you'd like to use. For a tool, include how it works with the keyboard and how it's undone.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches or workarounds, and why they fall short.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues, and this hasn't been suggested yet.
+          required: true
+        - label: I checked that this doesn't contradict STANDARDS.md or an accepted ADR, or I explain why it should change.
+          required: true
