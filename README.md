@@ -39,6 +39,10 @@ The configuration extends the shared presets in [`@hussmartinez/sdk-config`](htt
 
 When a change alters the public API on purpose, update the reports with `pnpm api:update` and commit them.
 
+## Contributing
+
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request. Coding agents also start with [`AGENTS.md`](AGENTS.md). Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately, as described in the [security policy](SECURITY.md).
+
 ## License
 
 [Apache-2.0](LICENSE)
