@@ -18,6 +18,21 @@ const SUBTYPE_TAIL = [
 /** A data size writers use when they don't know the length yet, as when streaming. */
 const UNKNOWN_SIZE = 0xffffffff;
 
+/**
+ * Whether a plausible chunk header starts at `offset`: four printable ASCII
+ * characters, and a size that fits in what's left of the file. That tells a
+ * genuinely empty `data` chunk from a streaming writer's placeholder size.
+ */
+async function chunkFollows(file: Blob, offset: number): Promise<boolean> {
+  const head = await readBytes(file, offset, 8);
+  if (head.byteLength < 8) return false;
+  for (let i = 0; i < 4; i += 1) {
+    const byte = head.getUint8(i);
+    if (byte < 0x20 || byte > 0x7e) return false;
+  }
+  return head.getUint32(4, true) <= file.size - offset - 8;
+}
+
 interface Format {
   readonly tag: number;
   readonly channels: number;
@@ -74,9 +89,10 @@ function layoutOf(format: Format, dataOffset: number, dataSize: number): PcmLayo
 /**
  * Reads a WAV file's layout: RIFF or RF64, PCM or float, plain or
  * extensible. The data size is checked against the bytes the file has: a
- * header that claims more fails with `INVALID_AUDIO` (docs/adr/0001). Only
- * a size of 0 or 0xFFFFFFFF, which writers use when streaming, means "to
- * the end of the file".
+ * header that claims more fails with `INVALID_AUDIO` (docs/adr/0001). A size
+ * of 0xFFFFFFFF, which streaming writers use, means "to the end of the
+ * file", and so does a size of 0, unless another chunk follows it, in which
+ * case the chunk really is empty.
  *
  * @internal
  */
@@ -114,7 +130,12 @@ export async function probeWav(file: Blob): Promise<PcmLayout> {
       if (riff === "RF64" && size === UNKNOWN_SIZE) {
         if (rf64DataSize === undefined) throw invalid("wav", "RF64 file without ds64 chunk");
         dataSize = rf64DataSize;
-      } else if (size === UNKNOWN_SIZE || size === 0) {
+      } else if (size === UNKNOWN_SIZE) {
+        dataSize = available;
+      } else if (size === 0 && !(await chunkFollows(file, bodyOffset))) {
+        // A streaming writer that never came back to fill in the size: the
+        // samples run to the end. A real empty chunk has another chunk
+        // after it, which mustn't be read as audio.
         dataSize = available;
       }
       if (dataSize > available) throw invalid("wav", "data size exceeds the file");

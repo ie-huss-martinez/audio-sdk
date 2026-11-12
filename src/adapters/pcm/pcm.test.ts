@@ -81,6 +81,23 @@ describe("WAV", () => {
     }
   });
 
+  it("reads an empty data chunk as empty, not the chunk after it as audio", async () => {
+    // A real empty data chunk, then a LIST chunk: there's no audio.
+    const empty = wavFile([[]], { listAfterData: true });
+    const error = await failure(probePcm(blob(empty)));
+    expect(isAudioError(error, "INVALID_AUDIO")).toBe(true);
+    expect((error as { details?: unknown }).details).toEqual({
+      container: "wav",
+      reason: "no audio frames",
+    });
+    // A streaming writer's size of 0, with samples after it, still runs to the end.
+    const { probe } = await readAll(wavFile([LEFT], { dataSize: 0 }));
+    expect(probe.frameBound).toBe(LEFT.length);
+    // And a LIST chunk after a sized data chunk changes nothing.
+    const listed = await readAll(wavFile([LEFT], { listAfterData: true }));
+    expect(listed.probe.frameBound).toBe(LEFT.length);
+  });
+
   it("refuses a data size larger than the file", async () => {
     const error = await failure(probePcm(blob(wavFile([LEFT], { dataSize: 1_000_000 }))));
     expect(isAudioError(error, "INVALID_AUDIO")).toBe(true);
