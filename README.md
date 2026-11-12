@@ -60,7 +60,7 @@ try {
 | Ogg | Opus, Vorbis or FLAC, one stream | the browser |
 | WebM, Matroska | Opus, Vorbis, FLAC or AAC, one audio track, other tracks ignored | the browser |
 
-**Compressed formats decode with the browser's own decoders**, on the page, so which of them open varies by browser: a file the browser can't decode fails with `DECODE_FAILED`. Before any decoder sees a file, the SDK's own readers bound it from its frames or packets, and refuse what they can't bound. [ADR 0001](docs/adr/0001-audio-engines.md) has the rules for each format.
+**Compressed formats decode with the browser's own decoders**, on the page, so which of them open varies by browser: a file the browser can't decode fails with `DECODE_FAILED`. [`docs/capabilities.md`](docs/capabilities.md) shows which decode in Chromium, Firefox and WebKit, measured by the end-to-end suite. Before any decoder sees a file, the SDK's own readers bound it from its frames or packets, and refuse what they can't bound. [ADR 0001](docs/adr/0001-audio-engines.md) has the rules for each format.
 
 ### Worker and Content Security Policy
 
@@ -92,7 +92,7 @@ Every failure is an `AudioError` with a stable `code` and structured `details`; 
 
 ## Development
 
-The repository root is the published package, laid out as in the family's [standard layout](https://github.com/ie-huss-martinez/sdk-core/blob/main/STANDARDS.md#repository-layout): the source is in [`src`](src), and the examples and end-to-end tests will join the pnpm workspace as `examples/` and `e2e/`.
+The repository root is the published package, laid out as in the family's [standard layout](https://github.com/ie-huss-martinez/sdk-core/blob/main/STANDARDS.md#repository-layout): the source is in [`src`](src), and the pnpm workspace adds [`examples/`](examples), which consume the built package as hosts do, and [`e2e/`](e2e), the end-to-end suite.
 
 You need Node 24 (see [`.node-version`](.node-version)) and pnpm. The exact pnpm version is pinned in `package.json`, and pnpm switches to it automatically.
 
@@ -115,6 +115,8 @@ Browser tests need Playwright's browsers once: `pnpm exec playwright install chr
 | Build | `build` | Vite, then api-extractor for the type declarations |
 | Unit tests | `test` | Vitest |
 | Browser tests | `test:browser` | Vitest in Chromium, and in Firefox and WebKit too in CI |
+| Examples | `build:examples` | Vite, building `examples/vite` against the built package |
+| End-to-end tests | `test:e2e` | Playwright against the built example: the [codec capability matrix](docs/capabilities.md), no requests to other origins, and the self-hosted worker under a strict Content Security Policy |
 | Size budgets | `check:size` | size-limit, brotli size of each entry point |
 | API reports | `check:api` | api-extractor, one report per entry point in [`api`](api) |
 | Package checks | `check:package` | publint and Are the Types Wrong? |

@@ -1,0 +1,21 @@
+{
+  "name": "@hussmartinez/audio-sdk-example-vite",
+  "private": true,
+  "description": "A Vite page that uses the built @hussmartinez/audio-sdk engine, inline and self-hosted, for the end-to-end tests.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
+    "start": "vite preview --port 4310 --strictPort"
+  },
+  "dependencies": {
+    "@hussmartinez/audio-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@hussmartinez/sdk-config": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

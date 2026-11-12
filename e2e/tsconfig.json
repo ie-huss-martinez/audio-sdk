@@ -1,0 +1,11 @@
+{
+  "extends": "@hussmartinez/sdk-config/tsconfig/node",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "nodenext",
+    "allowImportingTsExtensions": false,
+    // Callbacks passed to page.evaluate() run in the browser.
+    "lib": ["es2022", "dom"]
+  },
+  "include": ["*.ts", "tests"]
+}

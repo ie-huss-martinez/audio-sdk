@@ -1,0 +1,17 @@
+{
+  "name": "@hussmartinez/audio-sdk-e2e",
+  "private": true,
+  "description": "End-to-end tests of @hussmartinez/audio-sdk against its built examples: the codec capability matrix, no foreign requests, and self-hosting under a strict Content Security Policy.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "tsc --noEmit && playwright test"
+  },
+  "devDependencies": {
+    "@hussmartinez/sdk-config": "catalog:",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}
