@@ -41,6 +41,29 @@ export interface Mp4Options {
   readonly fragmented?: boolean;
   /** The ALAC frame length, for codec "alac". */
   readonly alacFrameLength?: number;
+  /**
+   * An edit list. Durations are in the movie's timescale and media times in
+   * the media's; both timescales are the sample rate here. A media time of
+   * -1 is an empty edit.
+   */
+  readonly editList?: {
+    readonly version?: 0 | 1;
+    readonly entries: readonly { duration: number; mediaTime: number; rate?: number }[];
+  };
+}
+
+const s32 = (v: number) => u32(v < 0 ? v + 2 ** 32 : v);
+const u64 = (v: number) => [...u32(Math.floor(v / 2 ** 32)), ...u32(v % 2 ** 32)];
+const s64 = (v: number) => (v < 0 ? [0xff, 0xff, 0xff, 0xff, ...s32(v)] : u64(v));
+
+function edts(editList: NonNullable<Mp4Options["editList"]>): number[] {
+  const version = editList.version ?? 0;
+  const entries = editList.entries.flatMap(({ duration, mediaTime, rate = 1 }) =>
+    version === 1
+      ? [...u64(duration), ...s64(mediaTime), ...u16(rate), ...u16(0)]
+      : [...u32(duration), ...s32(mediaTime), ...u16(rate), ...u16(0)],
+  );
+  return box("edts", full("elst", version, 0, u32(editList.entries.length), entries));
 }
 
 function sampleEntry(options: Mp4Options): number[] {
@@ -162,7 +185,7 @@ function trak(options: Mp4Options, chunkOffsets: number[], trackId: number): num
     u32(0),
     u32(0),
   );
-  return box("trak", tkhd, mdia);
+  return box("trak", tkhd, ...(options.editList ? [edts(options.editList)] : []), mdia);
 }
 
 /** An M4A file of `samples` silent samples, in chunks of `samplesPerChunk`. */

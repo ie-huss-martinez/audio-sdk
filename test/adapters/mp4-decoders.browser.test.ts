@@ -41,4 +41,55 @@ describe("MP4 AAC against the browser's decoder", () => {
       await engine.destroy();
     });
   }
+
+  // Crafted edit lists the probe refuses. Decoded here without the engine,
+  // to record what each browser would do with them.
+  const SAMPLES = 40;
+  const MEDIA = SAMPLES * 1_024;
+  const crafted = {
+    "an edit list that plays the media three times": mp4File({
+      samples: SAMPLES,
+      editList: {
+        entries: [
+          { duration: MEDIA, mediaTime: 0 },
+          { duration: MEDIA, mediaTime: 0 },
+          { duration: MEDIA, mediaTime: 0 },
+        ],
+      },
+    }),
+    "an edit list with a minute-long empty edit": mp4File({
+      samples: SAMPLES,
+      editList: {
+        entries: [
+          { duration: 44_100 * 60, mediaTime: -1 },
+          { duration: MEDIA, mediaTime: 0 },
+        ],
+      },
+    }),
+  };
+
+  for (const [name, bytes] of Object.entries(crafted)) {
+    it(`refuses ${name}, recording what the browser alone does`, async (context) => {
+      const engine = createAudioEngine();
+      const error = await engine.probe(new Blob([bytes])).then(
+        () => undefined,
+        (reason: unknown) => reason,
+      );
+      expect(isAudioError(error, "UNSUPPORTED_FORMAT"), String(error)).toBe(true);
+      await engine.destroy();
+
+      const offline = new OfflineAudioContext(2, 1, 44_100);
+      const timeout = new Promise<"timeout">((resolve) =>
+        setTimeout(() => resolve("timeout"), 5_000),
+      );
+      const decoded = await Promise.race([
+        offline.decodeAudioData(bytes.slice().buffer).then(
+          (audio) => `${audio.length} frames`,
+          () => "refused",
+        ),
+        timeout,
+      ]);
+      await context.annotate(`the browser alone: ${decoded}; the samples carry ${MEDIA} frames`);
+    });
+  }
 });

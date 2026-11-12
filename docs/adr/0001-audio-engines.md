@@ -5,7 +5,7 @@
 - **Amended:** 2026-11-12, to follow `sdk-core` [ADR 0031](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0031-platform-decoders-on-the-page.md), which makes this record's reading of the worker rule a family rule, and to name [ADR 0012](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0012-hostile-input-and-no-network.md) as that rule's source.
 - **Amended:** 2026-11-12, so that native FLAC counts every frame header at its worst case in output terms, whatever its CRC-16, which decoders don't check by default (#12).
 - **Amended:** 2026-11-12, so that MP3 and ADTS count every frame header at its worst case too, AAC decodes at twice its core rate at 24 kHz or less, and decoded output may have fewer channels than the probe allows (#14).
-- **Amended:** 2026-11-12, so that AAC in MP4 follows ADTS's decode rate, and fragmented MP4 and MP4 with several audio tracks are unsupported (#15).
+- **Amended:** 2026-11-12, so that AAC in MP4 follows ADTS's decode rate, fragmented MP4 and MP4 with several audio tracks are unsupported, and only edit lists that encoders write are accepted (#15).
 
 ## Context
 
@@ -42,7 +42,7 @@ The first releases bundle **no third-party runtime code**: the SDK's own code pr
   |---|---|
   | MP3 | Every valid frame header, found by searching as decoders do, at its worst case: its samples (1,152, 576 or 384), × `ceil(stream rate ÷ frame rate)` when it declares a lower rate, × `ceil(frame channels ÷ stream channels)`. Free-format MP3 isn't supported. WebKit really does follow a mid-stream rate change: on crafted frames it decoded within 11 frames of this bound (#14) |
   | AAC in ADTS | Every valid frame header at its worst case: 1,024 per raw data block × `ceil(decode rate ÷ its core rate)`, × its channel ratio. The decode rate is twice the core rate at 24 kHz or less, as HE-AAC streams are, so implicit SBR, which no header signals, still fits |
-  | AAC in MP4 | 1,024 × `ceil(decode rate ÷ core rate)` per `stsz` sample, with the decode rate chosen as for ADTS, so every sample counts as possibly HE-AAC. Every sample's offset and size, from `stco`/`co64`, `stsc` and `stsz`, must lie inside the file, and the tables must account for exactly `stsz`'s samples. Fragmented files (`moof`) and files with several audio tracks are unsupported, rather than bounded by a guess |
+  | AAC in MP4 | 1,024 × `ceil(decode rate ÷ core rate)` per `stsz` sample, with the decode rate chosen as for ADTS, so every sample counts as possibly HE-AAC. Every sample's offset and size, from `stco`/`co64`, `stsc` and `stsz`, must lie inside the file, and the tables must account for exactly `stsz`'s samples. Fragmented files (`moof`) and files with several audio tracks are unsupported, rather than bounded by a guess. **Edit lists** can repeat media or add empty time, and FFmpeg, which Chromium decodes through, applies them (Chromium decodes a list that plays the media three times to three times the samples, #15). So only what encoders write is accepted: at most one empty edit no longer than the tolerance, then at most one media edit at rate 1 within the media's duration. Anything else is `UNSUPPORTED_FORMAT` |
   | ALAC in MP4 | The `frameLength` of its configuration, per `stsz` sample, with the same checks |
   | Opus | Exact, from each packet's TOC byte, at 48 kHz |
   | Vorbis | At most half of `blocksize_1`, from the setup header, per packet |

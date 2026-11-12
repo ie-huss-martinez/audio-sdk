@@ -89,6 +89,84 @@ describe("MP4 with AAC", () => {
   });
 });
 
+describe("MP4 edit lists", () => {
+  const SAMPLES = 20;
+  const MEDIA = SAMPLES * 1_024;
+
+  it("accepts what encoders write: a short empty edit, then one media edit within the media", async () => {
+    for (const version of [0, 1] as const) {
+      const { probe } = await probeFile(
+        blob(
+          mp4File({
+            samples: SAMPLES,
+            editList: {
+              version,
+              entries: [
+                { duration: 1_000, mediaTime: -1 },
+                { duration: MEDIA - 2_112, mediaTime: 2_112 },
+              ],
+            },
+          }),
+        ),
+      );
+      expect(probe.frameBound).toBe(MEDIA);
+    }
+  });
+
+  it.each([
+    [
+      "the media played three times",
+      [
+        { duration: MEDIA, mediaTime: 0 },
+        { duration: MEDIA, mediaTime: 0 },
+        { duration: MEDIA, mediaTime: 0 },
+      ],
+      "edit list with more than two edits",
+    ],
+    [
+      "two media edits",
+      [
+        { duration: MEDIA, mediaTime: 0 },
+        { duration: MEDIA, mediaTime: 0 },
+      ],
+      "edit list with several media edits",
+    ],
+    [
+      "a long empty edit",
+      [
+        { duration: 44_100 * 60, mediaTime: -1 },
+        { duration: MEDIA, mediaTime: 0 },
+      ],
+      "edit list with a long empty edit",
+    ],
+    [
+      "an empty edit after a media edit",
+      [
+        { duration: MEDIA, mediaTime: 0 },
+        { duration: 100, mediaTime: -1 },
+      ],
+      "edit list with an empty edit after another edit",
+    ],
+    [
+      "a media rate of 2",
+      [{ duration: MEDIA, mediaTime: 0, rate: 2 }],
+      "edit list with a media rate other than 1",
+    ],
+    [
+      "a media edit beyond the media",
+      [{ duration: MEDIA, mediaTime: 5_000 }],
+      "edit list beyond the media",
+    ],
+  ])("refuses %s", async (_, entries, reason) => {
+    expect(
+      await failure(probeFile(blob(mp4File({ samples: SAMPLES, editList: { entries } })))),
+    ).toEqual({
+      code: "UNSUPPORTED_FORMAT",
+      reason,
+    });
+  });
+});
+
 describe("MP4 with ALAC", () => {
   it("bounds the track by its samples and the configured frame length", async () => {
     const { probe } = await probeFile(

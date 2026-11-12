@@ -195,17 +195,17 @@ export async function probeMp4(file: Blob): Promise<AudioProbe> {
   const moov = top.find((box) => box.type === "moov");
   if (!moov) throw invalid("mp4", "missing moov box");
 
-  const audioTracks: Box[] = [];
+  const audioTracks: { trak: Box; mdia: Box }[] = [];
   for (const trak of (await boxes.children(moov.body, moov.end)).filter((b) => b.type === "trak")) {
     const mdia = await boxes.child(trak, "mdia");
     const hdlr = mdia && (await boxes.child(mdia, "hdlr"));
     if (!mdia || !hdlr) continue;
     const handler = await boxes.view(hdlr.body + 8, 4);
-    if (handler.getUint32(0) === 0x736f756e) audioTracks.push(mdia); // "soun"
+    if (handler.getUint32(0) === 0x736f756e) audioTracks.push({ trak, mdia }); // "soun"
   }
   if (audioTracks.length === 0) throw invalid("mp4", "no audio track");
   if (audioTracks.length > 1) throw unsupported("several audio tracks");
-  const mdia = audioTracks[0] as Box;
+  const { trak, mdia } = audioTracks[0] as { trak: Box; mdia: Box };
 
   const mdhd = await boxes.need(mdia, "mdhd");
   const version = await boxes.u8(mdhd.body);
@@ -255,6 +255,13 @@ export async function probeMp4(file: Blob): Promise<AudioProbe> {
     throw unsupported(`codec ${entry.type}`, entry.type);
   }
 
+  await checkEditList(boxes, moov, trak, {
+    timescale,
+    duration,
+    decodeRate: sampleRate,
+    tolerance: 2 * perSample,
+  });
+
   const samples = await checkSampleLocations(boxes, stbl, reader.size);
   if (samples === 0) throw invalid("mp4", "no audio samples");
   const bound = samples * perSample;
@@ -269,6 +276,76 @@ export async function probeMp4(file: Blob): Promise<AudioProbe> {
     expectedFrames: expected,
     frameTolerance: 2 * perSample,
   };
+}
+
+/**
+ * Checks a track's edit list, if it has one (docs/adr/0001). Edit lists can
+ * play a media segment several times, or add empty time, and FFmpeg's MP4
+ * demuxer, which Chromium decodes through, applies them, so a decoder could
+ * output more than the sample tables carry. Only what encoders write is
+ * accepted:
+ *
+ * - at most one empty edit (media time −1), no longer than the tolerance, so
+ *   the silence it adds still fits the after-decode check;
+ * - then at most one media edit at rate 1, whose media time plus duration
+ *   lies within the media's duration.
+ *
+ * Anything else fails with `UNSUPPORTED_FORMAT`, naming the reason.
+ */
+async function checkEditList(
+  boxes: BoxReader,
+  moov: Box,
+  trak: Box,
+  media: { timescale: number; duration: number; decodeRate: number; tolerance: number },
+): Promise<void> {
+  const edts = (await boxes.children(trak.body, trak.end)).filter((b) => b.type === "edts");
+  if (edts.length === 0) return;
+  if (edts.length > 1) throw unsupported("several edit lists");
+  const elsts = (await boxes.children((edts[0] as Box).body, (edts[0] as Box).end)).filter(
+    (b) => b.type === "elst",
+  );
+  if (elsts.length === 0) return;
+  if (elsts.length > 1) throw unsupported("several edit lists");
+  const elst = elsts[0] as Box;
+
+  const mvhd = await boxes.need(moov, "mvhd");
+  const movieVersion = await boxes.u8(mvhd.body);
+  const movieTimescale = (
+    await boxes.view(mvhd.body + (movieVersion === 1 ? 20 : 12), 4)
+  ).getUint32(0);
+  if (movieTimescale === 0) throw invalid("mp4", "movie timescale is zero");
+
+  const version = await boxes.u8(elst.body);
+  const count = (await boxes.view(elst.body + 4, 4)).getUint32(0);
+  const entrySize = version === 1 ? 20 : 12;
+  if (elst.body + 8 + count * entrySize > elst.end)
+    throw invalid("mp4", "edit list exceeds its box");
+  if (count > 2) throw unsupported("edit list with more than two edits");
+
+  let sawMedia = false;
+  for (let i = 0; i < count; i += 1) {
+    const entry = await boxes.view(elst.body + 8 + i * entrySize, entrySize);
+    const segment =
+      version === 1 ? entry.getUint32(0) * 2 ** 32 + entry.getUint32(4) : entry.getUint32(0);
+    const mediaTime =
+      version === 1 ? entry.getInt32(8) * 2 ** 32 + entry.getUint32(12) : entry.getInt32(4);
+    const rate = entry.getInt16(version === 1 ? 16 : 8);
+    const rateFraction = entry.getUint16(version === 1 ? 18 : 10);
+
+    if (mediaTime === -1) {
+      if (sawMedia || i > 0) throw unsupported("edit list with an empty edit after another edit");
+      const silence = (segment * media.decodeRate) / movieTimescale;
+      if (silence > media.tolerance) throw unsupported("edit list with a long empty edit");
+      continue;
+    }
+    if (sawMedia) throw unsupported("edit list with several media edits");
+    sawMedia = true;
+    if (rate !== 1 || rateFraction !== 0)
+      throw unsupported("edit list with a media rate other than 1");
+    if (mediaTime < 0 || media.duration === 0) throw unsupported("edit list beyond the media");
+    const length = Math.ceil((segment * media.timescale) / movieTimescale);
+    if (mediaTime + length > media.duration) throw unsupported("edit list beyond the media");
+  }
 }
 
 /**
