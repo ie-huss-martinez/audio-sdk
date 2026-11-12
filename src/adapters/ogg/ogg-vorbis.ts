@@ -10,6 +10,32 @@ export function isOggVorbis(head: Uint8Array): boolean {
 }
 
 /**
+ * Reads a Vorbis identification header: channels, rate and `blocksize_1`,
+ * checking version 0, block-size exponents from 6 to 13 with the small one
+ * no larger, and the framing bit. Anything else fails closed.
+ *
+ * @internal
+ */
+export function readVorbisIdentification(
+  head: Uint8Array,
+  container: string,
+): { channels: number; sampleRate: number; largeBlock: number } {
+  if (!isOggVorbis(head) || head.length < 30) throw invalid(container, "malformed Vorbis header");
+  const view = new DataView(head.buffer, head.byteOffset, head.byteLength);
+  if (view.getUint32(7, true) !== 0) throw invalid(container, "unsupported Vorbis version");
+  const channels = view.getUint8(11);
+  const sampleRate = view.getUint32(12, true);
+  const sizes = view.getUint8(28);
+  const small = sizes & 0xf;
+  const large = sizes >> 4;
+  if (small < 6 || large > 13 || small > large || (view.getUint8(29) & 0x1) !== 1) {
+    throw invalid(container, "Vorbis block sizes out of range");
+  }
+  if (channels === 0 || sampleRate === 0) throw invalid(container, "Vorbis format out of range");
+  return { channels, sampleRate, largeBlock: 2 ** large };
+}
+
+/**
  * Probes Vorbis in Ogg (docs/adr/0001). A Vorbis packet decodes to at most
  * half of `blocksize_1`, which the identification header declares (packet
  * 1; the setup header holds the codebooks and modes, not the block sizes).
@@ -29,21 +55,7 @@ export async function probeOggVorbis(file: Blob): Promise<AudioProbe> {
   const { lastGranule } = await walkOgg(file, ({ head }) => {
     packets += 1;
     if (packets === 1) {
-      if (!isOggVorbis(head) || head.length < 30) throw invalid("ogg", "malformed Vorbis header");
-      const view = new DataView(head.buffer, head.byteOffset, head.byteLength);
-      if (view.getUint32(7, true) !== 0) throw invalid("ogg", "unsupported Vorbis version");
-      channels = view.getUint8(11);
-      sampleRate = view.getUint32(12, true);
-      const sizes = view.getUint8(28);
-      const small = sizes & 0xf;
-      const large = sizes >> 4;
-      // Block sizes are powers of two from 64 to 8,192, the small one no
-      // larger, and a framing bit ends the header.
-      if (small < 6 || large > 13 || small > large || (view.getUint8(29) & 0x1) !== 1) {
-        throw invalid("ogg", "Vorbis block sizes out of range");
-      }
-      if (channels === 0 || sampleRate === 0) throw invalid("ogg", "Vorbis format out of range");
-      largeBlock = 2 ** large;
+      ({ channels, sampleRate, largeBlock } = readVorbisIdentification(head, "ogg"));
       return;
     }
     if (packets === 2 || packets === 3) {

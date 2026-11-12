@@ -1,5 +1,11 @@
 import { AudioError } from "../../core/errors/audio-error.js";
 import type { AudioProbe } from "../../core/model/source.js";
+import {
+  type AacConfig,
+  aacDecodeRate,
+  aacOutputChannels,
+  parseAudioSpecificConfig,
+} from "../aac/aac-config.js";
 import { WindowReader } from "../bytes/window-reader.js";
 import { invalid } from "../pcm/layout.js";
 
@@ -8,11 +14,6 @@ import { invalid } from "../pcm/layout.js";
 // file nests its boxes can't make it work harder (docs/adr/0001).
 /** The most boxes the walker reads, in all; real files have a few dozen to a few hundred. */
 const MAX_BOXES = 100_000;
-
-const AAC_RATES = [
-  96_000, 88_200, 64_000, 48_000, 44_100, 32_000, 24_000, 22_050, 16_000, 12_000, 11_025, 8_000,
-  7_350,
-];
 
 interface Box {
   readonly type: string;
@@ -104,11 +105,6 @@ async function descriptorLength(boxes: BoxReader, at: number): Promise<[number, 
   throw invalid("mp4", "malformed descriptor length");
 }
 
-interface AacConfig {
-  readonly coreRate: number;
-  readonly channelConfiguration: number;
-}
-
 /** Reads the AudioSpecificConfig inside an `esds` box: the core rate and channel configuration. */
 async function readEsds(boxes: BoxReader, esds: Box): Promise<AacConfig> {
   // A full box: version and flags, then the ES descriptor.
@@ -135,38 +131,8 @@ async function readEsds(boxes: BoxReader, esds: Box): Promise<AacConfig> {
   }
   at += 13;
   await descriptor(0x05);
-  const config = await boxes.view(at, Math.min(5, esds.end - at));
-  if (config.byteLength < 2) throw invalid("mp4", "truncated AudioSpecificConfig");
-  // 5 bits of object type (31 escapes to 6 more), 4 of rate index (15
-  // escapes to 24 bits of rate), then 4 of channel configuration.
-  let bits = 0;
-  let value = 0;
-  let index = 0;
-  const read = (count: number): number => {
-    let out = 0;
-    for (let i = 0; i < count; i += 1) {
-      if (bits === 0) {
-        if (index >= config.byteLength) throw invalid("mp4", "truncated AudioSpecificConfig");
-        value = config.getUint8(index);
-        index += 1;
-        bits = 8;
-      }
-      bits -= 1;
-      out = out * 2 + ((value >> bits) & 1);
-    }
-    return out;
-  };
-  if (read(5) === 31) read(6);
-  const rateIndex = read(4);
-  const coreRate = rateIndex === 15 ? read(24) : AAC_RATES[rateIndex];
-  if (coreRate === undefined || coreRate === 0)
-    throw invalid("mp4", "AAC sample rate out of range");
-  return { coreRate, channelConfiguration: read(4) };
-}
-
-function aacChannels(configuration: number): number {
-  if (configuration === 0 || configuration === 7) return 8;
-  return Math.max(2, configuration);
+  const config = await boxes.reader.bytes(at, Math.min(5, esds.end - at));
+  return parseAudioSpecificConfig(config, "mp4");
 }
 
 /**
@@ -237,8 +203,8 @@ export async function probeMp4(file: Blob): Promise<AudioProbe> {
     if (!esds) throw invalid("mp4", "missing esds box");
     const { coreRate, channelConfiguration } = await readEsds(boxes, esds);
     codec = "aac";
-    sampleRate = coreRate <= 24_000 ? coreRate * 2 : coreRate;
-    channels = aacChannels(channelConfiguration || entryChannels);
+    sampleRate = aacDecodeRate(coreRate);
+    channels = aacOutputChannels(channelConfiguration || entryChannels);
     perSample = 1_024 * Math.ceil(sampleRate / coreRate);
   } else if (entry.type === "alac") {
     const config = (await boxes.children(childrenStart, entry.end)).find((b) => b.type === "alac");

@@ -2,6 +2,7 @@ import type { AudioProbe } from "../../core/model/source.js";
 import { WindowReader } from "../bytes/window-reader.js";
 import { findStream, scanFrames } from "../mpeg/scan.js";
 import { invalid } from "../pcm/layout.js";
+import { AAC_RATES, aacDecodeRate, aacOutputChannels as outputChannels } from "./aac-config.js";
 
 /** An ADTS frame header. @internal */
 export interface AdtsHeader {
@@ -12,11 +13,6 @@ export interface AdtsHeader {
   readonly blocks: number;
   readonly frameLength: number;
 }
-
-const RATES = [
-  96_000, 88_200, 64_000, 48_000, 44_100, 32_000, 24_000, 22_050, 16_000, 12_000, 11_025, 8_000,
-  7_350,
-];
 
 /**
  * Reads an ADTS header at `offset`, if there's a valid one: the 12-bit sync,
@@ -36,23 +32,13 @@ export function readAdtsHeader(bytes: Uint8Array, offset: number): AdtsHeader | 
   if (b4 === undefined || b5 === undefined || b6 === undefined) return undefined;
   if ((b1 & 0xf6) !== 0xf0) return undefined; // sync, and layer 0
   const rateIndex = (b2 >> 2) & 0xf;
-  const sampleRate = RATES[rateIndex];
+  const sampleRate = AAC_RATES[rateIndex];
   if (sampleRate === undefined) return undefined;
   const channelConfiguration = ((b2 & 0x1) << 2) | (b3 >> 6);
   const frameLength = ((b3 & 0x3) << 11) | (b4 << 3) | (b5 >> 5);
   const headerLength = b1 & 0x1 ? 7 : 9;
   if (frameLength < headerLength) return undefined;
   return { sampleRate, channelConfiguration, blocks: (b6 & 0x3) + 1, frameLength };
-}
-
-/**
- * The channels a decoder can output for a configuration: at least two,
- * because HE-AAC v2's parametric stereo turns mono into stereo, and eight
- * when a program config element, not the header, decides (docs/adr/0001).
- */
-function outputChannels(configuration: number): number {
-  if (configuration === 0 || configuration === 7) return 8;
-  return Math.max(2, configuration);
 }
 
 const sameStream = (a: AdtsHeader, b: AdtsHeader) =>
@@ -101,7 +87,7 @@ export async function probeAdts(file: Blob, start: number): Promise<AudioProbe> 
   );
   if (!found) throw invalid("adts", "no frames");
   const core = found.first.sampleRate;
-  const sampleRate = core <= 24_000 ? core * 2 : core;
+  const sampleRate = aacDecodeRate(core);
   const channels = outputChannels(found.first.channelConfiguration);
   const perBlock = 1_024 * Math.ceil(sampleRate / core);
 
