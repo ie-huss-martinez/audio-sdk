@@ -93,6 +93,7 @@
     "@types/react-dom": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "dependency-cruiser": "catalog:",
+    "fast-check": "catalog:",
     "husky": "catalog:",
     "lint-staged": "catalog:",
     "playwright": "catalog:",

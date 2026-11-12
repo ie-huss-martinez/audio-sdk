@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-12
+- **Amended:** 2026-11-12, to match the model as built in #8: the metadata is a field of the plan, the core sees sources as `DecodedAudio`, and fades reach silence on a clip's first and last frames.
 
 ## Context
 
@@ -17,13 +18,13 @@ Audio is large, so edits can't copy samples, and undo can't keep snapshots of th
 
 The session's document is a **clip plan** over immutable sources, plus metadata:
 
-- **Sources:** each opened or inserted file, decoded once into an `AudioBuffer` and never modified ([ADR 0002](0002-workers-and-assets.md)). A source has an id, its sample rate, its channel count, its length in frames, and its waveform peaks.
-- **The plan:** the session's sample rate and channel count, and an ordered list of clips, played back to back on one track. Each clip has:
+- **Sources:** each opened or inserted file, decoded once into an `AudioBuffer` and never modified ([ADR 0002](0002-workers-and-assets.md)). The core sees a source as `DecodedAudio`, the part of `AudioBuffer` it needs (sample rate, length, channel count and each channel's samples), so it uses no DOM types and tests can supply their own. A source has an id, its sample rate, its channel count, its length in frames, and its waveform peaks.
+- **The plan:** the session's sample rate and channel count, an ordered list of clips, played back to back on one track, and the metadata. Each clip has:
   - **`key`:** stable across edits, so selection and waveform tiles follow a clip that moves;
   - **`source`, `start`, `end`:** the source and the range of its frames the clip plays, `start` inclusive and `end` exclusive;
   - **`gainDb`:** the clip's gain;
-  - **`fadeIn`, `fadeOut`:** each `{ frames, curve: "linear" | "equalPower" }`.
-- **Metadata:** title, artist, album, year and comment, which export writes into the file ([ADR 0001](0001-audio-engines.md)).
+  - **`fadeIn`, `fadeOut`:** each `{ frames, curve: "linear" | "equalPower" }`. A fade in starts at silence on the clip's first frame, and a fade out reaches silence on its last frame, so a faded clip never starts or ends with a click. Equal-power fades follow a quarter sine.
+- **Metadata:** title, artist, album, year and comment, which export writes into the file ([ADR 0001](0001-audio-engines.md)). It's part of the plan, because `audio.setMetadata` is a command that the plan's reducer applies and undoes like any other.
 
 ### Time is integer frames
 

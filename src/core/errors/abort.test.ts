@@ -1,6 +1,6 @@
 import { SdkError } from "@hussmartinez/sdk-core";
 import { describe, expect, it } from "vitest";
-import { abortError, throwIfAborted } from "./abort.js";
+import { abortError, asAudioError, throwIfAborted } from "./abort.js";
 import { AudioError } from "./audio-error.js";
 
 function aborted(reason?: unknown): AbortSignal {
@@ -46,5 +46,26 @@ describe("throwIfAborted", () => {
     expect(() => throwIfAborted(undefined)).not.toThrow();
     expect(() => throwIfAborted(new AbortController().signal)).not.toThrow();
     expect(() => throwIfAborted(aborted())).toThrow(expect.objectContaining({ code: "ABORTED" }));
+  });
+});
+
+describe("asAudioError", () => {
+  it("keeps an AudioError, and converts another SdkError with its code and details", () => {
+    const audioError = new AudioError("INVALID_AUDIO", "Bad.");
+    expect(asAudioError(audioError)).toBe(audioError);
+    const crashed = new SdkError("WORKER_CRASHED", "The worker failed.", {
+      details: { method: "readBlock" },
+    });
+    expect(asAudioError(crashed)).toMatchObject({
+      name: "AudioError",
+      code: "WORKER_CRASHED",
+      details: { method: "readBlock" },
+      cause: crashed,
+    });
+  });
+
+  it("makes anything else UNKNOWN, keeping it as the cause", () => {
+    const reason = new TypeError("boom");
+    expect(asAudioError(reason)).toMatchObject({ code: "UNKNOWN", cause: reason });
   });
 });

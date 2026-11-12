@@ -5,8 +5,8 @@
  * minifies and drops what they don't import.
  *
  * These are starting ceilings for what each entry should hold. Worker,
- * WebAssembly and audio engine code loads lazily in its own chunks, which get
- * their own budgets when they're added. The feature pull requests revisit
+ * WebAssembly and audio engine code loads lazily in its own chunks, with
+ * their own budgets below. The feature pull requests revisit
  * these against real sizes.
  */
 export default [
@@ -33,5 +33,14 @@ export default [
     path: "dist/styles.css",
     brotli: true,
     limit: "10 kB",
+  },
+  {
+    // The audio worker, inlined as a minified string and loaded on the first
+    // call (docs/adr/0002): the WAV and AIFF readers and the peaks. It
+    // measures about 5 kB; the compressed formats' readers will join it.
+    name: "Audio worker, inlined (lazy)",
+    path: "dist/lazy/inline-worker-*.js",
+    brotli: true,
+    limit: "15 kB",
   },
 ];

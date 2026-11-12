@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-12
+- **Amended:** 2026-11-12, to follow `sdk-core` [ADR 0031](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0031-platform-decoders-on-the-page.md), which makes this record's reading of the worker rule a family rule, and to name [ADR 0012](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0012-hostile-input-and-no-network.md) as that rule's source.
 
 ## Context
 
@@ -12,7 +13,7 @@ The SDK opens audio files from anywhere, edits them and exports the result, all 
 - **rendering:** applying the edits (clip order, trims, gain, fades) to the samples;
 - **encoding:** writing the rendered samples to a file.
 
-The family rules point two ways at once. Files must be parsed only in workers ([ADR 0020](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0020-file-policy.md)), but the browser's own audio decoders, `decodeAudioData` on a `BaseAudioContext`, exist only on the page: neither `AudioContext` nor `OfflineAudioContext` is available in workers. And `decodeAudioData` resamples to its context's sample rate, so decoding on a realtime `AudioContext` silently changes a 44.1 kHz file to the device's 48 kHz. The editor this SDK replaces exported at the wrong rate for exactly that reason.
+The family rules point two ways at once. Files must be parsed only in workers ([ADR 0012](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0012-hostile-input-and-no-network.md)), but the browser's own audio decoders, `decodeAudioData` on a `BaseAudioContext`, exist only on the page: neither `AudioContext` nor `OfflineAudioContext` is available in workers. And `decodeAudioData` resamples to its context's sample rate, so decoding on a realtime `AudioContext` silently changes a 44.1 kHz file to the device's 48 kHz. The editor this SDK replaces exported at the wrong rate for exactly that reason.
 
 Licences matter as well. The SDK is Apache-2.0, and every bundled library must be compatible with it and credited in `NOTICE` where its licence requires it ([ADR 0028](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0028-third-party-engines.md)).
 
@@ -73,7 +74,8 @@ The header readers and packet walkers are the SDK's own parsers for untrusted by
 
 - **Uncompressed formats, WAV and AIFF in PCM or float, are parsed by our own code in the worker,** at their own sample rate and channel count, with no browser decoder involved. This is most files people edit, and it keeps them out of the page entirely.
 - **Compressed formats use `decodeAudioData` on an `OfflineAudioContext` created at the file's probed sample rate,** so nothing is resampled. Its input is a fresh `ArrayBuffer` read from the file's `Blob` with `blob.arrayBuffer()`, which `decodeAudioData` is free to detach, so the file's bytes are never copied a second time.
-  - **Why this meets the worker rule:** the browser's decoders are hardened, sandboxed platform code, in the same position as image decoding behind `<img>`. The SDK's own parsing of the file, the probe, still runs in the worker, and only probed files within limits reach the decoder. This is recorded here as this SDK's interpretation of [ADR 0020](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0020-file-policy.md)'s rule, and proposed as a family rule in [sdk-core#57](https://github.com/ie-huss-martinez/sdk-core/issues/57), as [ADR 0028](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0028-third-party-engines.md) did for third-party engines' workers.
+  - **Why this meets the worker rule:** the browser's decoders are hardened, sandboxed platform code, in the same position as image decoding behind `<img>`. The SDK's own parsing of the file, the probe, still runs in the worker, and only probed files within limits reach the decoder. That's how [ADR 0031](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0031-platform-decoders-on-the-page.md) lets SDKs use platform decoders that exist only on the page, as an exception to [ADR 0012](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0012-hostile-input-and-no-network.md)'s rule that files are parsed only in workers. This SDK meets each of its rules as this record and [ADR 0004](0004-audio-limits.md) describe.
+  - **The decode has a time limit.** `decodeAudioData` can't be stopped once it starts, so when `maxProcessingTime` runs out the engine stops waiting, rejects with `PROCESSING_TIME_EXCEEDED`, and discards the result whenever it arrives ([ADR 0031](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0031-platform-decoders-on-the-page.md)).
   - **The decoded length is checked against the bound, with a tolerance.** Decoders legitimately return a little more or fewer frames than a container's count: MP3 encoder delay and padding, AAC priming of 1,024 to 2,112 frames, Opus pre-skip, and browsers differ in which of these they trim. A decoded result longer than the bound plus the codec's tolerance fails with `INVALID_AUDIO` and is discarded. Otherwise the source's length is the decoded length, capped at the bound.
 
     | Codec | Tolerance |

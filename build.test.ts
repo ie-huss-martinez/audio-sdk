@@ -108,3 +108,53 @@ describe("importing on a server", () => {
     },
   );
 });
+
+/**
+ * Code generation from strings: `eval(…)`, `new Function(…)` and
+ * `Function(…)`, as whole words, so `evaluate(` doesn't match (ADR 0028).
+ */
+const CODE_GENERATION = /(?<![\w$.])eval\s*\(|(?<![\w$.])(?:new\s+)?Function\s*\(/;
+
+describe("the audio worker (docs/adr/0002)", () => {
+  const worker = () => {
+    const found = files.find((file) => /^lazy\/inline-worker-[\w-]+\.js$/.test(file.fileName));
+    if (found?.type !== "chunk") throw new Error("the inlined worker chunk wasn't built");
+    return found;
+  };
+
+  it("recognises code generation, and nothing that merely looks like it", () => {
+    for (const code of ['eval("1")', 'new Function("a", "return a")', "x = Function ('y')"]) {
+      expect(code).toMatch(CODE_GENERATION);
+    }
+    for (const code of ["evaluate(x)", "a.eval(x)", "isFunction(x)"]) {
+      expect(code).not.toMatch(CODE_GENERATION);
+    }
+  });
+
+  it("is inlined in a lazy chunk that only import() loads, never the entries", () => {
+    expect(worker().code).toContain("hm-audio");
+    for (const entry of ["index.js", "react.js", "element.js"]) {
+      expect(
+        chunk(entry).imports.filter((name) => name.startsWith("lazy/")),
+        entry,
+      ).toEqual([]);
+    }
+    expect(chunk("index.js").dynamicImports).toEqual([worker().fileName]);
+  });
+
+  it("generates no code from strings, in any chunk, including the inlined worker", () => {
+    for (const file of files) {
+      if (file.type === "chunk") expect(file.code, file.fileName).not.toMatch(CODE_GENERATION);
+    }
+  });
+
+  it("makes no requests of its own", () => {
+    // The worker's only inputs are the Blobs the page sends it.
+    expect(worker().code).not.toMatch(/\bfetch\s*\(|XMLHttpRequest|importScripts|WebSocket/);
+  });
+
+  it("ships no worker source maps", () => {
+    expect(files.filter((file) => /\.worker-[\w-]+\.js\.map$/.test(file.fileName))).toEqual([]);
+    expect(worker().code).not.toMatch(/sourceMappingURL=data:/);
+  });
+});

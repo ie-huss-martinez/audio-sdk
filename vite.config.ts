@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 
 const manifest = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "utf8")) as {
   dependencies?: Record<string, string>;
@@ -31,6 +31,21 @@ const entryFiles = new Set(
   Object.values(entries).map((entry) => fileURLToPath(new URL(entry, import.meta.url))),
 );
 
+/**
+ * Vite writes each worker's source map next to the build even when the worker
+ * is inlined. The maps aren't referenced, so they're dropped.
+ */
+const dropWorkerSourceMaps: Plugin = {
+  name: "hm-drop-worker-source-maps",
+  generateBundle(_options, bundle) {
+    for (const fileName of Object.keys(bundle)) {
+      if (/\.worker-[\w-]+\.js\.map$/.test(fileName)) {
+        delete bundle[fileName];
+      }
+    }
+  },
+};
+
 // Library build: unminified ES modules with source maps, so that consumers'
 // bundlers can tree-shake and minify them, and one stylesheet that bundles
 // every CSS file it imports. No JavaScript imports CSS.
@@ -40,6 +55,28 @@ export default defineConfig({
   // the absolute path of every source file.
   oxc: {
     jsx: { runtime: "automatic", development: false },
+  },
+  plugins: [dropWorkerSourceMaps],
+  // Workers are ES modules, built into one file each, and inlined as blobs
+  // where they're imported with ?worker&inline (docs/adr/0002).
+  worker: {
+    format: "es",
+    // Minified, unlike the library: an inlined worker is a string that
+    // applications' bundlers can't minify.
+    rolldownOptions: { output: { codeSplitting: false, minify: true } },
+    plugins: () => [
+      {
+        name: "hm-no-worker-source-maps",
+        generateBundle(_options, bundle) {
+          for (const file of Object.values(bundle)) {
+            if (file.type === "chunk") {
+              file.map = null;
+              file.code = file.code.replace(/\n\/\/# sourceMappingURL=\S+\s*$/, "\n");
+            }
+          }
+        },
+      },
+    ],
   },
   build: {
     lib: {
@@ -54,9 +91,12 @@ export default defineConfig({
     rolldownOptions: {
       external: isExternal,
       output: {
-        // Code shared by several entries goes here, so the size budgets can
-        // count it with each entry that loads it.
-        chunkFileNames: "shared/[name]-[hash].js",
+        // Code shared by several entries goes in shared/, so the size budgets
+        // count it with each entry that loads it. Code loaded with import(),
+        // such as the inlined audio worker, goes in lazy/, with budgets of
+        // its own.
+        chunkFileNames: (chunk) =>
+          chunk.isDynamicEntry ? "lazy/[name]-[hash].js" : "shared/[name]-[hash].js",
         // TSDoc reaches users through the .d.ts files and the source maps, so
         // the JavaScript keeps only legal and @__PURE__ annotation comments.
         comments: { legal: true, annotation: true, jsdoc: false },
