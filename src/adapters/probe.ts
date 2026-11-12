@@ -5,6 +5,7 @@ import { WindowReader } from "./bytes/window-reader.js";
 import { skipId3v2 } from "./flac/flac.js";
 import { probeNativeFlac } from "./flac/native-flac.js";
 import { isOggFlac, probeOggFlac } from "./flac/ogg-flac.js";
+import { probeMatroska } from "./matroska/matroska.js";
 import { probeMp4 } from "./mp4/mp4.js";
 import { findMp3, probeMp3 } from "./mpeg/mp3.js";
 import { isOggOpus, probeOggOpus } from "./ogg/ogg-opus.js";
@@ -42,6 +43,9 @@ export async function probeFile(
     return probePcm(file);
   }
   if (magic === "fLaC") return { probe: await probeNativeFlac(file) };
+  if (head[0] === 0x1a && head[1] === 0x45 && head[2] === 0xdf && head[3] === 0xa3) {
+    return { probe: await probeMatroska(file) };
+  }
   // MP4 starts with a box, usually ftyp; QuickTime files may start with others.
   if (["ftyp", "moov", "mdat", "free", "skip", "wide"].includes(text(4, 8))) {
     return { probe: await probeMp4(file) };

@@ -7,6 +7,7 @@
 - **Amended:** 2026-11-12, so that MP3 and ADTS count every frame header at its worst case too, AAC decodes at twice its core rate at 24 kHz or less, and decoded output may have fewer channels than the probe allows (#14).
 - **Amended:** 2026-11-12, so that AAC in MP4 follows ADTS's decode rate, fragmented MP4 and MP4 with several audio tracks are unsupported, and only edit lists that encoders write are accepted (#15).
 - **Amended:** 2026-11-12, for Opus and Vorbis in Ogg, with Vorbis's block sizes read from its identification header, and a decode that returns no audio treated as a failure (#16).
+- **Amended:** 2026-11-12, for Matroska and WebM: unknown sizes, every lacing, and the codecs read (#17).
 
 ## Context
 
@@ -49,7 +50,7 @@ The first releases bundle **no third-party runtime code**: the SDK's own code pr
   | Vorbis | At most half of `blocksize_1` per audio packet. The block sizes are in the identification header (packet 1), not the setup header, which holds the codebooks; an identification header that can't be read fails closed |
   | FLAC in Ogg | Exact, from each packet's frame header. A header that disagrees with `STREAMINFO` fails |
   | Native FLAC | Every frame header with a valid CRC-8, found by searching as decoders do, whatever its CRC-16, at its worst case: its block size, × `ceil(stream rate ÷ frame rate)` when it declares a lower rate, × `ceil(frame channels ÷ stream channels)` when it declares more channels. False syncs in the audio data only raise the bound |
-  | Any codec in WebM or Matroska | Each block's laced packets, counted as above |
+  | WebM and Matroska | Every block of the one audio track, counted per laced frame (none, Xiph, EBML or fixed lacing), by its codec's rule above: Opus, Vorbis, FLAC or AAC. The walk is flat, without recursion: a Segment or Cluster of unknown size, as `MediaRecorder` writes, ends at the next Segment-level element or at the end of the file; unknown sizes anywhere else, and elements that overrun their parent, are `INVALID_AUDIO`. Other tracks, such as video, are skipped. Several audio tracks, other codecs and other document types are `UNSUPPORTED_FORMAT`. The Duration is the expected length only within the bound |
 
   The bound uses the sample rate and channel count the decoder will output, which can differ from the header's. Opus always decodes at 48 kHz, and HE-AAC v2's parametric stereo turns a mono stream into stereo, so AAC is counted as at least two channels, and as eight when a program config element rather than the header sets them. The probe's channel count is therefore a maximum: decoded output may have fewer channels, never more, and never more samples than the bound allows.
 - **A header's count gives the expected duration only when it's within the bound.** A Xing, Info or VBRI header, `STREAMINFO`'s total, MP4's `mdhd`, or the last Ogg granule position that claims more than the packets can carry fails with `INVALID_AUDIO`. With no header count, such as the Matroska files `MediaRecorder` writes, the bound is the expected duration.
