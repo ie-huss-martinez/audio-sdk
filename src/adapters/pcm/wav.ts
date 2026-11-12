@@ -60,7 +60,12 @@ function readFormat(view: DataView): Format {
   return { tag, ...format };
 }
 
-function layoutOf(format: Format, dataOffset: number, dataSize: number): PcmLayout {
+function layoutOf(
+  format: Format,
+  dataOffset: number,
+  dataSize: number,
+  declaredSize: number | undefined,
+): PcmLayout {
   const { tag, channels, sampleRate, blockAlign, bitsPerSample } = format;
   if (bitsPerSample % 8 !== 0) throw invalid("wav", "sample size isn't whole bytes");
   const bytesPerSample = bitsPerSample / 8;
@@ -83,13 +88,17 @@ function layoutOf(format: Format, dataOffset: number, dataSize: number): PcmLayo
     dataOffset,
     blockAlign,
     frames: Math.floor(dataSize / blockAlign),
+    ...(declaredSize === undefined
+      ? {}
+      : { declaredFrames: Math.floor(declaredSize / blockAlign) }),
   });
 }
 
 /**
  * Reads a WAV file's layout: RIFF or RF64, PCM or float, plain or
  * extensible. The data size is checked against the bytes the file has: a
- * header that claims more fails with `INVALID_AUDIO` (docs/adr/0001). A size
+ * header that claims more, as in a truncated file, opens with the whole
+ * frames that are there, and reports the declared count (docs/adr/0001). A size
  * of 0xFFFFFFFF, which streaming writers use, means "to the end of the
  * file", and so does a size of 0, unless another chunk follows it, in which
  * case the chunk really is empty.
@@ -104,7 +113,7 @@ export async function probeWav(file: Blob): Promise<PcmLayout> {
   }
 
   let format: Format | undefined;
-  let data: { offset: number; size: number } | undefined;
+  let data: { offset: number; size: number; declared: number | undefined } | undefined;
   let rf64DataSize: number | undefined;
   let offset = 12;
 
@@ -138,8 +147,12 @@ export async function probeWav(file: Blob): Promise<PcmLayout> {
         // after it, which mustn't be read as audio.
         dataSize = available;
       }
-      if (dataSize > available) throw invalid("wav", "data size exceeds the file");
-      data = { offset: bodyOffset, size: dataSize };
+      // A truncated file, as from an interrupted recording or download: the
+      // samples that are there open, and the declared size is reported. The
+      // bound is the bytes present, so nothing can expand past it
+      // (docs/adr/0001).
+      const declared = dataSize > available ? dataSize : undefined;
+      data = { offset: bodyOffset, size: Math.min(dataSize, available), declared };
       if (format) break;
       offset = bodyOffset + dataSize + (dataSize % 2);
       continue;
@@ -152,5 +165,5 @@ export async function probeWav(file: Blob): Promise<PcmLayout> {
 
   if (!format) throw invalid("wav", "missing fmt chunk");
   if (!data) throw invalid("wav", "missing data chunk");
-  return layoutOf(format, data.offset, data.size);
+  return layoutOf(format, data.offset, data.size, data.declared);
 }

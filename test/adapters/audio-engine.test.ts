@@ -177,6 +177,18 @@ describe("the audio engine", () => {
     await engine.destroy();
   });
 
+  it("opens a truncated WAV with the frames it holds, passing on what its header declared", async () => {
+    const engine = nodeEngine();
+    const bytes = wavFile([LONG], { format: "float32" });
+    const file = new Blob([bytes.slice(0, bytes.length - 4 * 50_000)]);
+    const probe = await engine.probe(file);
+    expect(probe).toMatchObject({ frameBound: 100_000, declaredFrames: 150_000 });
+    const audio = await engine.decode(file, probe);
+    expect(audio.length).toBe(100_000);
+    expect(audio.getChannelData(0)[99_999]).toBe(Math.fround(LONG[99_999] ?? 0));
+    await engine.destroy();
+  });
+
   it("stops decoding when cancelled midway", async () => {
     const engine = nodeEngine();
     const file = longFile();

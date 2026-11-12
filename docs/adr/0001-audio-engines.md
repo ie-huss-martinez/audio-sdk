@@ -8,6 +8,7 @@
 - **Amended:** 2026-11-12, so that AAC in MP4 follows ADTS's decode rate, fragmented MP4 and MP4 with several audio tracks are unsupported, and only edit lists that encoders write are accepted (#15).
 - **Amended:** 2026-11-12, for Opus and Vorbis in Ogg, with Vorbis's block sizes read from its identification header, and a decode that returns no audio treated as a failure (#16).
 - **Amended:** 2026-11-12, for Matroska and WebM: unknown sizes, every lacing, and the codecs read (#17).
+- **Amended:** 2026-11-13, so that a truncated uncompressed file opens with the frames it holds, reporting what its header declared, while compressed files whose headers claim more still fail (#22, part of #10).
 
 ## Context
 
@@ -37,7 +38,7 @@ The first releases bundle **no third-party runtime code**: the SDK's own code pr
   - ADTS AAC;
   - MP4/M4A;
   - WebM and Matroska.
-- **Uncompressed files have an exact length:** the size of WAV's `data` chunk or AIFF's `SSND` chunk, divided by the frame size, and cross-checked against the bytes the file actually has.
+- **Uncompressed files have an exact length:** the size of WAV's `data` chunk or AIFF's `SSND` chunk, divided by the frame size, and cross-checked against the bytes the file actually has. **A header that claims more,** as in an interrupted recording or download, opens with the whole frames the file holds: the bound is the bytes present, so nothing can expand past it. The probe reports the declared count as `declaredFrames`, so hosts can say that the file is incomplete. This differs from compressed formats, where a count beyond the packets fails, because there the bound comes from walking the packets.
 - **Compressed files are bounded by their packets, never by a header's count.** A header can declare a short duration and carry far more packets, and the decoder decodes the packets. Opus at 6 kbit/s expands about 500 times, so a file under the file-size limit could decode to hundreds of gigabytes. So each reader walks every packet and adds up an upper bound:
 
   | Codec | Frames per packet |

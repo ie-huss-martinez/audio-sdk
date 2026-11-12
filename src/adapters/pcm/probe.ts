@@ -38,6 +38,7 @@ export async function probePcm(file: Blob): Promise<{ probe: AudioProbe; layout:
       // An uncompressed file's length is exact: its decoder can't return more.
       frameBound: layout.frames,
       expectedFrames: layout.frames,
+      ...(layout.declaredFrames === undefined ? {} : { declaredFrames: layout.declaredFrames }),
       frameTolerance: 0,
     },
   };

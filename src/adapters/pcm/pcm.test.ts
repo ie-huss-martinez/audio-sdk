@@ -98,13 +98,22 @@ describe("WAV", () => {
     expect(listed.probe.frameBound).toBe(LEFT.length);
   });
 
-  it("refuses a data size larger than the file", async () => {
-    const error = await failure(probePcm(blob(wavFile([LEFT], { dataSize: 1_000_000 }))));
-    expect(isAudioError(error, "INVALID_AUDIO")).toBe(true);
-    expect((error as { details?: unknown }).details).toEqual({
-      container: "wav",
-      reason: "data size exceeds the file",
+  it("opens a truncated file with the frames it holds, reporting what its header declared", async () => {
+    // 16-bit stereo: 4 bytes a frame, so a million bytes declare 250,000 frames.
+    const { probe, channels } = await readAll(wavFile([LEFT, RIGHT], { dataSize: 1_000_000 }));
+    expect(probe).toMatchObject({
+      frameBound: LEFT.length,
+      expectedFrames: LEFT.length,
+      declaredFrames: 250_000,
     });
+    expectClose(channels[0], LEFT, STEP.pcm16);
+    // A file cut mid-frame keeps only its whole frames.
+    const bytes = wavFile([LEFT, RIGHT]);
+    const { probe: cut } = await readAll(bytes.slice(0, bytes.length - 2));
+    expect(cut).toMatchObject({ frameBound: LEFT.length - 1, declaredFrames: LEFT.length });
+    // A complete file declares nothing extra.
+    const { probe: whole } = await readAll(bytes);
+    expect(whole.declaredFrames).toBeUndefined();
   });
 
   it("refuses compressed formats inside WAV, and files with no frames", async () => {
@@ -180,9 +189,10 @@ describe("AIFF", () => {
     expectClose(channels[1], RIGHT, step);
   });
 
-  it("refuses a frame count larger than the sound data", async () => {
-    const error = await failure(probePcm(blob(aiffFile([LEFT], { frames: 1_000_000 }))));
-    expect(isAudioError(error, "INVALID_AUDIO")).toBe(true);
+  it("opens a truncated file with the frames it holds, reporting what COMM declared", async () => {
+    const { probe, channels } = await readAll(aiffFile([LEFT], { frames: 1_000_000 }));
+    expect(probe).toMatchObject({ frameBound: LEFT.length, declaredFrames: 1_000_000 });
+    expectClose(channels[0], LEFT, 2 ** -15);
   });
 
   it("reads 80-bit sample rates, and refuses nonsense ones", () => {

@@ -119,17 +119,22 @@ describe("the PCM readers on hostile input", () => {
     );
   });
 
-  it("never accept a header that claims more frames than the file holds", async () => {
+  it("never read past the file, whatever length a header declares", async () => {
+    // A header may claim more than the file holds, as a truncated file's
+    // does: the file opens with exactly the frames it holds.
     await fc.assert(
       fc.asyncProperty(fc.integer({ min: TONE.length * 4 + 1, max: 0xfffffffe }), async (size) => {
-        const lying = wavFile([TONE, TONE], { dataSize: size });
-        expect(await outcome(lying)).toBe("INVALID_AUDIO");
+        const { probe } = await probePcm(new Blob([wavFile([TONE, TONE], { dataSize: size })]));
+        expect(probe.frameBound).toBe(TONE.length);
+        expect(probe.declaredFrames).toBe(Math.floor(size / 4));
       }),
       { numRuns: 100 },
     );
     await fc.assert(
       fc.asyncProperty(fc.integer({ min: TONE.length + 1, max: 0xffffffff }), async (frames) => {
-        expect(await outcome(aiffFile([TONE], { frames }))).toBe("INVALID_AUDIO");
+        const { probe } = await probePcm(new Blob([aiffFile([TONE], { frames })]));
+        expect(probe.frameBound).toBe(TONE.length);
+        expect(probe.declaredFrames).toBe(frames);
       }),
       { numRuns: 100 },
     );

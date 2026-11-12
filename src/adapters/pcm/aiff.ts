@@ -67,9 +67,9 @@ function readCommon(view: DataView, aifc: boolean): Common {
 /**
  * Reads an AIFF or AIFC file's layout: big-endian integer samples, and the
  * AIFC types that are uncompressed (`sowt`, `fl32`, `fl64` and the like).
- * The frame count in `COMM` must fit in the `SSND` chunk's bytes, which must
- * be in the file: a header that claims more fails with `INVALID_AUDIO`
- * (docs/adr/0001).
+ * A frame count in `COMM` beyond the `SSND` bytes the file holds, as in a
+ * truncated file, opens with the whole frames that are there, and reports
+ * the declared count (docs/adr/0001).
  *
  * @internal
  */
@@ -136,8 +136,14 @@ export async function probeAiff(file: Blob): Promise<PcmLayout> {
     blockAlign: common.channels * bytesPerSample,
     frames: common.frames,
   });
+  // A truncated file opens with the whole frames that are there, and reports
+  // the declared count (docs/adr/0001).
   if (layout.frames * layout.blockAlign > sound.size) {
-    throw invalid("aiff", "frame count exceeds the sound data");
+    return {
+      ...layout,
+      frames: Math.floor(sound.size / layout.blockAlign),
+      declaredFrames: layout.frames,
+    };
   }
   return layout;
 }

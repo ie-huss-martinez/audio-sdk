@@ -265,6 +265,7 @@ export interface AudioProbe {
     readonly codec: AudioCodec;
     // (undocumented)
     readonly container: AudioContainer;
+    readonly declaredFrames?: number;
     readonly expectedFrames: number;
     readonly frameBound: number;
     readonly frameTolerance: number;
