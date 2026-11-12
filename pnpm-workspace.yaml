@@ -1,6 +1,9 @@
 # The repository root is the published package, @hussmartinez/audio-sdk, as in
-# the family's standard layout. The examples and the end-to-end suite join the
-# workspace when they're added.
+# the family's standard layout. The examples consume its built output as
+# hosts do, and the end-to-end suite runs against them (ADR 0039 in sdk-core).
+packages:
+  - examples/*
+  - e2e
 
 # One version of each tool for the whole workspace. Packages refer to these
 # with `catalog:`, and pnpm writes the real ranges into published manifests.
@@ -12,6 +15,7 @@ catalog:
   "@commitlint/cli": ^21.2.4
   "@hussmartinez/sdk-config": ^0.1.3
   "@hussmartinez/sdk-core": ^0.1.2
+  "@playwright/test": ^1.64.1
   "@microsoft/api-extractor": ^7.60.1
   "@size-limit/file": ^14.3.0
   "@types/node": ^24.19.2

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!-- Workers only from this origin: no blob:, so only the self-hosted worker can start. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; worker-src 'self'; connect-src 'self'; style-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>audio-sdk engine under a strict Content Security Policy</title>
+  </head>
+  <body>
+    <main>
+      <h1>audio-sdk engine under a strict Content Security Policy</h1>
+      <label>Audio file <input id="file" type="file" accept="audio/*" /></label>
+      <label><input id="self-hosted" type="checkbox" checked /> Self-hosted worker</label>
+      <output id="result" aria-live="polite"></output>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

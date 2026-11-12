@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>audio-sdk engine</title>
+  </head>
+  <body>
+    <main>
+      <h1>audio-sdk engine</h1>
+      <p>Choose an audio file to probe and decode it on this device. Nothing is uploaded.</p>
+      <label>Audio file <input id="file" type="file" accept="audio/*" /></label>
+      <label><input id="self-hosted" type="checkbox" /> Self-hosted worker</label>
+      <output id="result" aria-live="polite"></output>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
