@@ -64,6 +64,9 @@
     "verify": "pnpm lint && pnpm lint:css && pnpm typecheck && pnpm lint:deps && pnpm build && pnpm test && pnpm test:browser && pnpm check:size && pnpm check:api && pnpm check:package",
     "verify:fast": "pnpm typecheck && pnpm test && pnpm lint:deps && pnpm check:api"
   },
+  "dependencies": {
+    "@hussmartinez/sdk-core": "catalog:"
+  },
   "peerDependencies": {
     "react": ">=18.3",
     "react-dom": ">=18.3"
