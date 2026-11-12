@@ -3,6 +3,7 @@ import { asAudioError, throwIfAborted } from "../core/errors/abort.js";
 import { AudioError } from "../core/errors/audio-error.js";
 import type { AudioPeaks, AudioProbe, DecodedAudio } from "../core/model/source.js";
 import type { AudioEngine } from "../core/ports/audio-engine.js";
+import { assetsBase } from "./assets-url.js";
 import type { AudioWorkerContract } from "./audio-worker/contract.js";
 import type { PcmLayout } from "./pcm/layout.js";
 import { type BucketPeaks, buildPyramid, FINEST_BUCKET } from "./peaks.js";
@@ -29,6 +30,15 @@ export interface AudioEngineOptions {
    * on the next call. Defaults to sdk-core's 30 seconds.
    */
   readonly idleTimeout?: number;
+  /**
+   * Where the application serves the package's `dist/assets/` directory, to
+   * load the worker from its own origin instead of a `blob:` URL. The worker
+   * is then `audio/audio.worker.js` there, and a Content Security Policy
+   * needs `worker-src 'self'` and no `blob:` (docs/adr/0002). Copy
+   * `dist/assets` again after every upgrade: a worker from another version
+   * is refused with `WORKER_START_FAILED`. By default the worker is inlined.
+   */
+  readonly assetsUrl?: string | URL;
 }
 
 /** An `AudioBuffer`, or what tests use in its place. */
@@ -49,6 +59,10 @@ export interface EngineEnvironment {
   /** Decodes compressed files on the page (sdk-core ADR 0031). */
   readonly decodePlatform: PlatformDecoder;
   readonly idleTimeout?: number;
+  /** The version the worker must report: this package's. */
+  readonly version: string;
+  /** Where the worker comes from, for the version error's details. */
+  readonly asset?: string;
 }
 
 /**
@@ -63,8 +77,10 @@ export interface EngineEnvironment {
  * checked against the probe's bound, errors by code, and the time limit of
  * the caller's signal. Other containers fail with `UNSUPPORTED_FORMAT`.
  *
- * Nothing starts until the first call. The worker is inlined, which needs
- * `worker-src blob:` in a Content Security Policy, and it makes no requests.
+ * Nothing starts until the first call. By default the worker is inlined,
+ * which needs `worker-src blob:` in a Content Security Policy; with
+ * `assetsUrl` it loads from your own origin, which needs `worker-src 'self'`
+ * instead. Either way it makes no requests of its own.
  *
  * @example
  * ```ts
@@ -77,8 +93,14 @@ export interface EngineEnvironment {
  * @public
  */
 export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine {
+  const base = assetsBase(options.assetsUrl);
+  const selfHosted = base === undefined ? undefined : `${base}audio/audio.worker.js`;
   return createEngine({
-    loadWorker: async () => (await import("./audio-worker/inline-worker.js")).createInlineWorker,
+    loadWorker: selfHosted
+      ? async () => () => new Worker(selfHosted, { type: "module", name: "hm-audio" })
+      : async () => (await import("./audio-worker/inline-worker.js")).createInlineWorker,
+    version: __AUDIO_SDK_VERSION__,
+    ...(selfHosted ? { asset: selfHosted } : {}),
     createBuffer: (bufferOptions) => new AudioBuffer(bufferOptions),
     decodePlatform: webAudioDecoder,
     ...(options.idleTimeout === undefined ? {} : { idleTimeout: options.idleTimeout }),
@@ -115,9 +137,36 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
   let main: WorkerClient<AudioWorkerContract> | undefined;
   let analysis: WorkerClient<AudioWorkerContract> | undefined;
 
+  let versionChecked: Promise<void> | undefined;
+
   async function ready(): Promise<void> {
     if (destroyed) throw new Error("The audio engine has been destroyed.");
     startWorker ??= await environment.loadWorker();
+    // A self-hosted worker copied before an upgrade would speak the same
+    // protocol but run older code, so the first call checks its version.
+    versionChecked ??= (async () => {
+      main ??= newClient();
+      const actual = await main.call("version", undefined);
+      if (actual !== environment.version) {
+        throw new AudioError(
+          "WORKER_START_FAILED",
+          "The audio worker isn't this version of the SDK. Copy dist/assets again after upgrading.",
+          {
+            details: {
+              asset: environment.asset ?? "inline",
+              expected: environment.version,
+              actual,
+            },
+          },
+        );
+      }
+    })();
+    try {
+      await versionChecked;
+    } catch (error) {
+      versionChecked = undefined;
+      throw error;
+    }
   }
 
   async function run<T>(work: () => Promise<T>): Promise<T> {

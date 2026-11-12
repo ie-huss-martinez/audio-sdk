@@ -45,6 +45,7 @@ function nodeEngine(
     createBuffer,
     decodePlatform,
     idleTimeout: 0,
+    version: __AUDIO_SDK_VERSION__,
   });
 }
 
@@ -153,6 +154,26 @@ describe("the audio engine", () => {
     const error = await rejection(engine.decode(file, await engine.probe(file)));
     expect((error as Error).message).not.toContain("Internal decoder detail");
     expect(JSON.stringify((error as { details?: unknown }).details)).not.toContain("Internal");
+    await engine.destroy();
+  });
+
+  it("refuses a worker built from another version, naming it", async () => {
+    // As a self-hosted worker left over from before an upgrade would be.
+    const engine = createEngine({
+      loadWorker: async () => startInProcessWorker,
+      createBuffer: memoryBuffer,
+      decodePlatform: noPlatformDecoder,
+      idleTimeout: 0,
+      version: "9.9.9",
+      asset: "https://example.test/assets/audio/audio.worker.js",
+    });
+    const error = await rejection(engine.probe(longFile()));
+    expect(isAudioError(error, "WORKER_START_FAILED")).toBe(true);
+    expect((error as { details?: unknown }).details).toEqual({
+      asset: "https://example.test/assets/audio/audio.worker.js",
+      expected: "9.9.9",
+      actual: __AUDIO_SDK_VERSION__,
+    });
     await engine.destroy();
   });
 

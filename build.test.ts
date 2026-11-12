@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build, type Rolldown } from "vite";
@@ -156,5 +156,32 @@ describe("the audio worker (docs/adr/0002)", () => {
   it("ships no worker source maps", () => {
     expect(files.filter((file) => /\.worker-[\w-]+\.js\.map$/.test(file.fileName))).toEqual([]);
     expect(worker().code).not.toMatch(/sourceMappingURL=data:/);
+  });
+});
+
+describe("the self-hosted worker (docs/adr/0002)", () => {
+  const selfHosted = () => {
+    const found = files.find((file) => file.fileName === "assets/audio/audio.worker.js");
+    if (found?.type !== "asset") throw new Error("dist/assets/audio/audio.worker.js wasn't built");
+    return String(found.source);
+  };
+
+  it("is written to dist/assets/audio/audio.worker.js, as one module with no imports", () => {
+    const code = selfHosted();
+    expect(code).not.toMatch(/^\s*import\s|\bimport\s*\(/m);
+    expect(code).toContain("hm-rpc");
+  });
+
+  it("carries this package's version, which the engine checks", async () => {
+    const { version } = JSON.parse(await readFile("package.json", "utf8")) as { version: string };
+    // In any quotes: the minifier may write it as a template literal.
+    const escaped = version.replaceAll(".", "\\.");
+    expect(selfHosted()).toMatch(new RegExp(`version:\\(\\)=>[\`"']${escaped}[\`"']`));
+  });
+
+  it("generates no code from strings, and makes no requests", () => {
+    const code = selfHosted();
+    expect(code).not.toMatch(CODE_GENERATION);
+    expect(code).not.toMatch(/\bfetch\s*\(|XMLHttpRequest|importScripts|WebSocket/);
   });
 });

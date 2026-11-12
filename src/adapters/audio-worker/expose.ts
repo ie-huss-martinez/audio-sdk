@@ -12,6 +12,7 @@ import type { AudioWorkerContract } from "./contract.js";
 export function exposeAudioWorker(options?: ExposeWorkerOptions): void {
   exposeWorker<AudioWorkerContract>(
     {
+      version: () => __AUDIO_SDK_VERSION__,
       probe: ({ file }) => probeFile(file),
       async readBlock({ file, layout, start, frames, bucket }) {
         const channels = await readPcmFrames(file, layout, start, frames);

@@ -15,6 +15,14 @@ export interface SampleBlock {
  * a `Blob` that crosses the boundary by reference, with every call.
  */
 export interface AudioWorkerContract {
+  /**
+   * The package version the worker was built from. A self-hosted worker
+   * copied before an upgrade reports an older one (docs/adr/0002).
+   */
+  readonly version: {
+    readonly input: undefined;
+    readonly output: string;
+  };
   /** Reads a file's headers, and walks its packets (docs/adr/0001). */
   readonly probe: {
     readonly input: { readonly file: Blob };
