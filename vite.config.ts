@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
+import { selfHostedWorker, versionDefine } from "./tools/self-hosted-worker.js";
 
 const manifest = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "utf8")) as {
   dependencies?: Record<string, string>;
@@ -56,7 +57,9 @@ export default defineConfig({
   oxc: {
     jsx: { runtime: "automatic", development: false },
   },
-  plugins: [dropWorkerSourceMaps],
+  plugins: [dropWorkerSourceMaps, selfHostedWorker()],
+  // The package version, which the worker reports and the page checks.
+  define: versionDefine(),
   // Workers are ES modules, built into one file each, and inlined as blobs
   // where they're imported with ?worker&inline (docs/adr/0002).
   worker: {

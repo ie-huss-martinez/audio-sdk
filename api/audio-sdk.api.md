@@ -44,6 +44,7 @@ export interface AudioEngine {
 
 // @public
 export interface AudioEngineOptions {
+    readonly assetsUrl?: string | URL;
     readonly idleTimeout?: number;
 }
 

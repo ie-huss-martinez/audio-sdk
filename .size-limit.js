@@ -43,4 +43,12 @@ export default [
     brotli: true,
     limit: "15 kB",
   },
+  {
+    // The same worker, self-hosted under assetsUrl (docs/adr/0002). It
+    // measures about the same as the inlined one.
+    name: "Audio worker, self-hosted",
+    path: "dist/assets/audio/audio.worker.js",
+    brotli: true,
+    limit: "15 kB",
+  },
 ];

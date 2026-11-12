@@ -1,5 +1,6 @@
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
+import { testAssets, versionDefine } from "./tools/self-hosted-worker.js";
 
 const ALL_BROWSERS = ["chromium", "firefox", "webkit"] as const;
 
@@ -12,6 +13,7 @@ export default defineConfig(({ mode }) => {
     test: {
       projects: [
         {
+          define: versionDefine(),
           test: {
             name: "unit",
             // build.test.ts checks the built package, so it sits next to the
@@ -23,6 +25,9 @@ export default defineConfig(({ mode }) => {
           },
         },
         {
+          define: versionDefine(),
+          // Serves the self-hosted worker as the build writes it (docs/adr/0002).
+          plugins: [testAssets()],
           test: {
             name: "browser",
             include: ["src/**/*.browser.test.{ts,tsx}", "test/**/*.browser.test.ts"],
