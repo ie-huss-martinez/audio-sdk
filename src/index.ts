@@ -18,5 +18,43 @@ export type {
   AudioLimitName,
 } from "./core/errors/audio-limits.js";
 export { audioLimitDefinitions, audioLimits } from "./core/errors/audio-limits.js";
+export { dbToGain, gainAt } from "./core/model/envelope.js";
+export type {
+  AudioClip,
+  AudioFade,
+  AudioFadeCurve,
+  AudioMetadata,
+  AudioPlan,
+} from "./core/model/plan.js";
+export {
+  clipLength,
+  clipOffsets,
+  EMPTY_METADATA,
+  NO_FADE,
+  planLength,
+} from "./core/model/plan.js";
+export type {
+  AudioCodec,
+  AudioContainer,
+  AudioPeakLevel,
+  AudioPeaks,
+  AudioProbe,
+  AudioSourceInfo,
+  DecodedAudio,
+} from "./core/model/source.js";
+export { framesToSeconds, secondsToFrames } from "./core/model/time.js";
+export type { AudioEngine } from "./core/ports/audio-engine.js";
+export type {
+  AudioOutput,
+  AudioOutputSnapshot,
+  AudioOutputState,
+} from "./core/ports/audio-output.js";
+export type {
+  AudioExportFormat,
+  AudioProcessor,
+  AudioRenderJob,
+  AudioSampleFormat,
+} from "./core/ports/audio-processor.js";
+export type { AudioCallOptions, AudioProgressOptions } from "./core/ports/options.js";
 export type { AudioMessageCatalogue } from "./messages/en.js";
 export { audioMessages } from "./messages/en.js";

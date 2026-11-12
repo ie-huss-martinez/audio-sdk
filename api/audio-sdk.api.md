@@ -11,12 +11,62 @@ import { SdkCoreErrorCode } from '@hussmartinez/sdk-core';
 import { SdkError } from '@hussmartinez/sdk-core';
 
 // @public
+export interface AudioCallOptions {
+    readonly signal?: AbortSignal;
+}
+
+// @public
+export interface AudioClip {
+    readonly end: number;
+    // (undocumented)
+    readonly fadeIn: AudioFade;
+    // (undocumented)
+    readonly fadeOut: AudioFade;
+    readonly gainDb: number;
+    readonly key: string;
+    readonly source: string;
+    readonly start: number;
+}
+
+// @public
+export type AudioCodec = "pcm" | "mp3" | "aac" | "alac" | "opus" | "vorbis" | "flac";
+
+// @public
+export type AudioContainer = "wav" | "aiff" | "flac" | "ogg" | "mp3" | "adts" | "mp4" | "webm";
+
+// @public
+export interface AudioEngine {
+    decode(file: Blob, probe: AudioProbe, options?: AudioProgressOptions): Promise<DecodedAudio>;
+    destroy(): Promise<void>;
+    peaks(audio: DecodedAudio, options?: AudioCallOptions): Promise<AudioPeaks>;
+    probe(file: Blob, options?: AudioCallOptions): Promise<AudioProbe>;
+}
+
+// @public
 export class AudioError extends SdkError<AudioErrorCode> {
     readonly name = "AudioError";
 }
 
 // @public
 export type AudioErrorCode = SdkCoreErrorCode | "INVALID_AUDIO" | "UNSUPPORTED_FORMAT" | "DECODE_FAILED" | "INVALID_COMMAND" | "DURATION_TOO_LONG" | "TOO_MANY_CHANNELS" | "SAMPLE_RATE_TOO_HIGH" | "SESSION_TOO_LARGE" | "TOO_MANY_CLIPS";
+
+// @public
+export interface AudioExportFormat {
+    // (undocumented)
+    readonly container: "wav";
+    readonly sampleFormat?: AudioSampleFormat_2;
+}
+
+// @public
+export interface AudioFade {
+    // (undocumented)
+    readonly curve: AudioFadeCurve;
+    // (undocumented)
+    readonly frames: number;
+}
+
+// @public
+export type AudioFadeCurve = "linear" | "equalPower";
 
 // @public
 export type AudioFilePolicy = FilePolicy<AudioLimitDefinitions>;
@@ -141,8 +191,159 @@ export const audioMessages: {
 };
 
 // @public
+export interface AudioMetadata {
+    // (undocumented)
+    readonly album: string;
+    // (undocumented)
+    readonly artist: string;
+    // (undocumented)
+    readonly comment: string;
+    // (undocumented)
+    readonly title: string;
+    // (undocumented)
+    readonly year: string;
+}
+
+// @public
+export interface AudioOutput {
+    destroy(): Promise<void>;
+    // (undocumented)
+    getSnapshot(): AudioOutputSnapshot;
+    load(plan: AudioPlan, sources: ReadonlyMap<string, DecodedAudio>): void;
+    pause(): void;
+    play(): Promise<void>;
+    position(): number;
+    seek(frame: number): void;
+    stop(): void;
+    subscribe(listener: () => void): () => void;
+}
+
+// @public
+export interface AudioOutputSnapshot {
+    // (undocumented)
+    readonly state: AudioOutputState;
+}
+
+// @public
+export type AudioOutputState = "stopped" | "playing" | "paused";
+
+// @public
+export interface AudioPeakLevel {
+    readonly channels: readonly {
+        readonly min: Float32Array;
+        readonly max: Float32Array;
+    }[];
+    readonly framesPerBucket: number;
+}
+
+// @public
+export interface AudioPeaks {
+    // (undocumented)
+    readonly levels: readonly AudioPeakLevel[];
+}
+
+// @public
+export interface AudioPlan {
+    readonly channels: number;
+    // (undocumented)
+    readonly clips: readonly AudioClip[];
+    // (undocumented)
+    readonly metadata: AudioMetadata;
+    readonly sampleRate: number;
+}
+
+// @public
+export interface AudioProbe {
+    readonly channels: number;
+    // (undocumented)
+    readonly codec: AudioCodec;
+    // (undocumented)
+    readonly container: AudioContainer;
+    readonly expectedFrames: number;
+    readonly frameBound: number;
+    readonly frameTolerance: number;
+    readonly sampleRate: number;
+}
+
+// @public
+export interface AudioProcessor {
+    destroy(): Promise<void>;
+    render(job: AudioRenderJob, options?: AudioProgressOptions): Promise<Blob>;
+}
+
+// @public
+export interface AudioProgressOptions extends AudioCallOptions {
+    readonly onProgress?: (fraction: number) => void;
+}
+
+// @public
+export interface AudioRenderJob {
+    // (undocumented)
+    readonly format: AudioExportFormat;
+    // (undocumented)
+    readonly plan: AudioPlan;
+    readonly sources: ReadonlyMap<string, DecodedAudio>;
+}
+
+// @public
+type AudioSampleFormat_2 = "pcm16" | "pcm24" | "float32";
+export { AudioSampleFormat_2 as AudioSampleFormat }
+
+// @public
+export interface AudioSourceInfo {
+    // (undocumented)
+    readonly channels: number;
+    // (undocumented)
+    readonly codec: AudioCodec;
+    // (undocumented)
+    readonly container: AudioContainer;
+    readonly frames: number;
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly sampleRate: number;
+}
+
+// @public
+export function clipLength(clip: AudioClip): number;
+
+// @public
+export function clipOffsets(plan: AudioPlan): readonly number[];
+
+// @public
+export function dbToGain(db: number): number;
+
+// @public
+export interface DecodedAudio {
+    getChannelData(channel: number): Float32Array;
+    readonly length: number;
+    // (undocumented)
+    readonly numberOfChannels: number;
+    // (undocumented)
+    readonly sampleRate: number;
+}
+
+// @public
+export const EMPTY_METADATA: AudioMetadata;
+
+// @public
+export function framesToSeconds(frames: number, sampleRate: number): number;
+
+// @public
+export function gainAt(clip: AudioClip, frame: number): number;
+
+// @public
 export function isAudioError<Code extends AudioErrorCode = AudioErrorCode>(value: unknown, code?: Code): value is AudioError & {
     readonly code: Code;
 };
+
+// @public
+export const NO_FADE: AudioFade;
+
+// @public
+export function planLength(plan: AudioPlan): number;
+
+// @public
+export function secondsToFrames(seconds: number, sampleRate: number): number;
 
 ```
