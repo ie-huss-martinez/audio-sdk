@@ -4,6 +4,7 @@
 - **Date:** 2026-11-12
 - **Amended:** 2026-11-12, to follow `sdk-core` [ADR 0031](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0031-platform-decoders-on-the-page.md), which makes this record's reading of the worker rule a family rule, and to name [ADR 0012](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0012-hostile-input-and-no-network.md) as that rule's source.
 - **Amended:** 2026-11-12, so that native FLAC counts every frame header at its worst case in output terms, whatever its CRC-16, which decoders don't check by default (#12).
+- **Amended:** 2026-11-12, so that MP3 and ADTS count every frame header at its worst case too, AAC decodes at twice its core rate at 24 kHz or less, and decoded output may have fewer channels than the probe allows (#14).
 
 ## Context
 
@@ -38,8 +39,8 @@ The first releases bundle **no third-party runtime code**: the SDK's own code pr
 
   | Codec | Frames per packet |
   |---|---|
-  | MP3 | Exact, from each frame header (1,152 or 576). Free-format MP3 isn't supported |
-  | AAC in ADTS | 1,024 per raw data block, from each frame header, doubled for HE-AAC |
+  | MP3 | Every valid frame header, found by searching as decoders do, at its worst case: its samples (1,152, 576 or 384), × `ceil(stream rate ÷ frame rate)` when it declares a lower rate, × `ceil(frame channels ÷ stream channels)`. Free-format MP3 isn't supported. WebKit really does follow a mid-stream rate change: on crafted frames it decoded within 11 frames of this bound (#14) |
+  | AAC in ADTS | Every valid frame header at its worst case: 1,024 per raw data block × `ceil(decode rate ÷ its core rate)`, × its channel ratio. The decode rate is twice the core rate at 24 kHz or less, as HE-AAC streams are, so implicit SBR, which no header signals, still fits |
   | AAC in MP4 | 1,024 per `stsz` sample, doubled for HE-AAC. Every sample's offset and size, from `stco`/`co64` and `stsz`, must lie inside the file |
   | ALAC in MP4 | The `frameLength` of its magic cookie, per `stsz` sample, with the same check |
   | Opus | Exact, from each packet's TOC byte, at 48 kHz |
@@ -48,7 +49,7 @@ The first releases bundle **no third-party runtime code**: the SDK's own code pr
   | Native FLAC | Every frame header with a valid CRC-8, found by searching as decoders do, whatever its CRC-16, at its worst case: its block size, × `ceil(stream rate ÷ frame rate)` when it declares a lower rate, × `ceil(frame channels ÷ stream channels)` when it declares more channels. False syncs in the audio data only raise the bound |
   | Any codec in WebM or Matroska | Each block's laced packets, counted as above |
 
-  The bound uses the sample rate and channel count the decoder will output, which can differ from the header's. Opus always decodes at 48 kHz, and HE-AAC v2's parametric stereo turns a mono stream into stereo, so AAC is counted as at least two channels.
+  The bound uses the sample rate and channel count the decoder will output, which can differ from the header's. Opus always decodes at 48 kHz, and HE-AAC v2's parametric stereo turns a mono stream into stereo, so AAC is counted as at least two channels, and as eight when a program config element rather than the header sets them. The probe's channel count is therefore a maximum: decoded output may have fewer channels, never more, and never more samples than the bound allows.
 - **A header's count gives the expected duration only when it's within the bound.** A Xing, Info or VBRI header, `STREAMINFO`'s total, MP4's `mdhd`, or the last Ogg granule position that claims more than the packets can carry fails with `INVALID_AUDIO`. With no header count, such as the Matroska files `MediaRecorder` writes, the bound is the expected duration.
 - **The walk is linear in the file's size** and runs under `maxProcessingTime`. It's the code the fuzz tests guard most.
 - **Unknown fails closed.** A file whose container or codec isn't recognised, or whose packets can't be walked to a bound, fails with `UNSUPPORTED_FORMAT` and is never handed to the browser's decoder. So only files whose decoded size is bounded, and within limits, are ever decoded.
@@ -82,7 +83,7 @@ The header readers and packet walkers are the SDK's own parsers for untrusted by
 
     | Codec | Tolerance |
     |---|---|
-    | MP3 | 2 frames (2,304 samples) |
+    | MP3 | 2 frames (2,304 samples at 1,152 per frame), plus the encoder delay and padding a LAME tag declares |
     | AAC | 2 access units, at the output rate |
     | Opus | 1 maximum packet (5,760 samples) |
     | Vorbis | 1 `blocksize_1` |
