@@ -46,9 +46,11 @@ export interface EngineEnvironment {
 
 /**
  * Creates the SDK's audio engine (docs/adr/0001, docs/adr/0002). It probes
- * and parses WAV and AIFF files in its worker, block by block, into an
- * `AudioBuffer`, building the waveform overview as it goes. Other formats
- * fail with `UNSUPPORTED_FORMAT` until their readers are added.
+ * files in its worker: WAV and AIFF, and FLAC, native or in Ogg, whose
+ * every frame it walks to bound the decoded length. It parses WAV and AIFF
+ * block by block into an `AudioBuffer`, building the waveform overview as it
+ * goes. Decoding compressed formats, and probing other containers, fail with
+ * `UNSUPPORTED_FORMAT` until their decoders and readers are added.
  *
  * Nothing starts until the first call. The worker is inlined, which needs
  * `worker-src blob:` in a Content Security Policy, and it makes no requests.
@@ -128,6 +130,11 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
         details: { container: probe.container },
       });
     }
+    if (!fresh.layout) {
+      throw new AudioError("UNSUPPORTED_FORMAT", "Compressed formats aren't supported yet.", {
+        details: { container: probe.container, codec: probe.codec },
+      });
+    }
     return fresh.layout;
   }
 
@@ -142,7 +149,7 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
           { file },
           options.signal ? { signal: options.signal } : {},
         );
-        layouts.set(result.probe, result.layout);
+        if (result.layout) layouts.set(result.probe, result.layout);
         return result.probe;
       });
     },
