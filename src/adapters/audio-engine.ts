@@ -53,8 +53,8 @@ export interface EngineEnvironment {
 
 /**
  * Creates the SDK's audio engine (docs/adr/0001, docs/adr/0002). It probes
- * files in its worker: WAV and AIFF, FLAC, native or in Ogg, MP3, and AAC in
- * ADTS, walking every frame of a compressed file to bound its decoded
+ * files in its worker: WAV and AIFF, FLAC, native or in Ogg, MP3, AAC in
+ * ADTS, and AAC or ALAC in MP4, walking every frame of a compressed file to bound its decoded
  * length. It parses WAV and AIFF
  * block by block into an `AudioBuffer`, building the waveform overview as it
  * goes. It decodes compressed files with the browser's own decoder, on the page, under
