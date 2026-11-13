@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { encodeFakeAudio, type FakeAudioFile } from "../../../test/fakes/fake-audio.js";
 import { createFakeEngine } from "../../../test/fakes/fake-engine.js";
+import { createFakeProcessor, readFakeWav } from "../../../test/fakes/fake-processor.js";
 import { isAudioError } from "../errors/audio-error.js";
 import type { AudioFilePolicyOverrides } from "../errors/audio-limits.js";
 import { planLength } from "../model/plan.js";
+import type { AudioProcessor } from "../ports/audio-processor.js";
 import { type AudioSessionEvent, createAudioSession } from "./session.js";
 
 const RATE = 8_000;
@@ -19,13 +21,17 @@ function recording(frames: number, channels = 1, extra: Partial<FakeAudioFile> =
 /** Decoded bytes of a recording, as the session counts them. */
 const bytes = (frames: number, channels = 1) => frames * channels * 4;
 
-function setup(filePolicy: AudioFilePolicyOverrides = {}) {
+function setup(
+  filePolicy: AudioFilePolicyOverrides = {},
+  processor: AudioProcessor | null = createFakeProcessor(),
+) {
   const engine = createFakeEngine();
   const decode = vi.spyOn(engine, "decode");
   const events: AudioSessionEvent[] = [];
   const session = createAudioSession({
     engine,
     filePolicy,
+    ...(processor ? { processor } : {}),
     onEvent: (event) => events.push(event),
   });
   const snapshot = () => session.getSnapshot();
@@ -379,5 +385,94 @@ describe("the audio session", () => {
       canUndo: false,
     });
     expect(events.at(-1)).toEqual({ type: "recording_closed" });
+  });
+
+  describe("export", () => {
+    it("renders the plan as it is when the export starts, and returns the file", async () => {
+      const { session, keys, snapshot, events } = setup();
+      await session.open(recording(400, 2));
+      session.execute({
+        type: "audio.deleteRange",
+        start: 100,
+        end: 300,
+        newKey: session.createKey(),
+      });
+      const busy: boolean[] = [];
+      const unsubscribe = session.subscribe(() => busy.push(snapshot().busy));
+      const exporting = session.export({ format: { container: "wav", sampleFormat: "float32" } });
+      // An edit while it runs doesn't change what it renders.
+      session.execute({ type: "audio.setGain", keys: keys(), gainDb: -20 });
+      const wav = await readFakeWav(await exporting);
+      unsubscribe();
+      expect(wav).toMatchObject({ sampleRate: RATE, sampleFormat: "float32" });
+      expect(wav.samples).toHaveLength(2);
+      expect(wav.samples[0]).toHaveLength(200);
+      expect(wav.samples[0]?.[150]).toBeCloseTo(((300 + 50) % 10) / 20, 6);
+      expect(busy).toContain(true);
+      expect(snapshot().busy).toBe(false);
+      expect(events.at(-1)).toEqual({
+        type: "recording_exported",
+        durationSeconds: 0.025,
+        sampleRate: RATE,
+        channels: 2,
+        sampleFormat: "float32",
+      });
+    });
+
+    it("refuses when there's nothing to export", async () => {
+      const { session, keys, events } = setup();
+      expect(await rejection(session.export())).toMatchObject({
+        code: "INVALID_COMMAND",
+        details: { reason: "no-recording" },
+      });
+      await session.open(recording(100));
+      session.execute({ type: "audio.removeClips", keys: keys() });
+      expect(await rejection(session.export())).toMatchObject({
+        code: "INVALID_COMMAND",
+        details: { reason: "empty-plan" },
+      });
+      expect(events.at(-1)).toEqual({
+        type: "failed",
+        operation: "export",
+        code: "INVALID_COMMAND",
+      });
+    });
+
+    it("needs a processor", async () => {
+      const { session } = setup({}, null);
+      await session.open(recording(100));
+      await expect(session.export()).rejects.toThrow(TypeError);
+    });
+
+    it("stops at maxProcessingTime, and on the caller's signal", async () => {
+      // A processor that only ever stops when it's told to.
+      const stuck: AudioProcessor = {
+        render: (_, options = {}) =>
+          new Promise((_, reject) => {
+            options.signal?.addEventListener("abort", () => reject(options.signal?.reason));
+          }),
+        destroy: async () => {},
+      };
+      const { session, snapshot } = setup({ maxProcessingTime: 20 }, stuck);
+      await session.open(recording(100));
+      expect(isAudioError(await rejection(session.export()), "PROCESSING_TIME_EXCEEDED")).toBe(
+        true,
+      );
+      expect(snapshot().busy).toBe(false);
+      const controller = new AbortController();
+      const exporting = session.export({ signal: controller.signal });
+      controller.abort();
+      expect(isAudioError(await rejection(exporting), "ABORTED")).toBe(true);
+    });
+
+    it("reports durations in events to two significant figures", async () => {
+      const { session, events } = setup();
+      // 27,653 frames at 8 kHz is 3.456625 seconds.
+      await session.open(recording(27_653));
+      await session.export();
+      expect(events.map((event) => "durationSeconds" in event && event.durationSeconds)).toEqual([
+        3.5, 3.5,
+      ]);
+    });
   });
 });

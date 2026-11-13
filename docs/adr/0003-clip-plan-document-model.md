@@ -7,6 +7,7 @@
 - **Amended:** 2026-11-13, to match the session as built: its sources' channels and sizes come from the decoded audio, its warnings include truncated recordings, it generates keys, and inserting at another sample rate waits for resampling.
 - **Amended:** 2026-11-13: every rejected command carries a stable `details.reason` token (sdk-core ADR 0045).
 - **Amended:** 2026-11-13: the plan and the user-level commands have a portable JSON format, `hm-audio-plan` and `hm-audio-command` version 1 ([the format record](../formats/hm-audio-plan.md), sdk-core ADR 0045), and the reducer refuses unknown fields, as their schemas do.
+- **Amended:** 2026-11-13, with the session's export as built: the plan as it is when the export starts, the `empty-plan` refusal, and event durations rounded to two significant figures.
 
 ## Context
 
@@ -81,7 +82,7 @@ Every inverse is exact: it carries the previous state of what the command change
 - **The history is `sdk-core`'s `createHistory`,** with `group()` for gestures that make several commands, such as dragging a trim handle or typing into a metadata field, which are one undoable step each.
 - **Undo uses inverse commands, never snapshots of samples.** A step costs a few hundred bytes, plus the sources it still refers to, which [ADR 0004](0004-audio-limits.md) counts.
 - **The playhead isn't in the session.** It moves sixty times a second during playback, and putting it in the snapshot would re-render everything that reads the session. `AudioOutput` has its own small store, also from `createStore`, with its state (stopped, playing or paused) and a `position()` read from the audio clock, which the playhead's view polls on animation frames. Play and pause take the family's `play-pause` shortcut ([ADR 0030](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0030-tools-and-keyboard-shortcuts.md)).
-- **Events:** each command emits an anonymous event with its type and outcome for the host's `onEvent`, with durations in seconds. Events never carry file names, samples or metadata values.
+- **Events:** each command emits an anonymous event with its type and outcome for the host's `onEvent`, with durations in seconds. Events never carry file names, samples or metadata values. Durations are rounded to two significant figures, such as 3,500 seconds for 3,456.7: an exact length, with the sample rate and channel count, could fingerprint a recording.
 
 ### Exporting
 
@@ -91,7 +92,7 @@ Every inverse is exact: it carries the previous state of what the command change
 2. **Render:** the worker mixes them to the session's layout, applies each clip's `gainAt`, and clamps the result.
 3. **Encode:** WAV, at the format the caller chose, with the metadata as a `LIST`/`INFO` chunk ([ADR 0001](0001-audio-engines.md)).
 
-The result is a `Blob`. Export never downloads anything itself: the editor shows a summary of the length, format and size before the download ([STANDARDS](https://github.com/ie-huss-martinez/sdk-core/blob/main/STANDARDS.md#ux)), and the host's `onExport` can take the `Blob` instead. Every block is cancellable and reports progress.
+The session exports with the `processor` it was created with, under `maxProcessingTime`, and renders the plan and sources as they are when the export starts, so edits made while it runs don't change the file. A plan with no clips isn't exported: it fails with `INVALID_COMMAND` and the reason `empty-plan`. The result is a `Blob`. Export never downloads anything itself: the editor shows a summary of the length, format and size before the download ([STANDARDS](https://github.com/ie-huss-martinez/sdk-core/blob/main/STANDARDS.md#ux)), and the host's `onExport` can take the `Blob` instead. Every block is cancellable and reports progress.
 
 ### The ports
 

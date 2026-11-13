@@ -51,7 +51,7 @@ export type AudioCodec = "pcm" | "mp3" | "aac" | "alac" | "opus" | "vorbis" | "f
 export type AudioCommand = AudioInsertClipsCommand | AudioRemoveClipsCommand | AudioRestoreClipsCommand | AudioReplaceClipsCommand | AudioUpdateClipsCommand | AudioDeleteRangeCommand | AudioTrimClipCommand | AudioSplitClipCommand | AudioMoveClipsCommand | AudioReorderClipsCommand | AudioSetGainCommand | AudioSetFadeCommand | AudioSetMetadataCommand;
 
 // @public
-export type AudioCommandRejection = AudioClipProblem | "malformed-command" | "unknown-command" | "unknown-source" | "invalid-fade-curve" | "no-clips" | "duplicate-key" | "key-taken" | "unknown-clip" | "frame-outside-plan" | "empty-range" | "not-inside-clip" | "new-key-required" | "invalid-index" | "empty-change" | "invalid-order" | "invalid-edge" | "unknown-metadata-field" | "metadata-too-long" | "no-recording" | "not-plain-data";
+export type AudioCommandRejection = AudioClipProblem | "malformed-command" | "unknown-command" | "unknown-source" | "invalid-fade-curve" | "no-clips" | "duplicate-key" | "key-taken" | "unknown-clip" | "frame-outside-plan" | "empty-range" | "not-inside-clip" | "new-key-required" | "invalid-index" | "empty-change" | "invalid-order" | "invalid-edge" | "unknown-metadata-field" | "metadata-too-long" | "no-recording" | "not-plain-data" | "empty-plan";
 
 // @public
 export type AudioContainer = "wav" | "aiff" | "flac" | "ogg" | "mp3" | "adts" | "mp4" | "webm";
@@ -404,7 +404,6 @@ export interface AudioRecordingFacts {
     readonly codec: AudioSourceInfo["codec"];
     // (undocumented)
     readonly container: AudioSourceInfo["container"];
-    // (undocumented)
     readonly durationSeconds: number;
     // (undocumented)
     readonly sampleRate: number;
@@ -476,6 +475,7 @@ export interface AudioSession {
     close(): Promise<void>;
     createKey(): string;
     execute(commands: AudioCommand | readonly AudioCommand[]): void;
+    export(options?: AudioSessionExportOptions): Promise<Blob>;
     getPeaks(source: string): AudioPeaks | undefined;
     getSnapshot(): AudioSessionSnapshot;
     group<T>(fn: () => T): T;
@@ -493,6 +493,12 @@ export interface AudioSession {
 export type AudioSessionEvent = ({
     readonly type: "recording_opened" | "recording_inserted";
 } & AudioRecordingFacts) | {
+    readonly type: "recording_exported";
+    readonly durationSeconds: number;
+    readonly sampleRate: number;
+    readonly channels: number;
+    readonly sampleFormat: AudioSampleFormat_2;
+} | {
     readonly type: "recording_closed";
 } | {
     readonly type: "command";
@@ -503,15 +509,21 @@ export type AudioSessionEvent = ({
     readonly type: "redo";
 } | {
     readonly type: "failed";
-    readonly operation: "open" | "insert" | "command";
+    readonly operation: "open" | "insert" | "command" | "export";
     readonly code: string;
 };
+
+// @public
+export interface AudioSessionExportOptions extends AudioProgressOptions {
+    readonly format?: AudioExportFormat;
+}
 
 // @public
 export interface AudioSessionOptions {
     readonly engine: AudioEngine;
     readonly filePolicy?: AudioFilePolicyOverrides;
     readonly onEvent?: (event: AudioSessionEvent) => void;
+    readonly processor?: AudioProcessor;
 }
 
 // @public

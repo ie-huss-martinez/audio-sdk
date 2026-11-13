@@ -6,7 +6,7 @@ import {
   type HistoryStep,
   withProcessingTime,
 } from "@hussmartinez/sdk-core";
-import { asAudioError, throwIfAborted } from "../errors/abort.js";
+import { abortError, asAudioError, throwIfAborted } from "../errors/abort.js";
 import { AudioError } from "../errors/audio-error.js";
 import {
   type AudioFilePolicyOverrides,
@@ -24,6 +24,11 @@ import type { AudioPeaks, AudioProbe, AudioSourceInfo, DecodedAudio } from "../m
 import { framesToSeconds } from "../model/time.js";
 import { type AudioCommand, createPlanReducer } from "../operations/commands.js";
 import type { AudioEngine } from "../ports/audio-engine.js";
+import type {
+  AudioExportFormat,
+  AudioProcessor,
+  AudioSampleFormat,
+} from "../ports/audio-processor.js";
 import type { AudioProgressOptions } from "../ports/options.js";
 
 /** Bytes per decoded sample: sources are held as 32-bit floats (docs/adr/0004). */
@@ -124,19 +129,27 @@ export interface AudioSessionSnapshot {
 /**
  * Anonymous usage events, for a host's analytics (docs/adr/0003). They
  * never contain file names, samples or metadata values. Durations are in
- * seconds.
+ * seconds, rounded to two significant figures, such as 3,500 for 3,456.7,
+ * so that an exact length can't fingerprint a recording.
  *
  * @public
  */
 export type AudioSessionEvent =
   | ({ readonly type: "recording_opened" | "recording_inserted" } & AudioRecordingFacts)
+  | {
+      readonly type: "recording_exported";
+      readonly durationSeconds: number;
+      readonly sampleRate: number;
+      readonly channels: number;
+      readonly sampleFormat: AudioSampleFormat;
+    }
   | { readonly type: "recording_closed" }
   | { readonly type: "command"; readonly commands: readonly AudioCommand["type"][] }
   | { readonly type: "undo" }
   | { readonly type: "redo" }
   | {
       readonly type: "failed";
-      readonly operation: "open" | "insert" | "command";
+      readonly operation: "open" | "insert" | "command" | "export";
       readonly code: string;
     };
 
@@ -147,6 +160,7 @@ export type AudioSessionEvent =
  * @public
  */
 export interface AudioRecordingFacts {
+  /** Rounded to two significant figures. */
   readonly durationSeconds: number;
   readonly sampleRate: number;
   readonly channels: number;
@@ -165,8 +179,20 @@ export interface AudioSessionOptions {
   readonly engine: AudioEngine;
   /** Limits for untrusted files (docs/adr/0004). Unknown names throw. */
   readonly filePolicy?: AudioFilePolicyOverrides;
+  /** Renders and encodes exports, such as `createAudioProcessor()`. Needed for `export()`. */
+  readonly processor?: AudioProcessor;
   /** Receives anonymous usage events. Errors it throws are ignored. */
   readonly onEvent?: (event: AudioSessionEvent) => void;
+}
+
+/**
+ * Options for {@link AudioSession.export}.
+ *
+ * @public
+ */
+export interface AudioSessionExportOptions extends AudioProgressOptions {
+  /** The file to write. Defaults to 16-bit PCM WAV. */
+  readonly format?: AudioExportFormat;
 }
 
 /**
@@ -239,6 +265,15 @@ export interface AudioSession {
   select(range: AudioSelection | undefined): void;
   /** A source's waveform overview, or `undefined` for a source the session doesn't hold. */
   getPeaks(source: string): AudioPeaks | undefined;
+  /**
+   * Renders and encodes the plan as it is now, with the session's
+   * `processor`, under `maxProcessingTime`. It returns the file, and never
+   * downloads it: the host decides what to do with it. Edits made while it
+   * runs don't change it. Rejects with `INVALID_COMMAND` and the reason
+   * `no-recording` or `empty-plan` when there's nothing to export, and
+   * throws `TypeError` when the session has no processor.
+   */
+  export(options?: AudioSessionExportOptions): Promise<Blob>;
   /** Closes the recording and releases its sources. */
   close(): Promise<void>;
 }
@@ -263,6 +298,14 @@ function clipsOf(command: AudioCommand): readonly AudioClip[] {
     default:
       return [];
   }
+}
+
+/**
+ * A duration as events report it: two significant figures, so it describes
+ * a recording's length without identifying the recording.
+ */
+function coarseSeconds(seconds: number): number {
+  return seconds > 0 ? Number(seconds.toPrecision(2)) : 0;
 }
 
 /** Every clip key a command names, created or referred to. */
@@ -409,7 +452,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
   function facts(source: Source): AudioRecordingFacts {
     const { info } = source;
     return {
-      durationSeconds: framesToSeconds(info.frames, info.sampleRate),
+      durationSeconds: coarseSeconds(framesToSeconds(info.frames, info.sampleRate)),
       sampleRate: info.sampleRate,
       channels: info.channels,
       container: info.container,
@@ -768,6 +811,70 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     },
 
     getPeaks: (id) => sources.get(id)?.peaks,
+
+    async export(exportOptions = {}) {
+      const current = plan;
+      const format: AudioExportFormat = exportOptions.format ?? { container: "wav" };
+      try {
+        if (!current) {
+          throw new AudioError("INVALID_COMMAND", "Open a recording before exporting it.", {
+            details: { reason: "no-recording" },
+          });
+        }
+        if (current.clips.length === 0) {
+          throw new AudioError("INVALID_COMMAND", "The recording has no clips to export.", {
+            details: { reason: "empty-plan" },
+          });
+        }
+        const { processor } = options;
+        if (!processor) throw new TypeError("Exporting needs a processor in createAudioSession.");
+        // The sources as they are now: an edit or a close during the export
+        // can't change what it renders.
+        const used = new Map<string, DecodedAudio>();
+        for (const { source } of current.clips) {
+          const held = sources.get(source);
+          if (held) used.set(source, held.audio);
+        }
+        busy += 1;
+        changed();
+        try {
+          const output = await withProcessingTime(
+            policy,
+            (signal) =>
+              processor.render(
+                { plan: current, sources: used, format },
+                {
+                  signal,
+                  ...(exportOptions.onProgress ? { onProgress: exportOptions.onProgress } : {}),
+                },
+              ),
+            exportOptions.signal ? { signal: exportOptions.signal } : {},
+          );
+          emit({
+            type: "recording_exported",
+            durationSeconds: coarseSeconds(
+              framesToSeconds(planLength(current), current.sampleRate),
+            ),
+            sampleRate: current.sampleRate,
+            channels: current.channels,
+            sampleFormat: format.sampleFormat ?? "pcm16",
+          });
+          return output;
+        } finally {
+          busy -= 1;
+          changed();
+        }
+      } catch (reason) {
+        if (reason instanceof TypeError || reason instanceof RangeError) throw reason;
+        // Whatever a processor rejects with once the caller has aborted, the
+        // export was cancelled.
+        const failure = exportOptions.signal?.aborted
+          ? abortError(exportOptions.signal)
+          : asAudioError(reason, "The recording couldn't be exported.");
+        emit({ type: "failed", operation: "export", code: failure.code });
+        throw failure;
+      }
+    },
 
     async close() {
       generation += 1;
