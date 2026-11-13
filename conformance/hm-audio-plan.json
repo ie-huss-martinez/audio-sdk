@@ -147,6 +147,266 @@
       }
     },
     {
+      "name": "reads source ids and clip keys named __proto__, constructor and toString",
+      "input": {
+        "format": "hm-audio-plan",
+        "version": 1,
+        "sampleRate": 48000,
+        "channels": 2,
+        "sources": {
+          "__proto__": {
+            "frames": 100
+          },
+          "constructor": {
+            "frames": 100
+          },
+          "toString": {
+            "frames": 100
+          }
+        },
+        "clips": [
+          {
+            "key": "__proto__",
+            "source": "__proto__",
+            "start": 0,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          },
+          {
+            "key": "constructor",
+            "source": "constructor",
+            "start": 0,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          },
+          {
+            "key": "toString",
+            "source": "toString",
+            "start": 0,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          }
+        ],
+        "metadata": {
+          "title": "Take 1",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 1,
+        "sampleRate": 48000,
+        "channels": 2,
+        "sources": {
+          "__proto__": {
+            "frames": 100
+          },
+          "constructor": {
+            "frames": 100
+          },
+          "toString": {
+            "frames": 100
+          }
+        },
+        "clips": [
+          {
+            "key": "__proto__",
+            "source": "__proto__",
+            "start": 0,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          },
+          {
+            "key": "constructor",
+            "source": "constructor",
+            "start": 0,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          },
+          {
+            "key": "toString",
+            "source": "toString",
+            "start": 0,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          }
+        ],
+        "metadata": {
+          "title": "Take 1",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "refuses a clip of a source only Object.prototype has",
+      "input": {
+        "format": "hm-audio-plan",
+        "version": 1,
+        "sampleRate": 48000,
+        "channels": 2,
+        "sources": {
+          "__proto__": {
+            "frames": 100
+          },
+          "constructor": {
+            "frames": 100
+          },
+          "toString": {
+            "frames": 100
+          }
+        },
+        "clips": [
+          {
+            "key": "a",
+            "source": "hasOwnProperty",
+            "start": 0,
+            "end": 10,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          }
+        ],
+        "metadata": {
+          "title": "Take 1",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      },
+      "expected": {
+        "error": {
+          "code": "INVALID_DOCUMENT",
+          "reason": "unknown-source"
+        }
+      }
+    },
+    {
+      "name": "refuses two clips keyed __proto__",
+      "input": {
+        "format": "hm-audio-plan",
+        "version": 1,
+        "sampleRate": 48000,
+        "channels": 2,
+        "sources": {
+          "__proto__": {
+            "frames": 100
+          },
+          "constructor": {
+            "frames": 100
+          },
+          "toString": {
+            "frames": 100
+          }
+        },
+        "clips": [
+          {
+            "key": "__proto__",
+            "source": "__proto__",
+            "start": 0,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          },
+          {
+            "key": "__proto__",
+            "source": "constructor",
+            "start": 0,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          }
+        ],
+        "metadata": {
+          "title": "Take 1",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      },
+      "expected": {
+        "error": {
+          "code": "INVALID_DOCUMENT",
+          "reason": "duplicate-key"
+        }
+      }
+    },
+    {
       "name": "reads a source with its asset",
       "input": {
         "format": "hm-audio-plan",

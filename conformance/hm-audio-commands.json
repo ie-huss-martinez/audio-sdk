@@ -1472,6 +1472,489 @@
       }
     },
     {
+      "name": "removes a clip keyed __proto__",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 1,
+          "sampleRate": 48000,
+          "channels": 2,
+          "sources": {
+            "__proto__": {
+              "frames": 100
+            },
+            "constructor": {
+              "frames": 100
+            },
+            "toString": {
+              "frames": 100
+            }
+          },
+          "clips": [
+            {
+              "key": "__proto__",
+              "source": "__proto__",
+              "start": 0,
+              "end": 50,
+              "gainDb": 0,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "linear"
+              }
+            },
+            {
+              "key": "constructor",
+              "source": "constructor",
+              "start": 0,
+              "end": 50,
+              "gainDb": 0,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "linear"
+              }
+            },
+            {
+              "key": "toString",
+              "source": "toString",
+              "start": 0,
+              "end": 50,
+              "gainDb": 0,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "linear"
+              }
+            }
+          ],
+          "metadata": {
+            "title": "Take 1",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.removeClips",
+          "keys": [
+            "__proto__"
+          ]
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 1,
+        "sampleRate": 48000,
+        "channels": 2,
+        "sources": {
+          "__proto__": {
+            "frames": 100
+          },
+          "constructor": {
+            "frames": 100
+          },
+          "toString": {
+            "frames": 100
+          }
+        },
+        "clips": [
+          {
+            "key": "constructor",
+            "source": "constructor",
+            "start": 0,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          },
+          {
+            "key": "toString",
+            "source": "toString",
+            "start": 0,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          }
+        ],
+        "metadata": {
+          "title": "Take 1",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "splits a clip keyed constructor, naming the new part valueOf",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 1,
+          "sampleRate": 48000,
+          "channels": 2,
+          "sources": {
+            "__proto__": {
+              "frames": 100
+            },
+            "constructor": {
+              "frames": 100
+            },
+            "toString": {
+              "frames": 100
+            }
+          },
+          "clips": [
+            {
+              "key": "__proto__",
+              "source": "__proto__",
+              "start": 0,
+              "end": 50,
+              "gainDb": 0,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "linear"
+              }
+            },
+            {
+              "key": "constructor",
+              "source": "constructor",
+              "start": 0,
+              "end": 50,
+              "gainDb": 0,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "linear"
+              }
+            },
+            {
+              "key": "toString",
+              "source": "toString",
+              "start": 0,
+              "end": 50,
+              "gainDb": 0,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "linear"
+              }
+            }
+          ],
+          "metadata": {
+            "title": "Take 1",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.splitClip",
+          "key": "constructor",
+          "at": 75,
+          "newKey": "valueOf"
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 1,
+        "sampleRate": 48000,
+        "channels": 2,
+        "sources": {
+          "__proto__": {
+            "frames": 100
+          },
+          "constructor": {
+            "frames": 100
+          },
+          "toString": {
+            "frames": 100
+          }
+        },
+        "clips": [
+          {
+            "key": "__proto__",
+            "source": "__proto__",
+            "start": 0,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          },
+          {
+            "key": "constructor",
+            "source": "constructor",
+            "start": 0,
+            "end": 25,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          },
+          {
+            "key": "valueOf",
+            "source": "constructor",
+            "start": 25,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          },
+          {
+            "key": "toString",
+            "source": "toString",
+            "start": 0,
+            "end": 50,
+            "gainDb": 0,
+            "fadeIn": {
+              "frames": 0,
+              "curve": "linear"
+            },
+            "fadeOut": {
+              "frames": 0,
+              "curve": "linear"
+            }
+          }
+        ],
+        "metadata": {
+          "title": "Take 1",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "refuses a new key named toString when a clip has it",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 1,
+          "sampleRate": 48000,
+          "channels": 2,
+          "sources": {
+            "__proto__": {
+              "frames": 100
+            },
+            "constructor": {
+              "frames": 100
+            },
+            "toString": {
+              "frames": 100
+            }
+          },
+          "clips": [
+            {
+              "key": "__proto__",
+              "source": "__proto__",
+              "start": 0,
+              "end": 50,
+              "gainDb": 0,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "linear"
+              }
+            },
+            {
+              "key": "constructor",
+              "source": "constructor",
+              "start": 0,
+              "end": 50,
+              "gainDb": 0,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "linear"
+              }
+            },
+            {
+              "key": "toString",
+              "source": "toString",
+              "start": 0,
+              "end": 50,
+              "gainDb": 0,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "linear"
+              }
+            }
+          ],
+          "metadata": {
+            "title": "Take 1",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.splitClip",
+          "key": "constructor",
+          "at": 75,
+          "newKey": "toString"
+        }
+      },
+      "expected": {
+        "error": {
+          "code": "INVALID_COMMAND",
+          "reason": "key-taken"
+        }
+      }
+    },
+    {
+      "name": "refuses a key that only Object.prototype has as an unknown clip",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 1,
+          "sampleRate": 48000,
+          "channels": 2,
+          "sources": {
+            "__proto__": {
+              "frames": 100
+            },
+            "constructor": {
+              "frames": 100
+            },
+            "toString": {
+              "frames": 100
+            }
+          },
+          "clips": [
+            {
+              "key": "__proto__",
+              "source": "__proto__",
+              "start": 0,
+              "end": 50,
+              "gainDb": 0,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "linear"
+              }
+            },
+            {
+              "key": "constructor",
+              "source": "constructor",
+              "start": 0,
+              "end": 50,
+              "gainDb": 0,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "linear"
+              }
+            },
+            {
+              "key": "toString",
+              "source": "toString",
+              "start": 0,
+              "end": 50,
+              "gainDb": 0,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "linear"
+              }
+            }
+          ],
+          "metadata": {
+            "title": "Take 1",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.setGain",
+          "keys": [
+            "hasOwnProperty"
+          ],
+          "gainDb": 0
+        }
+      },
+      "expected": {
+        "error": {
+          "code": "INVALID_COMMAND",
+          "reason": "unknown-clip"
+        }
+      }
+    },
+    {
       "name": "refuses a command that isn't an object",
       "input": {
         "plan": {
