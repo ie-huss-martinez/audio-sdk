@@ -38,7 +38,7 @@ export function createFakeEngine(): AudioEngine {
       // The bound comes from the samples, the fake's "packets", never the header.
       const frameBound = parsed.samples[0]?.length ?? 0;
       const declared = parsed.declaredFrames ?? frameBound;
-      if (declared > frameBound) {
+      if (declared > frameBound && !parsed.truncated) {
         throw new AudioError("INVALID_AUDIO", "The header claims more than the packets carry.", {
           details: { container: "wav" },
         });
@@ -47,9 +47,10 @@ export function createFakeEngine(): AudioEngine {
         container: "wav",
         codec: "pcm",
         sampleRate: parsed.sampleRate,
-        channels: parsed.samples.length,
+        channels: Math.max(parsed.samples.length, parsed.probeChannels ?? 0),
         frameBound,
-        expectedFrames: declared,
+        expectedFrames: Math.min(declared, frameBound),
+        ...(declared > frameBound ? { declaredFrames: declared } : {}),
         frameTolerance: FAKE_TOLERANCE,
       } satisfies AudioProbe;
     },

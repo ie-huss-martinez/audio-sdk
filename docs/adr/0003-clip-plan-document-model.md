@@ -4,6 +4,7 @@
 - **Date:** 2026-11-12
 - **Amended:** 2026-11-12, to match the model as built in #8: the metadata is a field of the plan, the core sees sources as `DecodedAudio`, and fades reach silence on a clip's first and last frames.
 - **Amended:** 2026-11-13, to match the commands as built: three inverse commands (`audio.replaceClips`, `audio.updateClips` and `audio.reorderClips`), the keys of split parts (`splitKey`, `newKey`), how cut clips keep their fades, the bounds on gain and metadata, and the reducer's lookup of source lengths.
+- **Amended:** 2026-11-13, to match the session as built: its sources' channels and sizes come from the decoded audio, its warnings include truncated recordings, it generates keys, and inserting at another sample rate waits for resampling.
 
 ## Context
 
@@ -31,7 +32,7 @@ The session's document is a **clip plan** over immutable sources, plus metadata:
 
 - **Every position and length in the model is a whole number of frames,** at the session's sample rate. Seconds appear only at the edges: in the UI, through `Intl` formatting, and in events.
 - **A clip's place on the timeline is derived,** as the sum of the lengths of the clips before it. It's never stored, so it can't disagree with the clips.
-- **The session's sample rate and channel count come from its first source.** A source inserted later at another rate is resampled to the session's rate when it's inserted, with an `OfflineAudioContext`, and the session reports it. Other channel counts are mixed with Web Audio's speaker rules for mono, stereo, quad and 5.1, and discretely otherwise. Export uses the same rules, so playback and export agree.
+- **The session's sample rate and channel count come from its first source,** as decoded: a probe's channel count is only a maximum, and mono AAC probes as two channels. A source inserted later at another rate is resampled to the session's rate when it's inserted, with an `OfflineAudioContext`, and the session reports it. Until the engine can resample, such an insert fails with `UNSUPPORTED_FORMAT` before decoding. Other channel counts are mixed with Web Audio's speaker rules for mono, stereo, quad and 5.1, and discretely otherwise. Export uses the same rules, so playback and export agree.
 
 ### Commands
 
@@ -66,10 +67,14 @@ Every inverse is exact: it carries the previous state of what the command change
 ### The session
 
 - **The store is `sdk-core`'s `createStore`.** The snapshot holds:
-  - the status, sources (without samples), the plan and the metadata;
-  - the selection, as a timeline range, which is view state outside the history;
+  - the status, sources (without samples), and the plan with its metadata, which is `undefined` while no recording is open;
+  - the selection, as a timeline range, which is view state outside the history and follows the plan as it shrinks;
   - `canUndo`, `canRedo` and whether history was trimmed;
-  - warnings and the last error.
+  - the decoded bytes held, warnings and the last error.
+- **Warnings are per source or per session.** A source keeps the warnings from its own checks: limits past their warning thresholds, and `truncated` for an uncompressed recording cut short, with the frames it holds and the frames its header declares ([ADR 0001](0001-audio-engines.md)). They leave the snapshot with the source. `maxSessionSize` and `maxClips` warnings follow the session as it changes.
+- **The session generates keys.** `createKey()` returns a key that no clip has, in the plan or in any history step, so that undo and redo never collide with it. Hosts building commands that create clips, such as `audio.splitClip`, take their keys from it.
+- **Commands are copied when they're executed,** with `structuredClone`, so the history can't change under the host, and a command that isn't plain data fails with `INVALID_COMMAND`.
+- **Opens and closes supersede loads.** A newer open or a close cancels every open and insert in progress. A load that finishes afterwards changes nothing and reports nothing, because the newer operation reports its own outcome.
 - **The history is `sdk-core`'s `createHistory`,** with `group()` for gestures that make several commands, such as dragging a trim handle or typing into a metadata field, which are one undoable step each.
 - **Undo uses inverse commands, never snapshots of samples.** A step costs a few hundred bytes, plus the sources it still refers to, which [ADR 0004](0004-audio-limits.md) counts.
 - **The playhead isn't in the session.** It moves sixty times a second during playback, and putting it in the snapshot would re-render everything that reads the session. `AudioOutput` has its own small store, also from `createStore`, with its state (stopped, playing or paused) and a `position()` read from the audio clock, which the playhead's view polls on animation frames. Play and pause take the family's `play-pause` shortcut ([ADR 0030](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0030-tools-and-keyboard-shortcuts.md)).

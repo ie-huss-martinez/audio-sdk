@@ -51,8 +51,10 @@ export const audioMessages = /* @__PURE__ */ defineMessages({
     one: "This recording has {actual} clip. Many clips may be slow to play and export.",
     other: "This recording has {actual} clips. Many clips may be slow to play and export.",
   }),
+  "warnings.truncated":
+    "This recording looks incomplete, perhaps from an interrupted recording or download. It opened with the audio it holds.",
 }) satisfies Record<`errors.${AudioErrorCode}`, MessageValue> &
-  Record<`warnings.${AudioLimitName}`, MessageValue>;
+  Record<`warnings.${AudioLimitName}` | "warnings.truncated", MessageValue>;
 
 /**
  * The type of {@link audioMessages}, for typing a host's overrides with

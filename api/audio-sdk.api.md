@@ -102,6 +102,11 @@ export interface AudioInsertClipsCommand {
 }
 
 // @public
+export interface AudioInsertOptions extends AudioProgressOptions {
+    readonly at?: number;
+}
+
+// @public
 export type AudioLimitDefinitions = typeof audioLimitDefinitions;
 
 // @public
@@ -192,6 +197,7 @@ export const audioMessages: {
         readonly one: "This recording has {actual} clip. Many clips may be slow to play and export.";
         readonly other: "This recording has {actual} clips. Many clips may be slow to play and export.";
     };
+    readonly "warnings.truncated": "This recording looks incomplete, perhaps from an interrupted recording or download. It opened with the audio it holds.";
     readonly "errors.UNKNOWN": "Something went wrong. Please try again.";
     readonly "errors.ABORTED": "The operation was cancelled.";
     readonly "errors.TIMEOUT": "The operation took too long and was stopped.";
@@ -337,6 +343,22 @@ export interface AudioProgressOptions extends AudioCallOptions {
 }
 
 // @public
+export interface AudioRecordingFacts {
+    // (undocumented)
+    readonly channels: number;
+    // (undocumented)
+    readonly codec: AudioSourceInfo["codec"];
+    // (undocumented)
+    readonly container: AudioSourceInfo["container"];
+    // (undocumented)
+    readonly durationSeconds: number;
+    // (undocumented)
+    readonly sampleRate: number;
+    // (undocumented)
+    readonly truncated: boolean;
+}
+
+// @public
 export interface AudioRemoveClipsCommand {
     // (undocumented)
     readonly keys: readonly string[];
@@ -386,6 +408,79 @@ export interface AudioRestoreClipsCommand {
 // @public
 type AudioSampleFormat_2 = "pcm16" | "pcm24" | "float32";
 export { AudioSampleFormat_2 as AudioSampleFormat }
+
+// @public
+export interface AudioSelection {
+    // (undocumented)
+    readonly end: number;
+    // (undocumented)
+    readonly start: number;
+}
+
+// @public
+export interface AudioSession {
+    close(): Promise<void>;
+    createKey(): string;
+    execute(commands: AudioCommand | readonly AudioCommand[]): void;
+    getPeaks(source: string): AudioPeaks | undefined;
+    getSnapshot(): AudioSessionSnapshot;
+    group<T>(fn: () => T): T;
+    insert(file: Blob, options?: AudioInsertOptions): Promise<void>;
+    open(file: Blob, options?: AudioProgressOptions): Promise<void>;
+    // (undocumented)
+    redo(): void;
+    select(range: AudioSelection | undefined): void;
+    subscribe(listener: () => void): () => void;
+    // (undocumented)
+    undo(): void;
+}
+
+// @public
+export type AudioSessionEvent = ({
+    readonly type: "recording_opened" | "recording_inserted";
+} & AudioRecordingFacts) | {
+    readonly type: "recording_closed";
+} | {
+    readonly type: "command";
+    readonly commands: readonly AudioCommand["type"][];
+} | {
+    readonly type: "undo";
+} | {
+    readonly type: "redo";
+} | {
+    readonly type: "failed";
+    readonly operation: "open" | "insert" | "command";
+    readonly code: string;
+};
+
+// @public
+export interface AudioSessionOptions {
+    readonly engine: AudioEngine;
+    readonly filePolicy?: AudioFilePolicyOverrides;
+    readonly onEvent?: (event: AudioSessionEvent) => void;
+}
+
+// @public
+export interface AudioSessionSnapshot {
+    readonly busy: boolean;
+    // (undocumented)
+    readonly canRedo: boolean;
+    // (undocumented)
+    readonly canUndo: boolean;
+    readonly error: AudioError | undefined;
+    readonly historyTrimmed: boolean;
+    readonly plan: AudioPlan | undefined;
+    readonly selection: AudioSelection | undefined;
+    readonly sessionBytes: number;
+    readonly sources: readonly AudioSourceInfo[];
+    // (undocumented)
+    readonly status: AudioSessionStatus;
+    // (undocumented)
+    readonly warnings: readonly AudioWarning[];
+}
+
+// @public
+export type AudioSessionStatus = "empty" | "opening" | "ready" | "error";
 
 // @public
 export interface AudioSetFadeCommand {
@@ -463,6 +558,19 @@ export interface AudioUpdateClipsCommand {
 }
 
 // @public
+export type AudioWarning = {
+    readonly type: "limit";
+    readonly limit: AudioLimitName;
+    readonly actual: number;
+    readonly source?: string;
+} | {
+    readonly type: "truncated";
+    readonly source: string;
+    readonly frames: number;
+    readonly declaredFrames: number;
+};
+
+// @public
 export function clipLength(clip: AudioClip): number;
 
 // @public
@@ -470,6 +578,9 @@ export function clipOffsets(plan: AudioPlan): readonly number[];
 
 // @public
 export function createAudioEngine(options?: AudioEngineOptions): AudioEngine;
+
+// @public
+export function createAudioSession(options: AudioSessionOptions): AudioSession;
 
 // @public
 export function dbToGain(db: number): number;

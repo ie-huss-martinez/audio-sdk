@@ -11,6 +11,17 @@ export interface FakeAudioFile {
   readonly samples: readonly (readonly number[])[];
   /** The length the header declares. Defaults to the real length. */
   readonly declaredFrames?: number;
+  /**
+   * Makes the file an uncompressed one cut short, as by an interrupted
+   * recording: a `declaredFrames` beyond the samples opens with the samples,
+   * and the probe reports the declared length, instead of failing.
+   */
+  readonly truncated?: boolean;
+  /**
+   * The channel count the probe reports, when it's more than the decoder
+   * returns, as for mono AAC, which probes as two channels.
+   */
+  readonly probeChannels?: number;
   /** Extra silent frames the fake decoder returns beyond the real length. */
   readonly decoderExtraFrames?: number;
   /** A codec the fake decoder doesn't have, as a browser might lack one. */
