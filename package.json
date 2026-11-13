@@ -52,6 +52,7 @@
     "lint": "biome check .",
     "lint:css": "stylelint \"**/*.css\" --allow-empty-input",
     "lint:deps": "hm-lint-deps src",
+    "check:single-copy": "hm-check-single-copy",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "build": "vite build && pnpm check:api",
     "test": "vitest run --project unit",
@@ -63,8 +64,8 @@
     "check:api": "tsc -p tsconfig.build.json && api-extractor run && api-extractor run -c api-extractor.react.json && api-extractor run -c api-extractor.element.json",
     "check:package": "publint run --pack pnpm --strict && attw --pack . --profile esm-only --exclude-entrypoints ./styles.css",
     "api:update": "tsc -p tsconfig.build.json && api-extractor run --local && api-extractor run -c api-extractor.react.json --local && api-extractor run -c api-extractor.element.json --local",
-    "verify": "pnpm lint && pnpm lint:css && pnpm typecheck && pnpm lint:deps && pnpm build && pnpm test && pnpm test:browser && pnpm build:examples && pnpm test:e2e && pnpm check:size && pnpm check:api && pnpm check:package",
-    "verify:fast": "pnpm typecheck && pnpm test && pnpm lint:deps && pnpm check:api"
+    "verify": "pnpm lint && pnpm lint:css && pnpm typecheck && pnpm lint:deps && pnpm check:single-copy && pnpm build && pnpm test && pnpm test:browser && pnpm build:examples && pnpm test:e2e && pnpm check:size && pnpm check:api && pnpm check:package",
+    "verify:fast": "pnpm typecheck && pnpm test && pnpm lint:deps && pnpm check:single-copy && pnpm check:api"
   },
   "dependencies": {
     "@hussmartinez/sdk-core": "catalog:"
