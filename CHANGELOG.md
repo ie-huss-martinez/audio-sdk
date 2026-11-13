@@ -1,5 +1,28 @@
 # @hussmartinez/audio-sdk
 
+## 0.3.0
+
+### Minor Changes
+
+- [#40](https://github.com/ie-huss-martinez/audio-sdk/pull/40) [`b40aa63`](https://github.com/ie-huss-martinez/audio-sdk/commit/b40aa634676a848a1b8130450cc0c002ab327af3) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Adds `session.export({ format, signal, onProgress })`, which renders and encodes the plan with the session's new `processor` option, such as `createAudioProcessor()`, and returns the file as a `Blob`, never downloading it.
+  
+  - **What's exported:** the plan as it is when the export starts, so edits made while it runs don't change the file.
+  - **Limits and cancellation:** the export runs under `maxProcessingTime`, and the caller's `signal` cancels it with `ABORTED`.
+  - **Refusals:** an export with no recording open, or of a plan with no clips, fails with `INVALID_COMMAND` and the reason `no-recording` or `empty-plan`.
+  - **Events:** a successful export emits an anonymous `recording_exported` event, and a failed one a `failed` event with `operation: "export"`.
+  - **Event durations** are now rounded to two significant figures in every event, including `recording_opened` and `recording_inserted`, so an exact length can't fingerprint a recording.
+
+- [#38](https://github.com/ie-huss-martinez/audio-sdk/pull/38) [`59675fe`](https://github.com/ie-huss-martinez/audio-sdk/commit/59675fe364eb1107b53041661eb5560ba564449b) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Adds `createAudioProcessor({ assetsUrl, idleTimeout })`, the SDK's `AudioProcessor`: it renders a plan and encodes it as WAV, in its own worker, block by block, with progress and cancellation.
+  
+  - **Formats:** 16-bit PCM (the default), 24-bit PCM or 32-bit float, at the plan's sample rate and channel count, as RF64 when the file is over 4 GiB.
+  - **Rendering:** each clip's gain and fades, exactly as `gainAt` defines them. Sources with another channel count mix by Web Audio's speaker rules, so export matches playback.
+  - **Quantisation:** clamped to full scale, then rounded half away from zero, without dither. A non-finite sample is written as silence.
+  - **Metadata:** written as a `LIST`/`INFO` chunk of UTF-8 text. Empty fields are left out.
+
+### Patch Changes
+
+- [#41](https://github.com/ie-huss-martinez/audio-sdk/pull/41) [`b3dde56`](https://github.com/ie-huss-martinez/audio-sdk/commit/b3dde569c9bbe4c652eb9142be3fc4696f3e5a2d) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The 1,000 limit on a metadata value now counts Unicode code points, as the `hm-audio-plan` schema's `maxLength` does, instead of UTF-16 code units, in `audio.setMetadata` and in `readAudioPlanDocument`. Text outside the Basic Multilingual Plane, such as emoji, may now be up to 1,000 characters long, where it was refused past 500.
+
 ## 0.2.1
 
 ### Patch Changes

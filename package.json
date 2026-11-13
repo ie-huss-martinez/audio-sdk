@@ -1,6 +1,6 @@
 {
   "name": "@hussmartinez/audio-sdk",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Client-side audio SDK: a headless core, a React editor and a custom element. Audio never leaves the device.",
   "license": "Apache-2.0",
   "repository": {
