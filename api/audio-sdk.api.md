@@ -194,6 +194,28 @@ export const audioMessages: {
     readonly "warnings.maxFiles": "Adding {actual} files at once may be slow.";
     readonly "warnings.maxDecodedSize": "This file is very large once opened and may be slow to process.";
     readonly "warnings.maxProcessingTime": "This is taking longer than usual.";
+    readonly "keys.control": "Ctrl";
+    readonly "keys.alt": "Alt";
+    readonly "keys.shift": "Shift";
+    readonly "keys.meta": "Meta";
+    readonly "keys.apple.control": "\u2303";
+    readonly "keys.apple.alt": "\u2325";
+    readonly "keys.apple.shift": "\u21E7";
+    readonly "keys.apple.meta": "\u2318";
+    readonly "keys.space": "Space";
+    readonly "keys.enter": "Enter";
+    readonly "keys.escape": "Esc";
+    readonly "keys.tab": "Tab";
+    readonly "keys.delete": "Delete";
+    readonly "keys.backspace": "Backspace";
+    readonly "keys.arrowUp": "\u2191";
+    readonly "keys.arrowDown": "\u2193";
+    readonly "keys.arrowLeft": "\u2190";
+    readonly "keys.arrowRight": "\u2192";
+    readonly "keys.home": "Home";
+    readonly "keys.end": "End";
+    readonly "keys.pageUp": "Page Up";
+    readonly "keys.pageDown": "Page Down";
 };
 
 // @public
