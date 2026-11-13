@@ -9,6 +9,7 @@
 - **Amended:** 2026-11-12, for Opus and Vorbis in Ogg, with Vorbis's block sizes read from its identification header, and a decode that returns no audio treated as a failure (#16).
 - **Amended:** 2026-11-12, for Matroska and WebM: unknown sizes, every lacing, and the codecs read (#17).
 - **Amended:** 2026-11-13, so that a truncated uncompressed file opens with the frames it holds, reporting what its header declared, while compressed files whose headers claim more still fail (#22, part of #10).
+- **Amended:** 2026-11-13, with the WAV writer as built: its rounding, without dither, its channel mixing, its header layout, and RF64.
 
 ## Context
 
@@ -111,7 +112,14 @@ The header readers and packet walkers are the SDK's own parsers for untrusted by
   - written as UTF-8, and length-limited.
 
   This replaces the replaced editor's JSON sidecar.
-- **Samples are clamped before they're quantised,** so a gain above full scale clips rather than wrapping around.
+- **Samples are clamped before they're quantised,** so a gain above full scale clips rather than wrapping around. A non-finite sample is written as silence.
+- **Quantisation is exact and documented, without dither.** Each frame is rendered as a float32 (the mix, times `gainAt`), clamped to [−1, 1], and then:
+  - for 16-bit and 24-bit PCM, scaled by 2ⁿ⁻¹, **rounded half away from zero**, and clamped to [−2ⁿ⁻¹, 2ⁿ⁻¹ − 1], so +1.0 writes the largest positive value;
+  - for 32-bit float, written as it is.
+
+  A reader that divides by 2ⁿ⁻¹, as this SDK's does, gets back exactly the nearest representable value, which the round-trip tests rely on. There's no dither in this version: it would make exports non-deterministic, or tie them to a seeded noise source that every port would have to reproduce. A later option can add TPDF dither for 16-bit exports, with its own record.
+- **The header is fixed in advance.** `fmt ` is `WAVE_FORMAT_EXTENSIBLE`, with a speaker mask for mono, stereo, quad and 5.1, when there are more than two channels or more than 16 bits. Float files get a `fact` chunk. `LIST`/`INFO` goes before `data`, and is left out when every field is empty. Each field is NUL-terminated UTF-8, padded to an even size. A file whose sizes don't fit 32 bits is RF64, with a `ds64` chunk. An odd number of sample bytes ends with a pad byte.
+- **Sources with another channel count mix by Web Audio's speaker rules** (mono, stereo, quad and 5.1, then discretely), the same matrix playback's `channelInterpretation: "speakers"` applies ([ADR 0003](0003-clip-plan-document-model.md)).
 
 ### Later formats, each with its own record
 

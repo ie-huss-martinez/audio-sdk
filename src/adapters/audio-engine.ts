@@ -1,14 +1,10 @@
-import {
-  createWorkerClient,
-  resolveAssetsBase,
-  type WorkerClient,
-  type WorkerLike,
-} from "@hussmartinez/sdk-core";
+import { createWorkerClient, type WorkerClient, type WorkerLike } from "@hussmartinez/sdk-core";
 import { asAudioError, throwIfAborted } from "../core/errors/abort.js";
 import { AudioError } from "../core/errors/audio-error.js";
 import type { AudioPeaks, AudioProbe, DecodedAudio } from "../core/model/source.js";
 import type { AudioEngine } from "../core/ports/audio-engine.js";
 import type { AudioWorkerContract } from "./audio-worker/contract.js";
+import { audioWorkerSource } from "./audio-worker/loader.js";
 import type { PcmLayout } from "./pcm/layout.js";
 import { type BucketPeaks, buildPyramid, FINEST_BUCKET } from "./peaks.js";
 import {
@@ -97,16 +93,8 @@ export interface EngineEnvironment {
  * @public
  */
 export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine {
-  const selfHosted =
-    options.assetsUrl === undefined
-      ? undefined
-      : new URL("audio/audio.worker.js", resolveAssetsBase(options.assetsUrl)).href;
   return createEngine({
-    loadWorker: selfHosted
-      ? async () => () => new Worker(selfHosted, { type: "module", name: "hm-audio" })
-      : async () => (await import("./audio-worker/inline-worker.js")).createInlineWorker,
-    version: __AUDIO_SDK_VERSION__,
-    ...(selfHosted ? { asset: selfHosted } : {}),
+    ...audioWorkerSource(options.assetsUrl),
     createBuffer: (bufferOptions) => new AudioBuffer(bufferOptions),
     decodePlatform: webAudioDecoder,
     ...(options.idleTimeout === undefined ? {} : { idleTimeout: options.idleTimeout }),

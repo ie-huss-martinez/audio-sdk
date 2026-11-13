@@ -1,5 +1,7 @@
 import type { AudioProbe } from "../../core/model/source.js";
 import type { PcmLayout } from "../pcm/layout.js";
+import type { RenderBlockInput } from "../wav/render-block.js";
+import type { WavSpec } from "../wav/wav-writer.js";
 
 /** A block of samples, with the peaks of its buckets for the waveform overview. */
 export interface SampleBlock {
@@ -31,6 +33,19 @@ export interface AudioWorkerContract {
       readonly bucket: number;
     };
     readonly output: SampleBlock;
+  };
+  /**
+   * An export's WAV header, which the plan fixes in advance (docs/adr/0003).
+   * The worker keeps no state between an export's calls.
+   */
+  readonly wavHeader: {
+    readonly input: WavSpec;
+    readonly output: Uint8Array<ArrayBuffer>;
+  };
+  /** Renders one output block of an export, and encodes it as WAV samples. */
+  readonly renderBlock: {
+    readonly input: RenderBlockInput;
+    readonly output: Uint8Array<ArrayBuffer>;
   };
   /** The peaks of a block of decoded samples, for audio the worker didn't parse. */
   readonly peaks: {

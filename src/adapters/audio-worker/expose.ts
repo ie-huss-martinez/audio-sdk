@@ -2,6 +2,8 @@ import { type ExposeWorkerOptions, exposeWorker } from "@hussmartinez/sdk-core";
 import { readPcmFrames } from "../pcm/probe.js";
 import { blockPeaks } from "../peaks.js";
 import { probeFile } from "../probe.js";
+import { renderBlock } from "../wav/render-block.js";
+import { wavHeader } from "../wav/wav-writer.js";
 import type { AudioWorkerContract } from "./contract.js";
 
 /**
@@ -19,6 +21,8 @@ export function exposeAudioWorker(options?: ExposeWorkerOptions): void {
         return { channels, ...blockPeaks(channels, bucket) };
       },
       peaks: ({ channels, bucket }) => blockPeaks(channels, bucket),
+      wavHeader: (spec) => wavHeader(spec),
+      renderBlock: (input) => renderBlock(input),
     },
     { ...options, packageVersion: __AUDIO_SDK_VERSION__ },
   );

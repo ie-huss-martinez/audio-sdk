@@ -4,6 +4,7 @@
 - **Date:** 2026-11-12
 - **Amended:** 2026-11-12, with the self-hosted worker's version check (#19).
 - **Amended:** 2026-11-13: the version check is sdk-core's `packageVersion` handshake ([ADR 0038](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0038-self-hosted-assets-and-worker-version.md)), instead of a `version` call in the worker's contract.
+- **Amended:** 2026-11-13: an export is two stateless calls, `wavHeader` and `renderBlock`, and the processor starts its own worker.
 
 ## Context
 
@@ -26,7 +27,7 @@ One worker module exposes the engine's and processor's worker side with `exposeW
 - **`probe(file)`:** reads the headers of a `Blob` ([ADR 0001](0001-audio-engines.md)).
 - **`parse(file)`:** streams the samples of a WAV or AIFF file back as blocks, which the page copies into the source's `AudioBuffer` as they arrive, with progress.
 - **`peaks(blocks)`:** builds a source's waveform overview, a min/max pyramid at several zoom levels. It's computed once per source and kept on the page, so drawing the waveform never scans samples. Uncompressed files get it while they're parsed.
-- **`beginExport`, `renderBlock`, `endExport`:** one export. The page sends each output block's source samples, and the worker applies the clips' gain and fades and returns encoded bytes. The page collects those into a `Blob` of parts, so the output is never one large `ArrayBuffer`. The WAV header is written first, since the plan fixes the length in advance.
+- **`wavHeader`, `renderBlock`:** one export, as two kinds of stateless call, so the worker keeps nothing between an export's calls, and a crashed worker loses no export state. The plan fixes the length in advance, so `wavHeader` writes the header first. Then, for each output block of at most 2¹⁶ frames, the page sends the source samples the plan places there, and `renderBlock` mixes them, applies the clips' gain and fades, and returns encoded bytes. The page collects those into a `Blob` of parts, so the output is never one large `ArrayBuffer`. The processor (`createAudioProcessor`) starts its own worker from the same code, so an export never waits behind, or is cancelled with, the engine's calls.
 
 Every call takes an `AbortSignal`, and long ones report progress.
 
