@@ -1,3 +1,4 @@
+import { createWindowReader, type WindowReader } from "@hussmartinez/sdk-core";
 import { AudioError } from "../../core/errors/audio-error.js";
 import type { AudioProbe } from "../../core/model/source.js";
 import {
@@ -6,7 +7,6 @@ import {
   aacOutputChannels,
   parseAudioSpecificConfig,
 } from "../aac/aac-config.js";
-import { WindowReader } from "../bytes/window-reader.js";
 import { invalid } from "../pcm/layout.js";
 
 // The walker never recurses: it descends only along fixed paths, such as
@@ -154,7 +154,7 @@ async function readEsds(boxes: BoxReader, esds: Box): Promise<AacConfig> {
  * @internal
  */
 export async function probeMp4(file: Blob): Promise<AudioProbe> {
-  const reader = new WindowReader(file);
+  const reader = createWindowReader(file);
   const boxes = new BoxReader(reader);
   const top = await boxes.children(0, reader.size, true);
   if (top.some((box) => box.type === "moof")) throw unsupported("fragmented MP4");

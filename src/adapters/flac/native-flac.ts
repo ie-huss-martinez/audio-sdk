@@ -1,5 +1,5 @@
+import { createWindowReader } from "@hussmartinez/sdk-core";
 import type { AudioProbe } from "../../core/model/source.js";
-import { WindowReader } from "../bytes/window-reader.js";
 import { invalid, MAX_CHUNKS } from "../pcm/layout.js";
 import {
   type FrameHeader,
@@ -56,7 +56,7 @@ export function worstCaseFrames(frame: FrameHeader, info: StreamInfo): number {
  * @internal
  */
 export async function probeNativeFlac(file: Blob): Promise<AudioProbe> {
-  const reader = new WindowReader(file);
+  const reader = createWindowReader(file);
   const head = await reader.bytes(0, 10);
   let offset = skipId3v2(head);
   const magic = await reader.bytes(offset, 4);

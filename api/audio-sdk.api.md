@@ -136,7 +136,7 @@ export const audioLimitDefinitions: {
     };
     readonly maxSampleRate: {
         readonly code: "SAMPLE_RATE_TOO_HIGH";
-        readonly unit: "count";
+        readonly unit: "hertz";
         readonly default: 192000;
     };
     readonly maxSessionSize: {
@@ -177,7 +177,7 @@ export const audioMessages: {
     readonly "errors.UNSUPPORTED_FORMAT": "This audio format isn't supported. Try converting the file to WAV, then open it again.";
     readonly "errors.DECODE_FAILED": "This browser can't play this kind of audio. Try another browser, or convert the file to WAV.";
     readonly "errors.INVALID_COMMAND": "This edit couldn't be made. Please try again.";
-    readonly "errors.DURATION_TOO_LONG": "This recording is longer than the editor can open.";
+    readonly "errors.DURATION_TOO_LONG": "This recording is {actual, duration} long, which is over the {maximum, duration} limit.";
     readonly "errors.TOO_MANY_CHANNELS": "This recording has {actual, number} channels, which is over the {maximum, number}-channel limit.";
     readonly "errors.SAMPLE_RATE_TOO_HIGH": "This recording's sample rate is {actual, number} Hz, which is over the {maximum, number} Hz limit.";
     readonly "errors.SESSION_TOO_LARGE": "The open recordings would use {actual, fileSize} of memory, which is over the {maximum, fileSize} limit. Remove a recording, or clear the undo history, and try again.";
@@ -187,7 +187,7 @@ export const audioMessages: {
         readonly one: "A recording can have {maximum} clip. Join or delete clips, and try again.";
         readonly other: "A recording can have up to {maximum} clips. Join or delete clips, and try again.";
     };
-    readonly "warnings.maxDuration": "This recording is long, and may be slow to open and edit.";
+    readonly "warnings.maxDuration": "This recording is {actual, duration} long, and may be slow to open and edit.";
     readonly "warnings.maxChannels": "This recording has {actual, number} channels, and may be slow to edit.";
     readonly "warnings.maxSampleRate": "This recording's sample rate is {actual, number} Hz, and it may be slow to edit.";
     readonly "warnings.maxSessionSize": "The open recordings use {actual, fileSize} of memory. Clearing the undo history frees memory.";

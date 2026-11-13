@@ -1,5 +1,5 @@
+import { createWindowReader } from "@hussmartinez/sdk-core";
 import type { AudioProbe } from "../../core/model/source.js";
-import { WindowReader } from "../bytes/window-reader.js";
 import { findStream, scanFrames } from "../mpeg/scan.js";
 import { invalid } from "../pcm/layout.js";
 import { AAC_RATES, aacDecodeRate, aacOutputChannels as outputChannels } from "./aac-config.js";
@@ -51,7 +51,7 @@ const sameStream = (a: AdtsHeader, b: AdtsHeader) =>
  */
 export async function findAdts(file: Blob, start: number) {
   return findStream(
-    new WindowReader(file),
+    createWindowReader(file),
     start,
     64 * 1_024,
     readAdtsHeader,
@@ -76,7 +76,7 @@ export async function findAdts(file: Blob, start: number) {
  * @internal
  */
 export async function probeAdts(file: Blob, start: number): Promise<AudioProbe> {
-  const reader = new WindowReader(file);
+  const reader = createWindowReader(file);
   const found = await findStream(
     reader,
     start,

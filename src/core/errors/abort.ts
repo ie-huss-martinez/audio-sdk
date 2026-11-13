@@ -1,58 +1,27 @@
-import { isSdkError } from "@hussmartinez/sdk-core";
+import { createErrorHelpers } from "@hussmartinez/sdk-core";
 import { AudioError } from "./audio-error.js";
 
 /**
- * Makes any failure an `AudioError`, as every port promises: an
- * `AudioError` as it is, another `SdkError`, such as the worker client's own
- * `ABORTED` or `WORKER_CRASHED`, with its code, details and message kept, and
- * anything else as `UNKNOWN`. The original is kept as `cause`.
+ * The audio SDK's error helpers, from sdk-core's `createErrorHelpers`, so
+ * every SDK adapts failures and aborts the same way (ADR 0018, ADR 0020).
+ *
+ * - `asAudioError`: makes any failure an `AudioError`, as every port
+ *   promises. Another `SdkError`, such as the worker client's `ABORTED` or
+ *   `WORKER_CRASHED`, keeps its code, details and message, and anything else
+ *   becomes `UNKNOWN`, with the original as `cause`.
+ * - `abortError`: the error an aborted call rejects with: the reason itself
+ *   when it's an `SdkError`, such as the file policy's
+ *   `PROCESSING_TIME_EXCEEDED`, `TIMEOUT` for a timeout, and `ABORTED`
+ *   otherwise.
+ * - `throwIfAborted`: throws `abortError` if the signal has been aborted.
  *
  * @internal
  */
-export function asAudioError(reason: unknown, message = "Audio processing failed."): AudioError {
-  if (reason instanceof AudioError) {
-    return reason;
-  }
-  if (isSdkError(reason)) {
-    return new AudioError(reason.code as never, reason.message, {
-      ...(reason.details === undefined ? {} : { details: reason.details }),
-      cause: reason,
-    });
-  }
-  return new AudioError("UNKNOWN", message, { cause: reason });
-}
-
-/**
- * The error an aborted call rejects with, as the family's worker client does
- * (ADR 0018, ADR 0020): the reason itself when it's an `SdkError`, such as a
- * file policy's `PROCESSING_TIME_EXCEEDED`, `TIMEOUT` for a timeout, and
- * `ABORTED` otherwise. The reason is kept as `cause`.
- *
- * @internal
- */
-export function abortError(signal: AbortSignal): AudioError {
-  const { reason } = signal;
-  if (reason instanceof AudioError) {
-    return reason;
-  }
-  if (isSdkError(reason)) {
-    return asAudioError(reason);
-  }
-  const timedOut = reason instanceof DOMException && reason.name === "TimeoutError";
-  return new AudioError(
-    timedOut ? "TIMEOUT" : "ABORTED",
-    timedOut ? "The operation timed out." : "The operation was cancelled.",
-    { cause: reason },
-  );
-}
-
-/**
- * Throws {@link abortError} if the signal has been aborted.
- *
- * @internal
- */
-export function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (signal?.aborted) {
-    throw abortError(signal);
-  }
-}
+export const {
+  adapt: asAudioError,
+  abortError,
+  throwIfAborted,
+} = /* @__PURE__ */ createErrorHelpers(AudioError, {
+  fallbackCode: "UNKNOWN",
+  fallbackMessage: "Audio processing failed.",
+});

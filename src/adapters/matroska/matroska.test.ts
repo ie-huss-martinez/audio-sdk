@@ -104,6 +104,15 @@ describe("WebM with Opus", () => {
     });
   });
 
+  it("refuses an element size too large to hold exactly", async () => {
+    // The EBML header with an 8-byte size of 2^56 − 2.
+    const header = [0x1a, 0x45, 0xdf, 0xa3, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe];
+    expect(await failure(probeFile(blob(Uint8Array.from(header))))).toEqual({
+      code: "INVALID_AUDIO",
+      reason: "element size out of range",
+    });
+  });
+
   it("refuses an element that overruns its Cluster", async () => {
     const bytes = webmFile({ packets: 8 });
     const block = simpleBlock(1, 0, [[0xfc, 0xff, 0xfe]], "none");

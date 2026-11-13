@@ -1,5 +1,5 @@
+import { createWindowReader } from "@hussmartinez/sdk-core";
 import { AudioError } from "../../core/errors/audio-error.js";
-import { WindowReader } from "../bytes/window-reader.js";
 import { invalid } from "../pcm/layout.js";
 
 /** The fixed part of a page header, before its segment table. */
@@ -44,7 +44,7 @@ export async function walkOgg(
   file: Blob,
   onPacket: (packet: OggPacket) => void,
 ): Promise<OggStream> {
-  const reader = new WindowReader(file);
+  const reader = createWindowReader(file);
   let serial: number | undefined;
   let lastGranule = NO_GRANULE;
   // The packet being assembled across segments, and pages.

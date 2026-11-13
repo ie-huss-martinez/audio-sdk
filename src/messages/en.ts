@@ -28,9 +28,8 @@ export const audioMessages = /* @__PURE__ */ defineMessages({
   "errors.DECODE_FAILED":
     "This browser can't play this kind of audio. Try another browser, or convert the file to WAV.",
   "errors.INVALID_COMMAND": "This edit couldn't be made. Please try again.",
-  // TODO(sdk-core#59): state the length and the limit once messages have a
-  // duration format. https://github.com/ie-huss-martinez/sdk-core/issues/59
-  "errors.DURATION_TOO_LONG": "This recording is longer than the editor can open.",
+  "errors.DURATION_TOO_LONG":
+    "This recording is {actual, duration} long, which is over the {maximum, duration} limit.",
   "errors.TOO_MANY_CHANNELS":
     "This recording has {actual, number} channels, which is over the {maximum, number}-channel limit.",
   "errors.SAMPLE_RATE_TOO_HIGH":
@@ -41,7 +40,8 @@ export const audioMessages = /* @__PURE__ */ defineMessages({
     one: "A recording can have {maximum} clip. Join or delete clips, and try again.",
     other: "A recording can have up to {maximum} clips. Join or delete clips, and try again.",
   }),
-  "warnings.maxDuration": "This recording is long, and may be slow to open and edit.",
+  "warnings.maxDuration":
+    "This recording is {actual, duration} long, and may be slow to open and edit.",
   "warnings.maxChannels": "This recording has {actual, number} channels, and may be slow to edit.",
   "warnings.maxSampleRate":
     "This recording's sample rate is {actual, number} Hz, and it may be slow to edit.",

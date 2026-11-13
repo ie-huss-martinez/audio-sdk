@@ -7,12 +7,12 @@ import type { AudioWorkerContract } from "./contract.js";
 /**
  * Answers the audio worker's contract (docs/adr/0002). It does nothing on
  * import, and there's no heavy initialisation, so the worker announces
- * itself at once.
+ * itself at once, with the package version it was built from, which the
+ * page checks (sdk-core ADR 0038).
  */
 export function exposeAudioWorker(options?: ExposeWorkerOptions): void {
   exposeWorker<AudioWorkerContract>(
     {
-      version: () => __AUDIO_SDK_VERSION__,
       probe: ({ file }) => probeFile(file),
       async readBlock({ file, layout, start, frames, bucket }) {
         const channels = await readPcmFrames(file, layout, start, frames);
@@ -20,6 +20,6 @@ export function exposeAudioWorker(options?: ExposeWorkerOptions): void {
       },
       peaks: ({ channels, bucket }) => blockPeaks(channels, bucket),
     },
-    options,
+    { ...options, packageVersion: __AUDIO_SDK_VERSION__ },
   );
 }

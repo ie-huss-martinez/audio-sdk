@@ -1,4 +1,4 @@
-import type { WindowReader } from "../bytes/window-reader.js";
+import type { WindowReader } from "@hussmartinez/sdk-core";
 
 /** Bytes scanned per step; the window adds room to read a header that starts at its end. */
 const STEP = 1 << 20;
