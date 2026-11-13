@@ -273,7 +273,17 @@ export function commandCases(): ConformanceFile {
       refused("unknown-metadata-field"),
     ],
     [
-      "refuses metadata over 1,000 characters",
+      "sets metadata of 1,000 emoji: 1,000 code points, though 2,000 UTF-16 units",
+      on({ type: "audio.setMetadata", field: "comment", value: "🎙".repeat(1_000) }),
+      applied,
+    ],
+    [
+      "refuses metadata of 1,001 emoji",
+      on({ type: "audio.setMetadata", field: "comment", value: "🎙".repeat(1_001) }),
+      refused("metadata-too-long"),
+    ],
+    [
+      "refuses metadata over 1,000 code points",
       on({ type: "audio.setMetadata", field: "comment", value: "x".repeat(1_001) }),
       refused("metadata-too-long"),
     ],
@@ -464,7 +474,17 @@ export function planCases(): ConformanceFile {
       invalidDocument("invalid-fade-curve"),
     ],
     [
-      "refuses metadata over 1,000 characters",
+      "reads metadata of 1,000 emoji: 1,000 code points, though 2,000 UTF-16 units",
+      document({ metadata: { ...BASE.metadata, title: "🎙".repeat(1_000) } }),
+      applied,
+    ],
+    [
+      "refuses metadata of 1,001 emoji",
+      document({ metadata: { ...BASE.metadata, title: "🎙".repeat(1_001) } }),
+      invalidDocument("metadata-too-long"),
+    ],
+    [
+      "refuses metadata over 1,000 code points",
       document({ metadata: { ...BASE.metadata, title: "x".repeat(1_001) } }),
       invalidDocument("metadata-too-long"),
     ],
