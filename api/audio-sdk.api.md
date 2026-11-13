@@ -386,6 +386,12 @@ export interface AudioProcessor {
 }
 
 // @public
+export interface AudioProcessorOptions {
+    readonly assetsUrl?: string | URL;
+    readonly idleTimeout?: number;
+}
+
+// @public
 export interface AudioProgressOptions extends AudioCallOptions {
     readonly onProgress?: (fraction: number) => void;
 }
@@ -626,6 +632,9 @@ export function clipOffsets(plan: AudioPlan): readonly number[];
 
 // @public
 export function createAudioEngine(options?: AudioEngineOptions): AudioEngine;
+
+// @public
+export function createAudioProcessor(options?: AudioProcessorOptions): AudioProcessor;
 
 // @public
 export function createAudioSession(options: AudioSessionOptions): AudioSession;

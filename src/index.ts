@@ -11,6 +11,8 @@
 
 export type { AudioEngineOptions } from "./adapters/audio-engine.js";
 export { createAudioEngine } from "./adapters/audio-engine.js";
+export type { AudioProcessorOptions } from "./adapters/audio-processor.js";
+export { createAudioProcessor } from "./adapters/audio-processor.js";
 export type { AudioErrorCode } from "./core/errors/audio-error.js";
 export { AudioError, isAudioError } from "./core/errors/audio-error.js";
 export type {
