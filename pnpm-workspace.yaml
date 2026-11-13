@@ -45,8 +45,12 @@ catalog:
 allowBuilds: {}
 # Fail the install when an unapproved package wants to run a build script.
 strictDepBuilds: true
-# Don't resolve versions published less than a day ago.
+# Don't resolve versions published less than a day ago, except the family's
+# own, which provenance, trustPolicy and the reviewer's check cover (sdk-core
+# ADR 0044).
 minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - "@hussmartinez/*"
 # Refuse a version with weaker publish provenance than an earlier one.
 trustPolicy: no-downgrade
 # Transitive dependencies must come from the registry, not git or tarball URLs.
