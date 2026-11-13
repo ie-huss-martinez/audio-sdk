@@ -172,11 +172,11 @@ describe("the self-hosted worker (docs/adr/0002)", () => {
     expect(code).toContain("hm-rpc");
   });
 
-  it("carries this package's version, which the engine checks", async () => {
+  it("announces this package's version, which the engine checks", async () => {
     const { version } = JSON.parse(await readFile("package.json", "utf8")) as { version: string };
     // In any quotes: the minifier may write it as a template literal.
     const escaped = version.replaceAll(".", "\\.");
-    expect(selfHosted()).toMatch(new RegExp(`version:\\(\\)=>[\`"']${escaped}[\`"']`));
+    expect(selfHosted()).toMatch(new RegExp(`packageVersion:[\`"']${escaped}[\`"']`));
   });
 
   it("generates no code from strings, and makes no requests", () => {

@@ -67,6 +67,14 @@ describe("audioMessages", () => {
     expect(messages.error(violation(() => policy.check("maxSampleRate", 384_000)))).toBe(
       "This recording's sample rate is 384,000 Hz, which is over the 192,000 Hz limit.",
     );
+    const tooLong = violation(() => policy.check("maxDuration", 3 * 3_600_000 + 5 * 60_000));
+    expect(messages.error(tooLong)).toMatch(
+      /^This recording is 3 hr, 5 min long, which is over the 3 hr limit\.$/,
+    );
+    expect(violation(() => policy.check("maxSampleRate", 384_000))).toHaveProperty(
+      "details.unit",
+      "hertz",
+    );
     expect(messages.error(violation(() => policy.check("maxSessionSize", 1_600_000_000)))).toBe(
       "The open recordings would use 1.6 GB of memory, which is over the 1.5 GB limit. Remove a recording, or clear the undo history, and try again.",
     );

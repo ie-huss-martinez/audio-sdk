@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-12
 - **Amended:** 2026-11-12, with the self-hosted worker's version check (#19).
+- **Amended:** 2026-11-13: the version check is sdk-core's `packageVersion` handshake ([ADR 0038](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0038-self-hosted-assets-and-worker-version.md)), instead of a `version` call in the worker's contract.
 
 ## Context
 
@@ -46,7 +47,7 @@ Every call takes an `AbortSignal`, and long ones report progress.
 
 - **Inline (the default):** the worker is inlined and started from a `blob:` URL.
 - **Self-hosted:** `assetsUrl` is where the application serves the package's `dist/assets/`, as in `pdf-sdk`. The worker is `dist/assets/audio/audio.worker.js`, one minified file with a fixed name.
-- **The worker's version is checked.** A self-hosted worker copied before an upgrade speaks the same protocol but runs older code. So the engine's first call asks the worker for the package version it was built from, and refuses a mismatch with `WORKER_START_FAILED`, naming the asset and both versions. It's the counterpart of `pdf-sdk`'s hash check of `qpdf.wasm`; there's no WebAssembly to hash here.
+- **The worker's version is checked.** A self-hosted worker copied before an upgrade speaks the same protocol but runs older code. So the worker announces the package version it was built from when it starts, through sdk-core's `exposeWorker`, and the engine's worker clients refuse a mismatch, or a worker that announces none, with `WORKER_START_FAILED`, naming the asset and both versions. Every SDK in the family checks its workers the same way. It's the counterpart of `pdf-sdk`'s hash check of `qpdf.wasm`; there's no WebAssembly to hash here.
 - **No WebAssembly** in the first releases ([ADR 0001](0001-audio-engines.md)). A later codec that needs it follows the same directory, with its hash checked before it's compiled, as in `pdf-sdk`.
 
 ### Content Security Policy

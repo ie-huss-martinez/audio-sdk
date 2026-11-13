@@ -1,7 +1,7 @@
+import { createWindowReader } from "@hussmartinez/sdk-core";
 import { AudioError } from "../core/errors/audio-error.js";
 import type { AudioProbe } from "../core/model/source.js";
 import { findAdts, probeAdts } from "./aac/adts.js";
-import { WindowReader } from "./bytes/window-reader.js";
 import { skipId3v2 } from "./flac/flac.js";
 import { probeNativeFlac } from "./flac/native-flac.js";
 import { isOggFlac, probeOggFlac } from "./flac/ogg-flac.js";
@@ -30,7 +30,7 @@ function unsupported(container: string, codec?: string): AudioError {
 export async function probeFile(
   file: Blob,
 ): Promise<{ readonly probe: AudioProbe; readonly layout?: PcmLayout }> {
-  const reader = new WindowReader(file);
+  const reader = createWindowReader(file);
   const head = await reader.bytes(0, 64);
   const text = (start: number, end: number) => String.fromCharCode(...head.subarray(start, end));
   const magic = text(0, 4);

@@ -1,5 +1,5 @@
+import { createWindowReader } from "@hussmartinez/sdk-core";
 import type { AudioProbe } from "../../core/model/source.js";
-import { WindowReader } from "../bytes/window-reader.js";
 import { invalid } from "../pcm/layout.js";
 import { type MpegHeader, readMpegHeader, readStreamTag } from "./mpeg-audio.js";
 import { findStream, scanFrames } from "./scan.js";
@@ -16,7 +16,7 @@ const sameStream = (a: MpegHeader, b: MpegHeader) =>
  */
 export async function findMp3(file: Blob, start: number) {
   return findStream(
-    new WindowReader(file),
+    createWindowReader(file),
     start,
     SEARCH,
     readMpegHeader,
@@ -46,7 +46,7 @@ function worstCase(header: MpegHeader, rate: number, channels: number): number {
  * @internal
  */
 export async function probeMp3(file: Blob, start: number): Promise<AudioProbe> {
-  const reader = new WindowReader(file);
+  const reader = createWindowReader(file);
   const found = await findStream(
     reader,
     start,

@@ -1,9 +1,13 @@
-import { createWorkerClient, type WorkerClient, type WorkerLike } from "@hussmartinez/sdk-core";
+import {
+  createWorkerClient,
+  resolveAssetsBase,
+  type WorkerClient,
+  type WorkerLike,
+} from "@hussmartinez/sdk-core";
 import { asAudioError, throwIfAborted } from "../core/errors/abort.js";
 import { AudioError } from "../core/errors/audio-error.js";
 import type { AudioPeaks, AudioProbe, DecodedAudio } from "../core/model/source.js";
 import type { AudioEngine } from "../core/ports/audio-engine.js";
-import { assetsBase } from "./assets-url.js";
 import type { AudioWorkerContract } from "./audio-worker/contract.js";
 import type { PcmLayout } from "./pcm/layout.js";
 import { type BucketPeaks, buildPyramid, FINEST_BUCKET } from "./peaks.js";
@@ -59,7 +63,7 @@ export interface EngineEnvironment {
   /** Decodes compressed files on the page (sdk-core ADR 0031). */
   readonly decodePlatform: PlatformDecoder;
   readonly idleTimeout?: number;
-  /** The version the worker must report: this package's. */
+  /** The version the worker must announce: this package's (sdk-core ADR 0038). */
   readonly version: string;
   /** Where the worker comes from, for the version error's details. */
   readonly asset?: string;
@@ -93,8 +97,10 @@ export interface EngineEnvironment {
  * @public
  */
 export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine {
-  const base = assetsBase(options.assetsUrl);
-  const selfHosted = base === undefined ? undefined : `${base}audio/audio.worker.js`;
+  const selfHosted =
+    options.assetsUrl === undefined
+      ? undefined
+      : new URL("audio/audio.worker.js", resolveAssetsBase(options.assetsUrl)).href;
   return createEngine({
     loadWorker: selfHosted
       ? async () => () => new Worker(selfHosted, { type: "module", name: "hm-audio" })
@@ -129,6 +135,11 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
         return startWorker();
       },
       errorClasses: { AudioError },
+      // A self-hosted worker copied before an upgrade would speak the same
+      // protocol but run other code, so the worker must announce this
+      // package's version, or it's refused with WORKER_START_FAILED.
+      packageVersion: environment.version,
+      ...(environment.asset === undefined ? {} : { workerAsset: environment.asset }),
       ...(environment.idleTimeout === undefined ? {} : { idleTimeout: environment.idleTimeout }),
     });
   // Probing, parsing and exports run in order on one client; analysis, such
@@ -137,36 +148,9 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
   let main: WorkerClient<AudioWorkerContract> | undefined;
   let analysis: WorkerClient<AudioWorkerContract> | undefined;
 
-  let versionChecked: Promise<void> | undefined;
-
   async function ready(): Promise<void> {
     if (destroyed) throw new Error("The audio engine has been destroyed.");
     startWorker ??= await environment.loadWorker();
-    // A self-hosted worker copied before an upgrade would speak the same
-    // protocol but run older code, so the first call checks its version.
-    versionChecked ??= (async () => {
-      main ??= newClient();
-      const actual = await main.call("version", undefined);
-      if (actual !== environment.version) {
-        throw new AudioError(
-          "WORKER_START_FAILED",
-          "The audio worker isn't this version of the SDK. Copy dist/assets again after upgrading.",
-          {
-            details: {
-              asset: environment.asset ?? "inline",
-              expected: environment.version,
-              actual,
-            },
-          },
-        );
-      }
-    })();
-    try {
-      await versionChecked;
-    } catch (error) {
-      versionChecked = undefined;
-      throw error;
-    }
   }
 
   async function run<T>(work: () => Promise<T>): Promise<T> {

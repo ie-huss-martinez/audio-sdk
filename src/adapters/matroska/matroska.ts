@@ -1,7 +1,7 @@
+import { createWindowReader, type WindowReader } from "@hussmartinez/sdk-core";
 import { AudioError } from "../../core/errors/audio-error.js";
 import type { AudioProbe } from "../../core/model/source.js";
 import { aacDecodeRate, aacOutputChannels, parseAudioSpecificConfig } from "../aac/aac-config.js";
-import { WindowReader } from "../bytes/window-reader.js";
 import { readFrameHeader, readStreamInfo, STREAMINFO_LENGTH } from "../flac/flac.js";
 import { MAX_PACKET, OPUS_RATE, opusPacketSamples, readOpusHead } from "../ogg/ogg-opus.js";
 import { readVorbisIdentification } from "../ogg/ogg-vorbis.js";
@@ -94,6 +94,11 @@ async function readHeader(reader: WindowReader, at: number): Promise<Header | un
   if (!id) return undefined;
   const size = readSize(bytes, id.length);
   if (!size) return undefined;
+  // An 8-byte size can exceed what a number holds exactly. No element that
+  // large can fit in a file the file policy accepts.
+  if (!size.unknown && !Number.isSafeInteger(size.value)) {
+    throw invalid("webm", "element size out of range");
+  }
   return {
     id: id.id,
     body: at + id.length + size.length,
@@ -331,7 +336,7 @@ function countBlock(block: Uint8Array, track: Track): number {
  * @internal
  */
 export async function probeMatroska(file: Blob): Promise<AudioProbe> {
-  const reader = new WindowReader(file);
+  const reader = createWindowReader(file);
   const ebml = await readHeader(reader, 0);
   if (!ebml || ebml.id !== EBML || ebml.size === undefined)
     throw invalid("webm", "missing EBML header");
