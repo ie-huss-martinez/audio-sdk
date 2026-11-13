@@ -26,6 +26,7 @@ const ALL_CODES: Record<AudioErrorCode, true> = {
   UNSUPPORTED_FORMAT: true,
   DECODE_FAILED: true,
   INVALID_COMMAND: true,
+  INVALID_DOCUMENT: true,
   DURATION_TOO_LONG: true,
   TOO_MANY_CHANNELS: true,
   SAMPLE_RATE_TOO_HIGH: true,

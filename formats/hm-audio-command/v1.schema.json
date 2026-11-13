@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-command/v1.schema.json",
+  "title": "hm-audio-command, version 1",
+  "description": "One user-level edit to an hm-audio-plan (docs/formats/hm-audio-plan.md, sdk-core ADR 0045). The commands undo runs, such as audio.restoreClips, are internal and not part of this format. Beyond this schema, the reducer checks each command against the plan it applies to.",
+  "oneOf": [
+    {
+      "description": "Inserts clips at a timeline frame, splitting the clip there, whose second part takes splitKey.",
+      "type": "object",
+      "required": ["type", "at", "clips"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "audio.insertClips"
+        },
+        "at": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/frames"
+        },
+        "clips": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/clip"
+          }
+        },
+        "splitKey": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/key"
+        }
+      }
+    },
+    {
+      "description": "Removes clips.",
+      "type": "object",
+      "required": ["type", "keys"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "audio.removeClips"
+        },
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/key"
+          }
+        }
+      }
+    },
+    {
+      "description": "Removes a timeline range. A range inside one clip splits it, and the part after takes newKey.",
+      "type": "object",
+      "required": ["type", "start", "end"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "audio.deleteRange"
+        },
+        "start": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/frames"
+        },
+        "end": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/frames"
+        },
+        "newKey": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/key"
+        }
+      }
+    },
+    {
+      "description": "Changes the source range a clip plays.",
+      "type": "object",
+      "required": ["type", "key", "start", "end"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "audio.trimClip"
+        },
+        "key": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/key"
+        },
+        "start": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/frames"
+        },
+        "end": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/frames"
+        }
+      }
+    },
+    {
+      "description": "Splits a clip at a timeline frame strictly inside it.",
+      "type": "object",
+      "required": ["type", "key", "at", "newKey"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "audio.splitClip"
+        },
+        "key": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/key"
+        },
+        "at": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/frames"
+        },
+        "newKey": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/key"
+        }
+      }
+    },
+    {
+      "description": "Moves clips, as a block in plan order, to an index of the result.",
+      "type": "object",
+      "required": ["type", "keys", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "audio.moveClips"
+        },
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/key"
+          }
+        },
+        "to": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    {
+      "description": "Sets the gain of clips.",
+      "type": "object",
+      "required": ["type", "keys", "gainDb"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "audio.setGain"
+        },
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/key"
+          }
+        },
+        "gainDb": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/gainDb"
+        }
+      }
+    },
+    {
+      "description": "Sets a clip's fade in or fade out.",
+      "type": "object",
+      "required": ["type", "key", "edge", "frames", "curve"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "audio.setFade"
+        },
+        "key": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/key"
+        },
+        "edge": {
+          "enum": ["in", "out"]
+        },
+        "frames": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/frames"
+        },
+        "curve": {
+          "enum": ["linear", "equalPower"]
+        }
+      }
+    },
+    {
+      "description": "Sets one metadata field.",
+      "type": "object",
+      "required": ["type", "field", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "audio.setMetadata"
+        },
+        "field": {
+          "enum": ["title", "artist", "album", "year", "comment"]
+        },
+        "value": {
+          "$ref": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json#/$defs/metadataText"
+        }
+      }
+    }
+  ]
+}

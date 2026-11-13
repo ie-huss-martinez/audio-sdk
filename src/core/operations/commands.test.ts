@@ -1,6 +1,7 @@
 import { applyCommands } from "@hussmartinez/sdk-core";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { commandFor, planArb } from "../../../test/arbitraries/audio-plan.js";
 import { isAudioError } from "../errors/audio-error.js";
 import {
   type AudioClip,
@@ -164,6 +165,12 @@ describe("the clip plan reducer", () => {
       { type: "audio.trimClip", key: "a", start: 10, end: 10 },
       "clip-too-short",
     );
+    // Reversed, too: not a fade problem, though the fades can't fit either.
+    expectInvalid(
+      faded,
+      { type: "audio.trimClip", key: "a", start: 60, end: 10 },
+      "clip-too-short",
+    );
     expectInvalid(
       faded,
       { type: "audio.trimClip", key: "a", start: 0, end: 1_001 },
@@ -288,6 +295,26 @@ describe("the clip plan reducer", () => {
       [{ type: "audio.deleteRange", start: 0, end: 201 }, "frame-outside-plan"],
       [{ type: "audio.deleteRange", start: 5, end: 5 }, "empty-range"],
       [{ type: "audio.setMetadata", field: "title", value: 5 }, "malformed-command"],
+      // Unknown fields are refused, as the format's schema refuses them.
+      [{ type: "audio.removeClips", keys: ["a"], extra: 1 }, "malformed-command"],
+      [
+        { type: "audio.insertClips", at: 0, clips: [{ ...clip("c", 0, 1), x: 1 }] },
+        "malformed-command",
+      ],
+      [
+        {
+          type: "audio.insertClips",
+          at: 0,
+          clips: [clip("c", 0, 1, { fadeIn: { ...NO_FADE, x: 1 } as never })],
+        },
+        "malformed-command",
+      ],
+      // An optional key must be a key even when the command doesn't need it.
+      [
+        { type: "audio.insertClips", at: 0, clips: [clip("c", 0, 1)], splitKey: 5 },
+        "malformed-command",
+      ],
+      [{ type: "audio.deleteRange", start: 0, end: 100, newKey: "" }, "malformed-command"],
     ] as const) {
       expectInvalid(ab, command, reason);
     }
@@ -308,86 +335,6 @@ describe("the clip plan reducer", () => {
 });
 
 describe("the clip plan reducer on arbitrary commands", () => {
-  const key = fc.constantFrom("a", "b", "c", "d", "e", "f", "g", "h");
-  const curve = fc.constantFrom("linear" as const, "equalPower" as const);
-  /** A clip that's valid by construction, so most commands have something to act on. */
-  const clipArb = (clipKey: fc.Arbitrary<string>) =>
-    fc
-      .record({
-        key: clipKey,
-        source: fc.constantFrom("s1", "s2"),
-        start: fc.integer({ min: 0, max: 400 }),
-        length: fc.integer({ min: 1, max: 100 }),
-        gainDb: fc.integer({ min: -20, max: 20 }),
-        fadeIn: fc.record({ share: fc.double({ min: 0, max: 0.5, noNaN: true }), curve }),
-        fadeOut: fc.record({ share: fc.double({ min: 0, max: 0.5, noNaN: true }), curve }),
-      })
-      .map(
-        ({ length, fadeIn, fadeOut, ...entry }): AudioClip => ({
-          ...entry,
-          end: entry.start + length,
-          fadeIn: { frames: Math.floor(fadeIn.share * length), curve: fadeIn.curve },
-          fadeOut: { frames: Math.floor(fadeOut.share * length), curve: fadeOut.curve },
-        }),
-      );
-  const planArb = fc
-    .uniqueArray(clipArb(key), { maxLength: 5, selector: (entry) => entry.key })
-    .map((clips) => plan(...clips));
-  /**
-   * Commands aimed at a plan: mostly its own keys and frames within it, with
-   * some that miss, so that both outcomes are common.
-   */
-  const commandFor = (state: AudioPlan): fc.Arbitrary<AudioCommand> => {
-    const own = keys(state);
-    const target = own.length > 0 ? fc.oneof(fc.constantFrom(...own), key) : key;
-    const keyList = fc.uniqueArray(target, { minLength: 1, maxLength: 3 });
-    const frames = fc.integer({ min: 0, max: planLength(state) + 2 });
-    return fc.oneof(
-      fc.record({
-        type: fc.constant("audio.insertClips" as const),
-        at: frames,
-        clips: fc.uniqueArray(clipArb(key), { minLength: 1, maxLength: 2, selector: (c) => c.key }),
-        splitKey: key,
-      }),
-      fc.record({ type: fc.constant("audio.removeClips" as const), keys: keyList }),
-      fc.record({
-        type: fc.constant("audio.deleteRange" as const),
-        start: frames,
-        end: frames,
-        newKey: key,
-      }),
-      fc.record({
-        type: fc.constant("audio.trimClip" as const),
-        key: target,
-        start: fc.integer({ min: 0, max: 600 }),
-        end: fc.integer({ min: 0, max: 600 }),
-      }),
-      fc.record({
-        type: fc.constant("audio.splitClip" as const),
-        key: target,
-        at: frames,
-        newKey: key,
-      }),
-      fc.record({
-        type: fc.constant("audio.moveClips" as const),
-        keys: keyList,
-        to: fc.integer({ min: 0, max: 5 }),
-      }),
-      fc.record({
-        type: fc.constant("audio.setGain" as const),
-        keys: keyList,
-        gainDb: fc.double({ min: -130, max: 130 }),
-      }),
-      fc.record({
-        type: fc.constant("audio.setFade" as const),
-        key: target,
-        edge: fc.constantFrom("in" as const, "out" as const),
-        frames: fc.integer({ min: 0, max: 120 }),
-        curve: fc.constantFrom("linear" as const, "equalPower" as const),
-      }),
-    );
-  };
-
   it("either refuse a command with INVALID_COMMAND, or keep the plan valid and undo exactly", () => {
     fc.assert(
       fc.property(

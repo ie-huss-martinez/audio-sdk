@@ -28,6 +28,7 @@ export const audioMessages = /* @__PURE__ */ defineMessages({
   "errors.DECODE_FAILED":
     "This browser can't play this kind of audio. Try another browser, or convert the file to WAV.",
   "errors.INVALID_COMMAND": "This edit couldn't be made. Please try again.",
+  "errors.INVALID_DOCUMENT": "This project is damaged, or it isn't an audio project.",
   "errors.DURATION_TOO_LONG":
     "This recording is {actual, duration} long, which is over the {maximum, duration} limit.",
   "errors.TOO_MANY_CHANNELS":
