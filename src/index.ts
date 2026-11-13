@@ -23,6 +23,7 @@ export { audioLimitDefinitions, audioLimits } from "./core/errors/audio-limits.j
 export { dbToGain, gainAt } from "./core/model/envelope.js";
 export type {
   AudioClip,
+  AudioClipProblem,
   AudioFade,
   AudioFadeCurve,
   AudioMetadata,
@@ -32,6 +33,8 @@ export {
   clipLength,
   clipOffsets,
   EMPTY_METADATA,
+  MAX_GAIN_DB,
+  MIN_GAIN_DB,
   NO_FADE,
   planLength,
 } from "./core/model/plan.js";
@@ -47,6 +50,7 @@ export type {
 export { framesToSeconds, secondsToFrames } from "./core/model/time.js";
 export type {
   AudioCommand,
+  AudioCommandRejection,
   AudioDeleteRangeCommand,
   AudioInsertClipsCommand,
   AudioMoveClipsCommand,
@@ -61,7 +65,7 @@ export type {
   AudioTrimClipCommand,
   AudioUpdateClipsCommand,
 } from "./core/operations/commands.js";
-export { MAX_GAIN_DB, MAX_METADATA_LENGTH, MIN_GAIN_DB } from "./core/operations/commands.js";
+export { MAX_METADATA_LENGTH } from "./core/operations/commands.js";
 export type { AudioEngine } from "./core/ports/audio-engine.js";
 export type {
   AudioOutput,

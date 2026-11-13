@@ -1,5 +1,4 @@
 import { sequenceOffsets } from "@hussmartinez/sdk-core";
-import { assertFrames } from "./time.js";
 
 /**
  * The shape of a fade: `linear` changes the gain at a constant rate, and
@@ -129,28 +128,75 @@ export function clipBoundaries(plan: AudioPlan): readonly number[] {
 }
 
 /**
- * Throws `RangeError` unless the clip is well formed within a source of
- * `sourceFrames` frames: whole, non-negative frames, at least one frame
- * long, inside the source, with a finite gain and fades that fit the clip
+ * Why a clip isn't valid within its source, as a stable token: a value of
+ * `details.reason` on `INVALID_COMMAND` (sdk-core ADR 0045).
+ *
+ * - `invalid-frames`: a position or fade length isn't a non-negative whole
+ *   number of frames.
+ * - `clip-too-short`: the clip is shorter than one frame.
+ * - `clip-outside-source`: it ends after its source's last frame.
+ * - `gain-out-of-range`: the gain isn't a finite number from
+ *   {@link MIN_GAIN_DB} to {@link MAX_GAIN_DB}.
+ * - `fades-too-long`: its fades together are longer than the clip.
+ *
+ * @public
+ */
+export type AudioClipProblem =
+  | "invalid-frames"
+  | "clip-too-short"
+  | "clip-outside-source"
+  | "gain-out-of-range"
+  | "fades-too-long";
+
+/**
+ * The lowest clip gain, in decibels: far below audibility, so it serves as
+ * silence.
+ *
+ * @public
+ */
+export const MIN_GAIN_DB = -120;
+
+/**
+ * The highest clip gain, in decibels: enough to normalize a very quiet
+ * recording, while every gain stays a finite factor.
+ *
+ * @public
+ */
+export const MAX_GAIN_DB = 120;
+
+const isFrames = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0;
+
+/**
+ * What's wrong with a clip within a source of `sourceFrames` frames, or
+ * `undefined` if it's valid: whole, non-negative frames, at least one frame
+ * long, inside the source, with a gain in range and fades that fit the clip
  * together.
  *
  * @internal
  */
+export function clipProblem(clip: AudioClip, sourceFrames: number): AudioClipProblem | undefined {
+  if (![clip.start, clip.end, clip.fadeIn.frames, clip.fadeOut.frames].every(isFrames)) {
+    return "invalid-frames";
+  }
+  if (clip.end <= clip.start) return "clip-too-short";
+  if (clip.end > sourceFrames) return "clip-outside-source";
+  if (
+    typeof clip.gainDb !== "number" ||
+    !(clip.gainDb >= MIN_GAIN_DB && clip.gainDb <= MAX_GAIN_DB)
+  ) {
+    return "gain-out-of-range";
+  }
+  if (clip.fadeIn.frames + clip.fadeOut.frames > clipLength(clip)) return "fades-too-long";
+  return undefined;
+}
+
+/**
+ * Throws `RangeError` unless the clip is valid within a source of
+ * `sourceFrames` frames, as {@link clipProblem} checks.
+ *
+ * @internal
+ */
 export function assertClip(clip: AudioClip, sourceFrames: number): void {
-  assertFrames("start", clip.start);
-  assertFrames("end", clip.end);
-  assertFrames("fadeIn.frames", clip.fadeIn.frames);
-  assertFrames("fadeOut.frames", clip.fadeOut.frames);
-  if (clip.end <= clip.start) {
-    throw new RangeError(`Clip ${clip.key} must be at least one frame long.`);
-  }
-  if (clip.end > sourceFrames) {
-    throw new RangeError(`Clip ${clip.key} ends after its source's ${sourceFrames} frames.`);
-  }
-  if (!Number.isFinite(clip.gainDb)) {
-    throw new RangeError(`Clip ${clip.key} has a gain that isn't a finite number.`);
-  }
-  if (clip.fadeIn.frames + clip.fadeOut.frames > clipLength(clip)) {
-    throw new RangeError(`Clip ${clip.key}'s fades are longer than the clip.`);
-  }
+  const problem = clipProblem(clip, sourceFrames);
+  if (problem) throw new RangeError(`Clip ${clip.key} isn't valid: ${problem}.`);
 }

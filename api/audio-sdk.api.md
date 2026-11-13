@@ -29,10 +29,16 @@ export interface AudioClip {
 }
 
 // @public
+export type AudioClipProblem = "invalid-frames" | "clip-too-short" | "clip-outside-source" | "gain-out-of-range" | "fades-too-long";
+
+// @public
 export type AudioCodec = "pcm" | "mp3" | "aac" | "alac" | "opus" | "vorbis" | "flac";
 
 // @public
 export type AudioCommand = AudioInsertClipsCommand | AudioRemoveClipsCommand | AudioRestoreClipsCommand | AudioReplaceClipsCommand | AudioUpdateClipsCommand | AudioDeleteRangeCommand | AudioTrimClipCommand | AudioSplitClipCommand | AudioMoveClipsCommand | AudioReorderClipsCommand | AudioSetGainCommand | AudioSetFadeCommand | AudioSetMetadataCommand;
+
+// @public
+export type AudioCommandRejection = AudioClipProblem | "malformed-command" | "unknown-command" | "unknown-source" | "invalid-fade-curve" | "no-clips" | "duplicate-key" | "key-taken" | "unknown-clip" | "frame-outside-plan" | "empty-range" | "not-inside-clip" | "new-key-required" | "invalid-index" | "empty-change" | "invalid-order" | "invalid-edge" | "unknown-metadata-field" | "metadata-too-long" | "no-recording" | "not-plain-data";
 
 // @public
 export type AudioContainer = "wav" | "aiff" | "flac" | "ogg" | "mp3" | "adts" | "mp4" | "webm";

@@ -182,16 +182,20 @@ describe("the audio session", () => {
 
   it("refuses invalid commands without changing anything", async () => {
     const { session, snapshot, events } = setup();
-    expect(
-      isAudioError(
-        thrown(() => session.execute({ type: "audio.removeClips", keys: ["x"] })),
-        "INVALID_COMMAND",
-      ),
-    ).toBe(true);
+    expect(thrown(() => session.execute({ type: "audio.removeClips", keys: ["x"] }))).toMatchObject(
+      {
+        code: "INVALID_COMMAND",
+        details: { reason: "no-recording" },
+      },
+    );
+    expect(await rejection(session.insert(recording(10)))).toMatchObject({
+      code: "INVALID_COMMAND",
+      details: { reason: "no-recording" },
+    });
     await session.open(recording(100));
     const before = snapshot();
     const error = thrown(() => session.execute({ type: "audio.removeClips", keys: ["x"] }));
-    expect(isAudioError(error, "INVALID_COMMAND")).toBe(true);
+    expect(error).toMatchObject({ code: "INVALID_COMMAND", details: { reason: "unknown-clip" } });
     expect(snapshot()).toBe(before);
     expect(events.at(-1)).toEqual({
       type: "failed",
@@ -201,7 +205,10 @@ describe("the audio session", () => {
     const notData = thrown(() =>
       session.execute({ type: "audio.setMetadata", field: "title", value: (() => "") as never }),
     );
-    expect(isAudioError(notData, "INVALID_COMMAND")).toBe(true);
+    expect(notData).toMatchObject({
+      code: "INVALID_COMMAND",
+      details: { reason: "not-plain-data" },
+    });
   });
 
   it("keeps its own copies of commands", async () => {
