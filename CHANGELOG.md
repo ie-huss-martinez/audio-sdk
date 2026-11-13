@@ -1,5 +1,11 @@
 # @hussmartinez/audio-sdk
 
+## 0.2.1
+
+### Patch Changes
+
+- [#36](https://github.com/ie-huss-martinez/audio-sdk/pull/36) [`fc8489f`](https://github.com/ie-huss-martinez/audio-sdk/commit/fc8489f3287c1942193435a9cbefce96ab3e5897) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The JSON Schemas of `hm-audio-plan` and `hm-audio-command` now ship with the package, as `@hussmartinez/audio-sdk/formats/hm-audio-plan/v1.schema.json` and `@hussmartinez/audio-sdk/formats/hm-audio-command/v1.schema.json`, so a host can validate documents against the schemas that match its installed reader (sdk-core ADR 0045, section 8).
+
 ## 0.2.0
 
 ### Minor Changes
