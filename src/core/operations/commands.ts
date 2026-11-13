@@ -2,14 +2,17 @@ import { locate as locateIn, type Reducer } from "@hussmartinez/sdk-core";
 import { AudioError } from "../errors/audio-error.js";
 import {
   type AudioClip,
+  type AudioClipProblem,
   type AudioFade,
   type AudioFadeCurve,
   type AudioMetadata,
   type AudioPlan,
-  assertClip,
   clipBoundaries,
   clipLength,
+  clipProblem,
   EMPTY_METADATA,
+  MAX_GAIN_DB,
+  MIN_GAIN_DB,
   NO_FADE,
   planLength,
 } from "../model/plan.js";
@@ -155,7 +158,7 @@ export interface AudioReorderClipsCommand {
 export interface AudioSetGainCommand {
   readonly type: "audio.setGain";
   readonly keys: readonly string[];
-  /** Decibels, from {@link MIN_GAIN_DB} to {@link MAX_GAIN_DB}. */
+  /** Decibels, from `MIN_GAIN_DB` to `MAX_GAIN_DB`. */
   readonly gainDb: number;
 }
 
@@ -209,22 +212,6 @@ export type AudioCommand =
   | AudioSetMetadataCommand;
 
 /**
- * The lowest clip gain, in decibels: far below audibility, so it serves as
- * silence.
- *
- * @public
- */
-export const MIN_GAIN_DB = -120;
-
-/**
- * The highest clip gain, in decibels: enough to normalize a very quiet
- * recording, while every gain stays a finite factor.
- *
- * @public
- */
-export const MAX_GAIN_DB = 120;
-
-/**
  * The longest metadata value, in UTF-16 code units, so that history steps
  * stay small.
  *
@@ -242,10 +229,73 @@ const CURVES: ReadonlySet<string> = new Set<AudioFadeCurve>(["linear", "equalPow
  */
 export type SourceFrames = (source: string) => number | undefined;
 
-class Invalid extends Error {}
+/**
+ * Why the reducer refused a command, as a stable token: `details.reason` on
+ * `INVALID_COMMAND`, which hosts and conformance vectors compare instead of
+ * the message (sdk-core ADR 0045). Tokens never change meaning once
+ * released.
+ *
+ * - The clip's own problems, {@link AudioClipProblem}.
+ * - `malformed-command`: the command isn't shaped as its type says, such as
+ *   a list that isn't one, or a clip without a key or source.
+ * - `unknown-command`: its `type` isn't one of {@link AudioCommand}'s.
+ * - `unknown-source`: a clip names a source the session doesn't hold.
+ * - `invalid-fade-curve`: a fade's curve isn't `linear` or `equalPower`.
+ * - `no-clips`: the command needs at least one clip, and names none.
+ * - `duplicate-key`: it names a clip twice, or gives two new clips one key.
+ * - `key-taken`: a new clip's key is already in the plan.
+ * - `unknown-clip`: it names a clip the plan doesn't have.
+ * - `frame-outside-plan`: a timeline frame is outside the plan.
+ * - `empty-range`: a range is shorter than one frame.
+ * - `not-inside-clip`: a split frame isn't strictly inside its clip.
+ * - `new-key-required`: it cuts a clip in two without the new part's key.
+ * - `invalid-index`: an index or a run of clips is outside the plan.
+ * - `empty-change`: it would change nothing at all.
+ * - `invalid-order`: a new order doesn't list every clip exactly once.
+ * - `invalid-edge`: a fade's edge isn't `in` or `out`.
+ * - `unknown-metadata-field`: the metadata has no such field.
+ * - `metadata-too-long`: a metadata value is over {@link MAX_METADATA_LENGTH}
+ *   characters.
+ *
+ * The session adds `no-recording`, for a command with no recording open,
+ * and `not-plain-data`, for a command that can't be cloned.
+ *
+ * @public
+ */
+export type AudioCommandRejection =
+  | AudioClipProblem
+  | "malformed-command"
+  | "unknown-command"
+  | "unknown-source"
+  | "invalid-fade-curve"
+  | "no-clips"
+  | "duplicate-key"
+  | "key-taken"
+  | "unknown-clip"
+  | "frame-outside-plan"
+  | "empty-range"
+  | "not-inside-clip"
+  | "new-key-required"
+  | "invalid-index"
+  | "empty-change"
+  | "invalid-order"
+  | "invalid-edge"
+  | "unknown-metadata-field"
+  | "metadata-too-long"
+  | "no-recording"
+  | "not-plain-data";
 
-function invalid(reason: string): never {
-  throw new Invalid(reason);
+class Invalid extends Error {
+  readonly reason: AudioCommandRejection;
+
+  constructor(reason: AudioCommandRejection, message: string) {
+    super(message);
+    this.reason = reason;
+  }
+}
+
+function invalid(reason: AudioCommandRejection, message: string): never {
+  throw new Invalid(reason, message);
 }
 
 /** An object whose fields, from a command that may have been stored or sent, are unchecked. */
@@ -264,17 +314,11 @@ function isIndex(value: unknown, max: number): value is number {
 }
 
 function fade(value: unknown, name: string): AudioFade {
-  if (!isRecord<AudioFade>(value) || typeof value.curve !== "string" || !CURVES.has(value.curve)) {
-    invalid(`${name} isn't a fade`);
+  if (!isRecord<AudioFade>(value)) invalid("malformed-command", `${name} isn't a fade`);
+  if (typeof value.curve !== "string" || !CURVES.has(value.curve)) {
+    invalid("invalid-fade-curve", `${name}'s curve isn't linear or equalPower`);
   }
   return { frames: value.frames as number, curve: value.curve as AudioFadeCurve };
-}
-
-function checkGain(gainDb: unknown): number {
-  if (typeof gainDb !== "number" || !(gainDb >= MIN_GAIN_DB && gainDb <= MAX_GAIN_DB)) {
-    invalid(`gain must be from ${MIN_GAIN_DB} to ${MAX_GAIN_DB} dB`);
-  }
-  return gainDb;
 }
 
 /**
@@ -283,52 +327,52 @@ function checkGain(gainDb: unknown): number {
  */
 function checkClip(value: unknown, sourceFrames: SourceFrames): AudioClip {
   if (!isRecord<AudioClip>(value) || !isKey(value.key) || !isKey(value.source)) {
-    invalid("a clip needs a key and a source");
+    invalid("malformed-command", "a clip needs a key and a source");
   }
   const clip: AudioClip = {
     key: value.key,
     source: value.source,
     start: value.start as number,
     end: value.end as number,
-    gainDb: checkGain(value.gainDb),
+    gainDb: value.gainDb as number,
     fadeIn: fade(value.fadeIn, "fadeIn"),
     fadeOut: fade(value.fadeOut, "fadeOut"),
   };
   const frames = sourceFrames(clip.source);
-  if (frames === undefined) invalid(`the session has no source ${clip.source}`);
-  try {
-    assertClip(clip, frames);
-  } catch (error) {
-    if (error instanceof RangeError) invalid(error.message);
-    throw error;
-  }
+  if (frames === undefined) invalid("unknown-source", `the session has no source ${clip.source}`);
+  const problem = clipProblem(clip, frames);
+  if (problem) invalid(problem, `clip ${clip.key} isn't valid within its source`);
   return clip;
 }
 
 function checkClips(values: unknown, sourceFrames: SourceFrames): AudioClip[] {
-  if (!Array.isArray(values)) invalid("clips must be a list");
+  if (!Array.isArray(values)) invalid("malformed-command", "clips must be a list");
   return values.map((value) => checkClip(value, sourceFrames));
 }
 
 /** Fails unless every key is new: absent from `existing`, and not repeated. */
-function checkNewKeys(keys: readonly string[], existing: Iterable<string>): void {
-  const seen = new Set(existing);
+function checkNewKeys(keys: readonly unknown[], existing: Iterable<string>): void {
+  const taken = new Set(existing);
+  const seen = new Set<string>();
   for (const key of keys) {
-    if (!isKey(key) || seen.has(key)) invalid(`the key ${String(key)} is taken`);
+    if (!isKey(key)) invalid("malformed-command", "a key must be a non-empty string");
+    if (taken.has(key)) invalid("key-taken", `the key ${key} is taken`);
+    if (seen.has(key)) invalid("duplicate-key", `the key ${key} appears twice`);
     seen.add(key);
   }
 }
 
 /** The indexes of the given keys, in plan order, failing on unknown or repeated keys. */
 function positions(plan: AudioPlan, keys: unknown): number[] {
-  if (!Array.isArray(keys) || keys.length === 0) invalid("it needs at least one clip");
+  if (!Array.isArray(keys)) invalid("malformed-command", "keys must be a list");
+  if (keys.length === 0) invalid("no-clips", "it needs at least one clip");
   const wanted = new Set<unknown>(keys);
-  if (wanted.size !== keys.length) invalid("a clip appears twice");
+  if (wanted.size !== keys.length) invalid("duplicate-key", "a clip appears twice");
   const found: number[] = [];
   plan.clips.forEach((clip, index) => {
     if (wanted.has(clip.key)) found.push(index);
   });
-  if (found.length !== wanted.size) invalid("the plan doesn't have every clip");
+  if (found.length !== wanted.size) invalid("unknown-clip", "the plan doesn't have every clip");
   return found;
 }
 
@@ -374,7 +418,9 @@ function part(clip: AudioClip, from: number, to: number, key: string): AudioClip
  * for the plan's end.
  */
 function locate(plan: AudioPlan, frame: unknown): { index: number; offset: number } {
-  if (!isIndex(frame, planLength(plan))) invalid("the frame is outside the plan");
+  if (!isIndex(frame, planLength(plan))) {
+    invalid("frame-outside-plan", "the frame is outside the plan");
+  }
   // A valid frame past every clip is the plan's end, where locate finds none.
   const found = locateIn(clipBoundaries(plan), frame);
   return found
@@ -410,11 +456,11 @@ function updateByKey(plan: AudioPlan, clips: readonly AudioClip[]): AudioPlan {
 type Applied = { state: AudioPlan; inverse: AudioCommand };
 
 function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrames): Applied {
-  if (!isRecord<AudioCommand>(command)) invalid("a command is an object");
+  if (!isRecord<AudioCommand>(command)) invalid("malformed-command", "a command is an object");
   switch (command.type) {
     case "audio.insertClips": {
       const clips = checkClips(command.clips, sourceFrames);
-      if (clips.length === 0) invalid("it needs at least one clip");
+      if (clips.length === 0) invalid("no-clips", "it needs at least one clip");
       const keys = clips.map((clip) => clip.key);
       checkNewKeys(
         keys,
@@ -428,7 +474,7 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
         };
       }
       const { splitKey } = command;
-      if (!isKey(splitKey)) invalid("inserting inside a clip needs a splitKey");
+      if (!isKey(splitKey)) invalid("new-key-required", "inserting inside a clip needs a splitKey");
       checkNewKeys([splitKey], [...plan.clips.map((clip) => clip.key), ...keys]);
       const split = plan.clips[index] as AudioClip;
       const parts = [
@@ -458,12 +504,11 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
     }
 
     case "audio.restoreClips": {
-      if (!Array.isArray(command.entries) || command.entries.length === 0) {
-        invalid("it needs at least one clip");
-      }
+      if (!Array.isArray(command.entries)) invalid("malformed-command", "entries must be a list");
+      if (command.entries.length === 0) invalid("no-clips", "it needs at least one clip");
       const entries = command.entries.map((entry: unknown) => {
         if (!isRecord<{ index: number; clip: AudioClip }>(entry))
-          invalid("an entry needs an index and a clip");
+          invalid("malformed-command", "an entry needs an index and a clip");
         return { index: entry.index, clip: checkClip(entry.clip, sourceFrames) };
       });
       checkNewKeys(
@@ -474,7 +519,7 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
       let previous = -1;
       for (const { index, clip } of entries) {
         if (!isIndex(index, clips.length) || index <= previous) {
-          invalid(`clip ${clip.key} can't be restored at index ${String(index)}`);
+          invalid("invalid-index", `clip ${clip.key} can't be restored at index ${String(index)}`);
         }
         clips.splice(index, 0, clip);
         previous = index;
@@ -488,10 +533,10 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
     case "audio.replaceClips": {
       const { index, count } = command;
       if (!isIndex(index, plan.clips.length) || !isIndex(count, plan.clips.length - index)) {
-        invalid("the run of clips is outside the plan");
+        invalid("invalid-index", "the run of clips is outside the plan");
       }
       const clips = checkClips(command.clips, sourceFrames);
-      if (count === 0 && clips.length === 0) invalid("it changes nothing");
+      if (count === 0 && clips.length === 0) invalid("empty-change", "it changes nothing");
       const removed = plan.clips.slice(index, index + count);
       checkNewKeys(
         clips.map((clip) => clip.key),
@@ -520,9 +565,10 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
 
     case "audio.deleteRange": {
       const { start, end } = command;
-      if (!isIndex(end, planLength(plan)) || !isIndex(start, end - 1)) {
-        invalid("the range must be at least one frame inside the plan");
+      if (!isIndex(start, planLength(plan)) || !isIndex(end, planLength(plan))) {
+        invalid("frame-outside-plan", "the range must be inside the plan");
       }
+      if (end <= start) invalid("empty-range", "the range must be at least one frame long");
       const first = locate(plan, start);
       const last = locate(plan, end - 1);
       const firstClip = plan.clips[first.index] as AudioClip;
@@ -533,7 +579,7 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
         let key = lastClip.key;
         if (first.index === last.index && first.offset > 0) {
           const { newKey } = command;
-          if (!isKey(newKey)) invalid("deleting inside a clip needs a newKey");
+          if (!isKey(newKey)) invalid("new-key-required", "deleting inside a clip needs a newKey");
           checkNewKeys(
             [newKey],
             plan.clips.map((clip) => clip.key),
@@ -571,7 +617,9 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
       const index = position(plan, command.key);
       const clip = plan.clips[index] as AudioClip;
       const { index: within, offset } = locate(plan, command.at);
-      if (within !== index || offset === 0) invalid("the frame must be strictly inside the clip");
+      if (within !== index || offset === 0) {
+        invalid("not-inside-clip", "the frame must be strictly inside the clip");
+      }
       checkNewKeys(
         [command.newKey],
         plan.clips.map((entry) => entry.key),
@@ -590,7 +638,7 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
       const moved = new Set(positions(plan, command.keys));
       const block = plan.clips.filter((_, index) => moved.has(index));
       const rest = plan.clips.filter((_, index) => !moved.has(index));
-      if (!isIndex(command.to, rest.length)) invalid("the clips can't move there");
+      if (!isIndex(command.to, rest.length)) invalid("invalid-index", "the clips can't move there");
       return {
         state: withClips(plan, [...rest.slice(0, command.to), ...block, ...rest.slice(command.to)]),
         inverse: { type: "audio.reorderClips", order: plan.clips.map((clip) => clip.key) },
@@ -606,7 +654,7 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
         new Set(order).size !== order.length ||
         order.some((key) => !byKey.has(key))
       ) {
-        invalid("the order must list every clip exactly once");
+        invalid("invalid-order", "the order must list every clip exactly once");
       }
       return {
         state: withClips(
@@ -619,7 +667,10 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
 
     case "audio.setGain": {
       const at = positions(plan, command.keys);
-      const gainDb = checkGain(command.gainDb);
+      const gainDb = command.gainDb;
+      if (typeof gainDb !== "number" || !(gainDb >= MIN_GAIN_DB && gainDb <= MAX_GAIN_DB)) {
+        invalid("gain-out-of-range", `gain must be from ${MIN_GAIN_DB} to ${MAX_GAIN_DB} dB`);
+      }
       const before = at.map((index) => plan.clips[index] as AudioClip);
       return {
         state: updateByKey(
@@ -633,7 +684,7 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
     case "audio.setFade": {
       const clip = plan.clips[position(plan, command.key)] as AudioClip;
       const { edge, frames } = command;
-      if (edge !== "in" && edge !== "out") invalid("the edge must be in or out");
+      if (edge !== "in" && edge !== "out") invalid("invalid-edge", "the edge must be in or out");
       const next = { frames, curve: fade(command, "the fade").curve };
       const updated = checkClip(
         edge === "in" ? { ...clip, fadeIn: next } : { ...clip, fadeOut: next },
@@ -648,10 +699,14 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
     case "audio.setMetadata": {
       const { field, value } = command;
       if (typeof field !== "string" || !Object.hasOwn(EMPTY_METADATA, field)) {
-        invalid("there's no such metadata field");
+        invalid("unknown-metadata-field", "there's no such metadata field");
       }
-      if (typeof value !== "string" || value.length > MAX_METADATA_LENGTH) {
-        invalid(`a metadata value must be text of at most ${MAX_METADATA_LENGTH} characters`);
+      if (typeof value !== "string") invalid("malformed-command", "a metadata value must be text");
+      if (value.length > MAX_METADATA_LENGTH) {
+        invalid(
+          "metadata-too-long",
+          `a metadata value can have at most ${MAX_METADATA_LENGTH} characters`,
+        );
       }
       return {
         state: { ...plan, metadata: { ...plan.metadata, [field]: value } },
@@ -660,7 +715,7 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
     }
 
     default:
-      return invalid("unknown command");
+      return invalid("unknown-command", "unknown command");
   }
 }
 
@@ -685,7 +740,7 @@ export function createPlanReducer(sourceFrames: SourceFrames): Reducer<AudioPlan
       throw new AudioError(
         "INVALID_COMMAND",
         `Invalid ${known ? type : "command"}: ${error.message}.`,
-        known ? { details: { command: type } } : {},
+        { details: known ? { command: type, reason: error.reason } : { reason: error.reason } },
       );
     }
   };

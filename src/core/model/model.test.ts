@@ -7,6 +7,7 @@ import {
   assertClip,
   clipLength,
   clipOffsets,
+  clipProblem,
   EMPTY_METADATA,
   NO_FADE,
   planLength,
@@ -67,17 +68,20 @@ describe("the clip plan", () => {
   });
 
   it.each([
-    ["an empty clip", clip({ start: 50, end: 50 })],
-    ["a reversed clip", clip({ start: 60, end: 50 })],
-    ["a clip past its source", clip({ end: 101 })],
-    ["fractional frames", clip({ end: 50.5 })],
-    ["a negative start", clip({ start: -1 })],
-    ["an infinite gain", clip({ gainDb: Number.POSITIVE_INFINITY })],
+    ["an empty clip", clip({ start: 50, end: 50 }), "clip-too-short"],
+    ["a reversed clip", clip({ start: 60, end: 50 }), "clip-too-short"],
+    ["a clip past its source", clip({ end: 101 }), "clip-outside-source"],
+    ["fractional frames", clip({ end: 50.5 }), "invalid-frames"],
+    ["a negative start", clip({ start: -1 }), "invalid-frames"],
+    ["an infinite gain", clip({ gainDb: Number.POSITIVE_INFINITY }), "gain-out-of-range"],
+    ["a gain above the maximum", clip({ gainDb: 120.5 }), "gain-out-of-range"],
     [
       "fades longer than the clip",
       clip({ fadeIn: { frames: 60, curve: "linear" }, fadeOut: { frames: 41, curve: "linear" } }),
+      "fades-too-long",
     ],
-  ])("rejects %s", (_, bad) => {
+  ] as const)("rejects %s, naming the problem", (_, bad, problem) => {
+    expect(clipProblem(bad, 100)).toBe(problem);
     expect(() => assertClip(bad, 100)).toThrow(RangeError);
   });
 });

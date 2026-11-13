@@ -11,7 +11,12 @@ import {
   NO_FADE,
   planLength,
 } from "../model/plan.js";
-import { type AudioCommand, createPlanReducer, MAX_METADATA_LENGTH } from "./commands.js";
+import {
+  type AudioCommand,
+  type AudioCommandRejection,
+  createPlanReducer,
+  MAX_METADATA_LENGTH,
+} from "./commands.js";
 
 const SOURCES: Record<string, number> = { s1: 1_000, s2: 500 };
 const reduce = createPlanReducer((id) => SOURCES[id]);
@@ -54,7 +59,8 @@ function roundTrip(state: AudioPlan, command: AudioCommand): AudioPlan {
   return next;
 }
 
-function expectInvalid(state: AudioPlan, command: unknown): void {
+/** Expects the command to be refused with `INVALID_COMMAND` and this reason. */
+function expectInvalid(state: AudioPlan, command: unknown, reason: AudioCommandRejection): void {
   let thrown: unknown;
   try {
     reduce(state, command as AudioCommand);
@@ -62,6 +68,7 @@ function expectInvalid(state: AudioPlan, command: unknown): void {
     thrown = error;
   }
   expect(isAudioError(thrown, "INVALID_COMMAND")).toBe(true);
+  expect(thrown).toHaveProperty("details.reason", reason);
 }
 
 const ab = plan(clip("a", 0, 100), clip("b", 200, 300, { source: "s2" }));
@@ -97,7 +104,11 @@ describe("the clip plan reducer", () => {
     expect(next.clips[0]?.fadeOut).toEqual(NO_FADE);
     expect(next.clips[2]?.fadeIn).toEqual(NO_FADE);
     expect(next.clips[2]?.fadeOut).toEqual({ frames: 30, curve: "linear" });
-    expectInvalid(faded, { type: "audio.insertClips", at: 40, clips: [clip("c", 0, 10)] });
+    expectInvalid(
+      faded,
+      { type: "audio.insertClips", at: 40, clips: [clip("c", 0, 10)] },
+      "new-key-required",
+    );
   });
 
   it("removes clips, and restores them where they were", () => {
@@ -134,8 +145,8 @@ describe("the clip plan reducer", () => {
       ["a2", 20, 100],
       ["b", 200, 300],
     ]);
-    expectInvalid(ab, { type: "audio.deleteRange", start: 10, end: 20 });
-    expectInvalid(ab, { type: "audio.deleteRange", start: 10, end: 20, newKey: "b" });
+    expectInvalid(ab, { type: "audio.deleteRange", start: 10, end: 20 }, "new-key-required");
+    expectInvalid(ab, { type: "audio.deleteRange", start: 10, end: 20, newKey: "b" }, "key-taken");
   });
 
   it("trims a clip, shortening fades that no longer fit in proportion", () => {
@@ -148,8 +159,16 @@ describe("the clip plan reducer", () => {
     const next = roundTrip(faded, { type: "audio.trimClip", key: "a", start: 10, end: 55 });
     expect(next.clips[0]?.fadeIn.frames).toBe(30);
     expect(next.clips[0]?.fadeOut.frames).toBe(15);
-    expectInvalid(faded, { type: "audio.trimClip", key: "a", start: 10, end: 10 });
-    expectInvalid(faded, { type: "audio.trimClip", key: "a", start: 0, end: 1_001 });
+    expectInvalid(
+      faded,
+      { type: "audio.trimClip", key: "a", start: 10, end: 10 },
+      "clip-too-short",
+    );
+    expectInvalid(
+      faded,
+      { type: "audio.trimClip", key: "a", start: 0, end: 1_001 },
+      "clip-outside-source",
+    );
   });
 
   it("splits a clip at a frame strictly inside it", () => {
@@ -159,10 +178,16 @@ describe("the clip plan reducer", () => {
       ["b", 200, 230],
       ["b2", 230, 300],
     ]);
+    // 100 is the clip's own start, 200 the plan's end, 50 inside another clip.
     for (const at of [100, 200, 50]) {
-      expectInvalid(ab, { type: "audio.splitClip", key: "b", at, newKey: "b2" });
+      expectInvalid(ab, { type: "audio.splitClip", key: "b", at, newKey: "b2" }, "not-inside-clip");
     }
-    expectInvalid(ab, { type: "audio.splitClip", key: "b", at: 130, newKey: "a" });
+    expectInvalid(
+      ab,
+      { type: "audio.splitClip", key: "b", at: 201, newKey: "b2" },
+      "frame-outside-plan",
+    );
+    expectInvalid(ab, { type: "audio.splitClip", key: "b", at: 130, newKey: "a" }, "key-taken");
   });
 
   it("moves clips as a block, and reorders them back", () => {
@@ -172,8 +197,8 @@ describe("the clip plan reducer", () => {
       "a",
       "c",
     ]);
-    expectInvalid(abc, { type: "audio.moveClips", keys: ["a"], to: 3 });
-    expectInvalid(abc, { type: "audio.reorderClips", order: ["a", "b", "b"] });
+    expectInvalid(abc, { type: "audio.moveClips", keys: ["a"], to: 3 }, "invalid-index");
+    expectInvalid(abc, { type: "audio.reorderClips", order: ["a", "b", "b"] }, "invalid-order");
   });
 
   it("sets gains and fades", () => {
@@ -188,68 +213,97 @@ describe("the clip plan reducer", () => {
     });
     expect(faded.clips[0]?.fadeOut).toEqual({ frames: 100, curve: "equalPower" });
     for (const gainDb of [Number.NaN, Number.POSITIVE_INFINITY, 121, -121]) {
-      expectInvalid(ab, { type: "audio.setGain", keys: ["a"], gainDb });
+      expectInvalid(ab, { type: "audio.setGain", keys: ["a"], gainDb }, "gain-out-of-range");
     }
-    expectInvalid(faded, {
-      type: "audio.setFade",
-      key: "a",
-      edge: "in",
-      frames: 1,
-      curve: "linear",
-    });
-    expectInvalid(ab, { type: "audio.setFade", key: "a", edge: "in", frames: 1, curve: "cubic" });
+    expectInvalid(
+      faded,
+      { type: "audio.setFade", key: "a", edge: "in", frames: 1, curve: "linear" },
+      "fades-too-long",
+    );
+    expectInvalid(
+      ab,
+      { type: "audio.setFade", key: "a", edge: "in", frames: 1, curve: "cubic" },
+      "invalid-fade-curve",
+    );
+    expectInvalid(
+      ab,
+      { type: "audio.setFade", key: "a", edge: "middle", frames: 1, curve: "linear" },
+      "invalid-edge",
+    );
   });
 
   it("sets metadata fields, within a length limit", () => {
     const next = roundTrip(ab, { type: "audio.setMetadata", field: "title", value: "Take 2" });
     expect(next.metadata.title).toBe("Take 2");
-    expectInvalid(ab, {
-      type: "audio.setMetadata",
-      field: "title",
-      value: "x".repeat(MAX_METADATA_LENGTH + 1),
-    });
-    expectInvalid(ab, { type: "audio.setMetadata", field: "toString", value: "" });
+    expectInvalid(
+      ab,
+      { type: "audio.setMetadata", field: "title", value: "x".repeat(MAX_METADATA_LENGTH + 1) },
+      "metadata-too-long",
+    );
+    expectInvalid(
+      ab,
+      { type: "audio.setMetadata", field: "toString", value: "" },
+      "unknown-metadata-field",
+    );
   });
 
   it("refuses clips outside their source, of unknown sources, or with taken keys", () => {
     const insert = (entry: AudioClip) => ({ type: "audio.insertClips", at: 0, clips: [entry] });
-    expectInvalid(ab, insert(clip("c", 0, 501, { source: "s2" })));
-    expectInvalid(ab, insert(clip("c", 0, 10, { source: "missing" })));
-    expectInvalid(ab, insert(clip("a", 0, 10)));
-    expectInvalid(ab, insert(clip("c", 5, 5)));
-    expectInvalid(ab, insert(clip("c", 0, 10, { fadeIn: { frames: 11, curve: "linear" } })));
+    expectInvalid(ab, insert(clip("c", 0, 501, { source: "s2" })), "clip-outside-source");
+    expectInvalid(ab, insert(clip("c", 0, 10, { source: "missing" })), "unknown-source");
+    expectInvalid(ab, insert(clip("a", 0, 10)), "key-taken");
+    expectInvalid(ab, insert(clip("c", 5, 5)), "clip-too-short");
+    expectInvalid(ab, insert(clip("c", 0.5, 5)), "invalid-frames");
+    expectInvalid(
+      ab,
+      insert(clip("c", 0, 10, { fadeIn: { frames: 11, curve: "linear" } })),
+      "fades-too-long",
+    );
   });
 
   it("refuses malformed commands without changing the plan", () => {
-    for (const command of [
-      null,
-      {},
-      { type: "audio.unknown" },
-      { type: "audio.removeClips" },
-      { type: "audio.removeClips", keys: [] },
-      { type: "audio.removeClips", keys: ["a", "a"] },
-      { type: "audio.removeClips", keys: ["z"] },
-      { type: "audio.insertClips", at: 0, clips: [{ key: "c" }] },
-      { type: "audio.insertClips", at: -1, clips: [clip("c", 0, 1)] },
-      { type: "audio.insertClips", at: 0.5, clips: [clip("c", 0, 1)] },
-      { type: "audio.restoreClips", entries: [{ index: 5, clip: clip("c", 0, 1) }] },
-      { type: "audio.replaceClips", index: 1, count: 2, clips: [] },
-      { type: "audio.updateClips", clips: [clip("z", 0, 1)] },
-      { type: "audio.deleteRange", start: 0, end: 201 },
-      { type: "audio.deleteRange", start: 5, end: 5 },
-    ]) {
-      expectInvalid(ab, command);
+    for (const [command, reason] of [
+      [null, "malformed-command"],
+      [{}, "unknown-command"],
+      [{ type: "audio.unknown" }, "unknown-command"],
+      [{ type: "audio.removeClips" }, "malformed-command"],
+      [{ type: "audio.removeClips", keys: [] }, "no-clips"],
+      [{ type: "audio.removeClips", keys: ["a", "a"] }, "duplicate-key"],
+      [{ type: "audio.removeClips", keys: ["z"] }, "unknown-clip"],
+      [{ type: "audio.insertClips", at: 0, clips: [{ key: "c" }] }, "malformed-command"],
+      [{ type: "audio.insertClips", at: 0, clips: [] }, "no-clips"],
+      [
+        { type: "audio.insertClips", at: 0, clips: [clip("c", 0, 1), clip("c", 1, 2)] },
+        "duplicate-key",
+      ],
+      [{ type: "audio.insertClips", at: -1, clips: [clip("c", 0, 1)] }, "frame-outside-plan"],
+      [{ type: "audio.insertClips", at: 0.5, clips: [clip("c", 0, 1)] }, "frame-outside-plan"],
+      [
+        { type: "audio.restoreClips", entries: [{ index: 5, clip: clip("c", 0, 1) }] },
+        "invalid-index",
+      ],
+      [{ type: "audio.replaceClips", index: 1, count: 2, clips: [] }, "invalid-index"],
+      [{ type: "audio.replaceClips", index: 1, count: 0, clips: [] }, "empty-change"],
+      [{ type: "audio.updateClips", clips: [clip("z", 0, 1)] }, "unknown-clip"],
+      [{ type: "audio.deleteRange", start: 0, end: 201 }, "frame-outside-plan"],
+      [{ type: "audio.deleteRange", start: 5, end: 5 }, "empty-range"],
+      [{ type: "audio.setMetadata", field: "title", value: 5 }, "malformed-command"],
+    ] as const) {
+      expectInvalid(ab, command, reason);
     }
   });
 
-  it("names the command in the error's details, but never anything else from it", () => {
-    try {
-      reduce(ab, { type: "audio.removeClips", keys: ["secret"] });
-    } catch (error) {
-      expect(isAudioError(error, "INVALID_COMMAND") && error.details).toEqual({
-        command: "audio.removeClips",
-      });
-    }
+  it("names the command and the reason in the error's details, and nothing from the command", () => {
+    expect(() => reduce(ab, { type: "audio.removeClips", keys: ["secret"] })).toThrow(
+      expect.objectContaining({
+        code: "INVALID_COMMAND",
+        details: { command: "audio.removeClips", reason: "unknown-clip" },
+      }),
+    );
+    // A type that isn't a command's is never echoed back.
+    expect(() => reduce(ab, { type: "<script>" } as never)).toThrow(
+      expect.objectContaining({ details: { reason: "unknown-command" } }),
+    );
   });
 });
 
@@ -349,6 +403,10 @@ describe("the clip plan reducer on arbitrary commands", () => {
               result = reduce(state, next);
             } catch (error) {
               expect(isAudioError(error, "INVALID_COMMAND")).toBe(true);
+              expect(error).toHaveProperty(
+                "details.reason",
+                expect.stringMatching(/^[a-z]+(-[a-z]+)*$/),
+              );
               continue;
             }
             expectValid(result.state);

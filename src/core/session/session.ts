@@ -620,7 +620,9 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
 
     async insert(file, insertOptions = {}) {
       if (!plan || status !== "ready") {
-        throw new AudioError("INVALID_COMMAND", "Open a recording before inserting another.");
+        throw new AudioError("INVALID_COMMAND", "Open a recording before inserting another.", {
+          details: { reason: "no-recording" },
+        });
       }
       const started = generation;
       error = undefined;
@@ -690,7 +692,11 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
         : [commands as AudioCommand];
       if (list.length === 0) return;
       try {
-        if (!plan) throw new AudioError("INVALID_COMMAND", "Open a recording before editing it.");
+        if (!plan) {
+          throw new AudioError("INVALID_COMMAND", "Open a recording before editing it.", {
+            details: { reason: "no-recording" },
+          });
+        }
         let copies: AudioCommand[];
         try {
           // The history keeps its own copies, which also proves they're
@@ -699,6 +705,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
         } catch (reason) {
           throw new AudioError("INVALID_COMMAND", "Commands must be plain data.", {
             cause: reason,
+            details: { reason: "not-plain-data" },
           });
         }
         commit(applyChecked(plan, copies), copies);
