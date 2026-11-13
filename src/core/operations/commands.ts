@@ -185,7 +185,7 @@ export interface AudioSetFadeCommand {
 export interface AudioSetMetadataCommand {
   readonly type: "audio.setMetadata";
   readonly field: keyof AudioMetadata;
-  /** At most {@link MAX_METADATA_LENGTH} characters. */
+  /** At most {@link MAX_METADATA_LENGTH} code points. */
   readonly value: string;
 }
 
@@ -212,12 +212,31 @@ export type AudioCommand =
   | AudioSetMetadataCommand;
 
 /**
- * The longest metadata value, in UTF-16 code units, so that history steps
- * stay small.
+ * The longest metadata value, in Unicode code points, so that history steps
+ * stay small. Code points are what JSON Schema's `maxLength` counts, and
+ * what every language can count, so the limit is the same in every port
+ * (sdk-core ADR 0045): 1,000 emoji fit, though they're 2,000 UTF-16 units.
  *
  * @public
  */
 export const MAX_METADATA_LENGTH = 1_000;
+
+/**
+ * Whether text has more than `max` code points, counted with `for…of`,
+ * which walks code points, and stopping as soon as it knows.
+ *
+ * @internal
+ */
+export function longerThan(text: string, max: number): boolean {
+  // Every code point is one or two UTF-16 units.
+  if (text.length <= max) return false;
+  let count = 0;
+  for (const _ of text) {
+    count += 1;
+    if (count > max) return true;
+  }
+  return false;
+}
 
 const CURVES: ReadonlySet<string> = new Set<AudioFadeCurve>(["linear", "equalPower"]);
 
@@ -255,7 +274,7 @@ export type SourceFrames = (source: string) => number | undefined;
  * - `invalid-edge`: a fade's edge isn't `in` or `out`.
  * - `unknown-metadata-field`: the metadata has no such field.
  * - `metadata-too-long`: a metadata value is over {@link MAX_METADATA_LENGTH}
- *   characters.
+ *   code points.
  *
  * The session adds `no-recording`, for a command or an export with no
  * recording open, `not-plain-data`, for a command that can't be cloned, and
@@ -771,10 +790,10 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
         invalid("unknown-metadata-field", "there's no such metadata field");
       }
       if (typeof value !== "string") invalid("malformed-command", "a metadata value must be text");
-      if (value.length > MAX_METADATA_LENGTH) {
+      if (longerThan(value, MAX_METADATA_LENGTH)) {
         invalid(
           "metadata-too-long",
-          `a metadata value can have at most ${MAX_METADATA_LENGTH} characters`,
+          `a metadata value can have at most ${MAX_METADATA_LENGTH} code points`,
         );
       }
       return {

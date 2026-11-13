@@ -53,6 +53,7 @@ In Node without a bundler, `createRequire(import.meta.url).resolve("@hussmartine
 - **Numbers:** every position and length is a whole number of frames at `sampleRate`. `gainDb` is the one float. It's copied, never computed, so it compares exactly (ADR 0045, section 3).
 - **Sources** are keyed by the ids the clips use, which only mean something within the document. Each gives its length in frames. Once documents travel with their files, it also gives an `asset`: the SHA-256 of the bytes, their media type and their size. A document never inlines audio.
 - **Beyond the schema,** a reader checks what depends on the whole document: every clip lies within a source the document lists, its fades fit it together, and keys are unique.
+- **Lengths are in Unicode code points,** as the schema's `maxLength` counts them: a metadata value has at most 1,000, so 1,000 emoji fit, though they're 2,000 UTF-16 units. Every length limit in the family's formats counts code points (ADR 0045, section 8), which every language can count the same way.
 - **Strict:** an unknown field anywhere is refused, never dropped. So a later version's document can't be misread as this one.
 
 `readAudioPlanDocument(json)` reads a document, and `toAudioPlanDocument(plan, sources)` writes one.

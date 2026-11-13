@@ -239,6 +239,26 @@ describe("the clip plan reducer", () => {
     );
   });
 
+  it("counts metadata lengths in code points, not UTF-16 units", () => {
+    // Each emoji is one code point and two UTF-16 units.
+    roundTrip(ab, {
+      type: "audio.setMetadata",
+      field: "title",
+      value: "🎙".repeat(MAX_METADATA_LENGTH),
+    });
+    expectInvalid(
+      ab,
+      { type: "audio.setMetadata", field: "title", value: "🎙".repeat(MAX_METADATA_LENGTH + 1) },
+      "metadata-too-long",
+    );
+    // A lone surrogate is one code point too, as JSON Schema counts it.
+    roundTrip(ab, {
+      type: "audio.setMetadata",
+      field: "title",
+      value: `${"x".repeat(MAX_METADATA_LENGTH - 1)}\ud800`,
+    });
+  });
+
   it("sets metadata fields, within a length limit", () => {
     const next = roundTrip(ab, { type: "audio.setMetadata", field: "title", value: "Take 2" });
     expect(next.metadata.title).toBe("Take 2");

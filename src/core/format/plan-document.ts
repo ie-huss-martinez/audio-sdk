@@ -6,6 +6,7 @@ import {
   invalid,
   isKey,
   isRecord,
+  longerThan,
   MAX_METADATA_LENGTH,
   onlyFields,
 } from "../operations/commands.js";
@@ -161,8 +162,8 @@ function readMetadata(value: unknown): AudioMetadata {
   const fields = METADATA_FIELDS.map((field) => {
     const text = value[field];
     if (typeof text !== "string") malformed(`metadata.${field} is text`);
-    if (text.length > MAX_METADATA_LENGTH) {
-      invalid("metadata-too-long", `metadata.${field} is over ${MAX_METADATA_LENGTH} characters`);
+    if (longerThan(text, MAX_METADATA_LENGTH)) {
+      invalid("metadata-too-long", `metadata.${field} is over ${MAX_METADATA_LENGTH} code points`);
     }
     return [field, text] as const;
   });
