@@ -63,6 +63,22 @@ const BASE = toAudioPlanDocument(
   sources,
 );
 
+/**
+ * A plan whose source ids and clip keys are the names of `Object.prototype`'s
+ * properties, built from JSON text, so `__proto__` is an own field as any
+ * JSON parser makes it. Readers that keep ids in plain objects, in any
+ * language, must still treat them as data.
+ */
+const PROTOTYPE_NAMED = JSON.parse(
+  JSON.stringify({
+    ...BASE,
+    sources: { PROTO: { frames: 100 }, constructor: { frames: 100 }, toString: { frames: 100 } },
+    clips: ["PROTO", "constructor", "toString"].map((name) => ({
+      ...clip(name, name, 0, 50),
+    })),
+  }).replaceAll('"PROTO"', '"__proto__"'),
+) as typeof BASE;
+
 type Outcome = { readonly ok: true } | { readonly code: string; readonly reason: string };
 
 /**
@@ -150,6 +166,35 @@ export function commandCases(): ConformanceFile {
       "sets metadata",
       on({ type: "audio.setMetadata", field: "artist", value: "Ana Pérez 🎙" }),
       applied,
+    ],
+    [
+      "removes a clip keyed __proto__",
+      { plan: PROTOTYPE_NAMED, command: { type: "audio.removeClips", keys: ["__proto__"] } },
+      applied,
+    ],
+    [
+      "splits a clip keyed constructor, naming the new part valueOf",
+      {
+        plan: PROTOTYPE_NAMED,
+        command: { type: "audio.splitClip", key: "constructor", at: 75, newKey: "valueOf" },
+      },
+      applied,
+    ],
+    [
+      "refuses a new key named toString when a clip has it",
+      {
+        plan: PROTOTYPE_NAMED,
+        command: { type: "audio.splitClip", key: "constructor", at: 75, newKey: "toString" },
+      },
+      refused("key-taken"),
+    ],
+    [
+      "refuses a key that only Object.prototype has as an unknown clip",
+      {
+        plan: PROTOTYPE_NAMED,
+        command: { type: "audio.setGain", keys: ["hasOwnProperty"], gainDb: 0 },
+      },
+      refused("unknown-clip"),
     ],
     ["refuses a command that isn't an object", on(null), refused("malformed-command")],
     [
@@ -307,6 +352,24 @@ export function planCases(): ConformanceFile {
   const handWritten: [string, unknown, Outcome][] = [
     ["reads a document unchanged", BASE, applied],
     ["reads an empty plan", document({ clips: [], sources: {} }), applied],
+    [
+      "reads source ids and clip keys named __proto__, constructor and toString",
+      PROTOTYPE_NAMED,
+      applied,
+    ],
+    [
+      "refuses a clip of a source only Object.prototype has",
+      { ...PROTOTYPE_NAMED, clips: [clip("a", "hasOwnProperty", 0, 10)] },
+      invalidDocument("unknown-source"),
+    ],
+    [
+      "refuses two clips keyed __proto__",
+      {
+        ...PROTOTYPE_NAMED,
+        clips: [PROTOTYPE_NAMED.clips[0], { ...PROTOTYPE_NAMED.clips[1], key: "__proto__" }],
+      },
+      invalidDocument("duplicate-key"),
+    ],
     [
       "reads a source with its asset",
       document({
