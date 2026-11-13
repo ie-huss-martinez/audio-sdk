@@ -37,10 +37,12 @@
       "default": "./dist/element.js"
     },
     "./styles.css": "./dist/styles.css",
+    "./formats/*": "./formats/*",
     "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "formats"
   ],
   "packageManager": "pnpm@12.18.0",
   "engines": {
