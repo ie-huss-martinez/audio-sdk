@@ -1,5 +1,0 @@
-# Build output the sdk-config stylelint preset doesn't ignore yet; it covers
-# dist, temp, coverage, storybook-static and node_modules. The examples'
-# builds can contain CSS with the token values inlined.
-**/.next/**
-**/dist-server/**
