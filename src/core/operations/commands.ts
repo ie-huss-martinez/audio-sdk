@@ -257,8 +257,9 @@ export type SourceFrames = (source: string) => number | undefined;
  * - `metadata-too-long`: a metadata value is over {@link MAX_METADATA_LENGTH}
  *   characters.
  *
- * The session adds `no-recording`, for a command with no recording open,
- * and `not-plain-data`, for a command that can't be cloned.
+ * The session adds `no-recording`, for a command or an export with no
+ * recording open, `not-plain-data`, for a command that can't be cloned, and
+ * `empty-plan`, for an export of a plan with no clips.
  *
  * @public
  */
@@ -283,7 +284,8 @@ export type AudioCommandRejection =
   | "unknown-metadata-field"
   | "metadata-too-long"
   | "no-recording"
-  | "not-plain-data";
+  | "not-plain-data"
+  | "empty-plan";
 
 /**
  * A refusal with its reason, before it becomes the caller's `AudioError`.

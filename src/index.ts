@@ -99,6 +99,7 @@ export type {
   AudioSelection,
   AudioSession,
   AudioSessionEvent,
+  AudioSessionExportOptions,
   AudioSessionOptions,
   AudioSessionSnapshot,
   AudioSessionStatus,
