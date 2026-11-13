@@ -45,6 +45,23 @@ export type {
   DecodedAudio,
 } from "./core/model/source.js";
 export { framesToSeconds, secondsToFrames } from "./core/model/time.js";
+export type {
+  AudioCommand,
+  AudioDeleteRangeCommand,
+  AudioInsertClipsCommand,
+  AudioMoveClipsCommand,
+  AudioRemoveClipsCommand,
+  AudioReorderClipsCommand,
+  AudioReplaceClipsCommand,
+  AudioRestoreClipsCommand,
+  AudioSetFadeCommand,
+  AudioSetGainCommand,
+  AudioSetMetadataCommand,
+  AudioSplitClipCommand,
+  AudioTrimClipCommand,
+  AudioUpdateClipsCommand,
+} from "./core/operations/commands.js";
+export { MAX_GAIN_DB, MAX_METADATA_LENGTH, MIN_GAIN_DB } from "./core/operations/commands.js";
 export type { AudioEngine } from "./core/ports/audio-engine.js";
 export type {
   AudioOutput,

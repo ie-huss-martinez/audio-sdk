@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-12
 - **Amended:** 2026-11-12, to match the model as built in #8: the metadata is a field of the plan, the core sees sources as `DecodedAudio`, and fades reach silence on a clip's first and last frames.
+- **Amended:** 2026-11-13, to match the commands as built: three inverse commands (`audio.replaceClips`, `audio.updateClips` and `audio.reorderClips`), the keys of split parts (`splitKey`, `newKey`), how cut clips keep their fades, the bounds on gain and metadata, and the reducer's lookup of source lengths.
 
 ## Context
 
@@ -36,23 +37,29 @@ The session's document is a **clip plan** over immutable sources, plus metadata:
 
 Commands are plain, structured-cloneable data, named `audio.*`:
 
-| Command | Changes |
-|---|---|
-| `audio.insertClips { at, clips }` | Inserts clips at a timeline frame, splitting the clip there if needed |
-| `audio.removeClips { keys }` | Removes clips |
-| `audio.restoreClips { entries }` | Puts clips back at their indexes, with every field as it was. The inverse of most edits |
-| `audio.deleteRange { start, end, keys }` | Removes a timeline range, trimming or splitting the clips it touches |
-| `audio.trimClip { key, start, end }` | Changes the source range a clip plays |
-| `audio.splitClip { key, at, newKey }` | Splits a clip at a timeline frame into two |
-| `audio.moveClips { keys, to }` | Moves clips to a position |
-| `audio.setGain { keys, gainDb }` | Sets the gain of clips |
-| `audio.setFade { key, edge, frames, curve }` | Sets a clip's fade in or fade out |
-| `audio.setMetadata { field, value }` | Sets one metadata field |
+| Command | Changes | Inverse |
+|---|---|---|
+| `audio.insertClips { at, clips, splitKey? }` | Inserts clips at a timeline frame. If the frame is inside a clip, that clip splits there, and its second part takes `splitKey` | `audio.replaceClips` |
+| `audio.removeClips { keys }` | Removes clips | `audio.restoreClips` |
+| `audio.restoreClips { entries }` | Puts clips back at their indexes, with every field as it was | `audio.removeClips` |
+| `audio.replaceClips { index, count, clips }` | Replaces a run of neighbouring clips | `audio.replaceClips` |
+| `audio.updateClips { clips }` | Sets clips, matched by key, to new states with every field given | `audio.updateClips` |
+| `audio.deleteRange { start, end, newKey? }` | Removes a timeline range, trimming the clips at its edges. A range inside one clip splits it, and the part after the range takes `newKey` | `audio.replaceClips` |
+| `audio.trimClip { key, start, end }` | Changes the source range a clip plays | `audio.updateClips` |
+| `audio.splitClip { key, at, newKey }` | Splits a clip in two at a timeline frame strictly inside it | `audio.replaceClips` |
+| `audio.moveClips { keys, to }` | Moves clips, as a block in plan order, to an index of the result | `audio.reorderClips` |
+| `audio.reorderClips { order }` | Puts every clip in a new order | `audio.reorderClips` |
+| `audio.setGain { keys, gainDb }` | Sets the gain of clips | `audio.updateClips` |
+| `audio.setFade { key, edge, frames, curve }` | Sets a clip's fade in or fade out | `audio.updateClips` |
+| `audio.setMetadata { field, value }` | Sets one metadata field | `audio.setMetadata` |
+
+Every inverse is exact: it carries the previous state of what the command changed, so undo restores every field, fades included. The inverse commands are public too, so hosts can replay a stored history.
 
 - **The reducer is `sdk-core`'s `Reducer<AudioPlan, AudioCommand>`:** a pure function that applies one command and returns its inverse. The session applies sequences with `applyCommands`, which returns the inverses in the order undo needs.
-- **Commands carry everything the reducer needs,** so it stays pure. The keys of new clips are in the command (`newKey` in `audio.splitClip`, `keys` in `audio.deleteRange`), and the session generates them before it executes.
-- **Invalid commands throw `AudioError` with `INVALID_COMMAND`:** for example, a range outside its source, a clip shorter than one frame, or an unknown key. The UI clamps what people enter, such as a trim past the end, before building a command. The reducer doesn't silently correct a command.
-- **Edits keep clips valid.** A trim that leaves a fade longer than its clip shortens the fade. The inverse is `audio.restoreClips`, with the clip's full previous state, so undo restores the fade too.
+- **Commands carry everything the reducer needs,** so it stays pure. The keys of new clips are in the command (`splitKey` in `audio.insertClips`, `newKey` in `audio.splitClip` and `audio.deleteRange`), and the session generates them before it executes. Source lengths are the one thing the reducer looks up: the session creates it with a lookup of its registered sources, which never change, so the same command on the same plan always gives the same result.
+- **Cut clips keep the fades of the edges they keep.** When a split, an insert or a range deletion cuts a clip, each part keeps the fade of the clip's edge it shares, and has no fade at the cut.
+- **Invalid commands throw `AudioError` with `INVALID_COMMAND`:** for example, a range outside its source, a clip shorter than one frame, an unknown or repeated key, a gain outside −120 to +120 dB, or a metadata value over 1,000 characters. The bounds keep every gain a finite factor and every history step small. Commands may come from storage, so the reducer checks their shape, not only their values; its `details` name only the command's type. The UI clamps what people enter, such as a trim past the end, before building a command. The reducer doesn't silently correct a command.
+- **Edits keep clips valid.** A trim or a cut that leaves fades longer than their clip shortens both in proportion. `audio.setFade` is the exception: a fade that doesn't fit is the UI's to clamp, so it fails. A plan may have no clips at all, after deleting everything, and export refuses an empty plan.
 - **Sources are registered, not carried in commands.** `session.insert(file, { at })` probes the file, checks it against the file policy, decodes it into a new source, and then executes `audio.insertClips` with the source's id. Commands never carry samples.
 - **Analysis produces ordinary commands.** "Normalize" measures the selection's peak in the worker, then executes `audio.setGain`. Later loudness tools work the same way.
 
@@ -104,5 +111,5 @@ The session depends only on the ports. Unit tests run it against fakes, without 
 
 - Edits are instant and cost almost no memory: they change a small plan. The audio is rendered once, on export.
 - Undo is consistent with `pdf-sdk`'s, because both use `sdk-core`'s history, and the family tests its subtle parts once.
-- The session needs `@hussmartinez/sdk-core` 0.2.0, the first release with `createStore` and `createHistory`.
+- The session needs `@hussmartinez/sdk-core` 0.3.0, the first published release with `createStore`, `createHistory` and `applyCommands` (0.2.0 was never published).
 - Command definitions become public API, tracked in the API report ([ADR 0009](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0009-features-as-tools.md)).
