@@ -1,4 +1,4 @@
-import type { Reducer } from "@hussmartinez/sdk-core";
+import { locate as locateIn, type Reducer } from "@hussmartinez/sdk-core";
 import { AudioError } from "../errors/audio-error.js";
 import {
   type AudioClip,
@@ -7,6 +7,7 @@ import {
   type AudioMetadata,
   type AudioPlan,
   assertClip,
+  clipBoundaries,
   clipLength,
   EMPTY_METADATA,
   NO_FADE,
@@ -374,13 +375,11 @@ function part(clip: AudioClip, from: number, to: number, key: string): AudioClip
  */
 function locate(plan: AudioPlan, frame: unknown): { index: number; offset: number } {
   if (!isIndex(frame, planLength(plan))) invalid("the frame is outside the plan");
-  let at = 0;
-  for (const [index, clip] of plan.clips.entries()) {
-    const length = clipLength(clip);
-    if (frame < at + length) return { index, offset: frame - at };
-    at += length;
-  }
-  return { index: plan.clips.length, offset: 0 };
+  // A valid frame past every clip is the plan's end, where locate finds none.
+  const found = locateIn(clipBoundaries(plan), frame);
+  return found
+    ? { index: found.index, offset: found.within }
+    : { index: plan.clips.length, offset: 0 };
 }
 
 function withClips(plan: AudioPlan, clips: readonly AudioClip[]): AudioPlan {

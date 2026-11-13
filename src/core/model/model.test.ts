@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { dbToGain, gainAt } from "./envelope.js";
 import {
@@ -118,5 +119,41 @@ describe("gainAt", () => {
     // Frame 4 is 4/5 into the fade in, and 5/5 before the end.
     expect(gainAt(short, 4)).toBeCloseTo(dbToGain(-6) * 0.8, 10);
     expect(gainAt(short, 5)).toBeCloseTo(dbToGain(-6) * 0.8, 10);
+  });
+});
+
+describe("clipOffsets on sdk-core's sequenceOffsets (sdk-core ADR 0042)", () => {
+  // The implementation before sdk-core's helper replaced it, kept here to
+  // show that nothing changed.
+  function before(plan: AudioPlan): number[] {
+    const offsets: number[] = [];
+    let at = 0;
+    for (const each of plan.clips) {
+      offsets.push(at);
+      at += clipLength(each);
+    }
+    return offsets;
+  }
+
+  it("gives the same offsets as before, for any plan", () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.tuple(fc.nat(48_000_000), fc.integer({ min: 1, max: 5_000_000 })), {
+          maxLength: 20,
+        }),
+        (spans) => {
+          const plan: AudioPlan = {
+            sampleRate: 48_000,
+            channels: 2,
+            clips: spans.map(([start, length], index) =>
+              clip({ key: `c${index}`, start, end: start + length }),
+            ),
+            metadata: EMPTY_METADATA,
+          };
+          expect(clipOffsets(plan)).toEqual(before(plan));
+        },
+      ),
+      { numRuns: 300 },
+    );
   });
 });

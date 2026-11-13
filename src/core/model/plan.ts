@@ -1,3 +1,4 @@
+import { sequenceOffsets } from "@hussmartinez/sdk-core";
 import { assertFrames } from "./time.js";
 
 /**
@@ -114,13 +115,17 @@ export function planLength(plan: AudioPlan): number {
  * @public
  */
 export function clipOffsets(plan: AudioPlan): readonly number[] {
-  const offsets: number[] = [];
-  let at = 0;
-  for (const clip of plan.clips) {
-    offsets.push(at);
-    at += clipLength(clip);
-  }
-  return offsets;
+  return clipBoundaries(plan).slice(0, -1);
+}
+
+/**
+ * Every clip boundary on the timeline, in frames: the clips' starts, then
+ * the plan's length (sdk-core ADR 0042).
+ *
+ * @internal
+ */
+export function clipBoundaries(plan: AudioPlan): readonly number[] {
+  return sequenceOffsets(plan.clips.map(clipLength));
 }
 
 /**
