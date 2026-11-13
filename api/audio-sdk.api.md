@@ -11,6 +11,19 @@ import { SdkCoreErrorCode } from '@hussmartinez/sdk-core';
 import { SdkError } from '@hussmartinez/sdk-core';
 
 // @public
+export const AUDIO_PLAN_FORMAT = "hm-audio-plan";
+
+// @public
+export const AUDIO_PLAN_VERSION = 1;
+
+// @public
+export interface AudioAssetReference {
+    readonly asset: string;
+    readonly mediaType: string;
+    readonly size: number;
+}
+
+// @public
 export interface AudioCallOptions {
     readonly signal?: AbortSignal;
 }
@@ -53,6 +66,9 @@ export interface AudioDeleteRangeCommand {
 }
 
 // @public
+export type AudioDocumentRejection = AudioClipProblem | "unknown-format" | "unknown-format-version" | "malformed-document" | "unknown-source" | "duplicate-key" | "invalid-fade-curve" | "metadata-too-long";
+
+// @public
 export interface AudioEngine {
     decode(file: Blob, probe: AudioProbe, options?: AudioProgressOptions): Promise<DecodedAudio>;
     destroy(): Promise<void>;
@@ -72,7 +88,7 @@ export class AudioError extends SdkError<AudioErrorCode> {
 }
 
 // @public
-export type AudioErrorCode = SdkCoreErrorCode | "INVALID_AUDIO" | "UNSUPPORTED_FORMAT" | "DECODE_FAILED" | "INVALID_COMMAND" | "DURATION_TOO_LONG" | "TOO_MANY_CHANNELS" | "SAMPLE_RATE_TOO_HIGH" | "SESSION_TOO_LARGE" | "TOO_MANY_CLIPS";
+export type AudioErrorCode = SdkCoreErrorCode | "INVALID_AUDIO" | "UNSUPPORTED_FORMAT" | "DECODE_FAILED" | "INVALID_COMMAND" | "INVALID_DOCUMENT" | "DURATION_TOO_LONG" | "TOO_MANY_CHANNELS" | "SAMPLE_RATE_TOO_HIGH" | "SESSION_TOO_LARGE" | "TOO_MANY_CLIPS";
 
 // @public
 export interface AudioExportFormat {
@@ -183,6 +199,7 @@ export const audioMessages: {
     readonly "errors.UNSUPPORTED_FORMAT": "This audio format isn't supported. Try converting the file to WAV, then open it again.";
     readonly "errors.DECODE_FAILED": "This browser can't play this kind of audio. Try another browser, or convert the file to WAV.";
     readonly "errors.INVALID_COMMAND": "This edit couldn't be made. Please try again.";
+    readonly "errors.INVALID_DOCUMENT": "This project is damaged, or it isn't an audio project.";
     readonly "errors.DURATION_TOO_LONG": "This recording is {actual, duration} long, which is over the {maximum, duration} limit.";
     readonly "errors.TOO_MANY_CHANNELS": "This recording has {actual, number} channels, which is over the {maximum, number}-channel limit.";
     readonly "errors.SAMPLE_RATE_TOO_HIGH": "This recording's sample rate is {actual, number} Hz, which is over the {maximum, number} Hz limit.";
@@ -321,6 +338,31 @@ export interface AudioPlan {
     // (undocumented)
     readonly metadata: AudioMetadata;
     readonly sampleRate: number;
+}
+
+// @public
+export interface AudioPlanDocument {
+    // (undocumented)
+    readonly channels: number;
+    // (undocumented)
+    readonly clips: readonly AudioClip[];
+    // (undocumented)
+    readonly format: typeof AUDIO_PLAN_FORMAT;
+    // (undocumented)
+    readonly metadata: AudioMetadata;
+    // (undocumented)
+    readonly sampleRate: number;
+    // (undocumented)
+    readonly sources: Readonly<Record<string, AudioPlanDocumentSource>>;
+    // (undocumented)
+    readonly version: typeof AUDIO_PLAN_VERSION;
+}
+
+// @public
+export interface AudioPlanDocumentSource {
+    // (undocumented)
+    readonly asset?: AudioAssetReference;
+    readonly frames: number;
 }
 
 // @public
@@ -631,6 +673,15 @@ export const NO_FADE: AudioFade;
 export function planLength(plan: AudioPlan): number;
 
 // @public
+export function readAudioPlanDocument(value: unknown): {
+    readonly plan: AudioPlan;
+    readonly sources: Readonly<Record<string, AudioPlanDocumentSource>>;
+};
+
+// @public
 export function secondsToFrames(seconds: number, sampleRate: number): number;
+
+// @public
+export function toAudioPlanDocument(plan: AudioPlan, sources: Readonly<Record<string, AudioPlanDocumentSource>>): AudioPlanDocument;
 
 ```

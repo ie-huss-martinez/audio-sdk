@@ -14,6 +14,8 @@ import { isSdkError, type SdkCoreErrorCode, SdkError } from "@hussmartinez/sdk-c
  *   usually because it lacks the codec. `details.codec` names it.
  * - `INVALID_COMMAND`: an edit command doesn't apply to the clip plan, such
  *   as a range outside its source or an unknown clip key.
+ * - `INVALID_DOCUMENT`: a plan document, such as a saved project, isn't
+ *   valid in its format.
  * - `DURATION_TOO_LONG`: a file exceeds the `maxDuration` limit.
  * - `TOO_MANY_CHANNELS`: a file exceeds the `maxChannels` limit.
  * - `SAMPLE_RATE_TOO_HIGH`: a file exceeds the `maxSampleRate` limit.
@@ -33,6 +35,7 @@ export type AudioErrorCode =
   | "UNSUPPORTED_FORMAT"
   | "DECODE_FAILED"
   | "INVALID_COMMAND"
+  | "INVALID_DOCUMENT"
   | "DURATION_TOO_LONG"
   | "TOO_MANY_CHANNELS"
   | "SAMPLE_RATE_TOO_HIGH"

@@ -20,6 +20,18 @@ export type {
   AudioLimitName,
 } from "./core/errors/audio-limits.js";
 export { audioLimitDefinitions, audioLimits } from "./core/errors/audio-limits.js";
+export type {
+  AudioAssetReference,
+  AudioDocumentRejection,
+  AudioPlanDocument,
+  AudioPlanDocumentSource,
+} from "./core/format/plan-document.js";
+export {
+  AUDIO_PLAN_FORMAT,
+  AUDIO_PLAN_VERSION,
+  readAudioPlanDocument,
+  toAudioPlanDocument,
+} from "./core/format/plan-document.js";
 export { dbToGain, gainAt } from "./core/model/envelope.js";
 export type {
   AudioClip,

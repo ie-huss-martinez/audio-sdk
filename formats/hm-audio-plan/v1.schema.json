@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v1.schema.json",
+  "title": "hm-audio-plan, version 1",
+  "description": "An audio-sdk clip plan: clips played back to back over immutable sources, with the metadata export writes (docs/formats/hm-audio-plan.md, sdk-core ADR 0045). Every position and length is a whole number of frames at sampleRate. Beyond this schema, readers check that every clip lies within a source the document lists, that its fades fit it, and that keys are unique.",
+  "type": "object",
+  "required": ["format", "version", "sampleRate", "channels", "sources", "clips", "metadata"],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "hm-audio-plan"
+    },
+    "version": {
+      "const": 1
+    },
+    "sampleRate": {
+      "description": "Frames per second.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "channels": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "sources": {
+      "description": "The sources the clips play, by the ids the clips use.",
+      "type": "object",
+      "propertyNames": {
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "clips": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/clip"
+      }
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    }
+  },
+  "$defs": {
+    "frames": {
+      "description": "A whole number of frames.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "key": {
+      "description": "A clip key, stable across edits.",
+      "type": "string",
+      "minLength": 1
+    },
+    "gainDb": {
+      "description": "A gain in decibels. Copied, never computed, so it compares exactly.",
+      "type": "number",
+      "minimum": -120,
+      "maximum": 120
+    },
+    "fade": {
+      "type": "object",
+      "required": ["frames", "curve"],
+      "additionalProperties": false,
+      "properties": {
+        "frames": {
+          "$ref": "#/$defs/frames"
+        },
+        "curve": {
+          "enum": ["linear", "equalPower"]
+        }
+      }
+    },
+    "clip": {
+      "description": "A range of a source, from start inclusive to end exclusive, with its gain and fades.",
+      "type": "object",
+      "required": ["key", "source", "start", "end", "gainDb", "fadeIn", "fadeOut"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start": {
+          "$ref": "#/$defs/frames"
+        },
+        "end": {
+          "$ref": "#/$defs/frames"
+        },
+        "gainDb": {
+          "$ref": "#/$defs/gainDb"
+        },
+        "fadeIn": {
+          "$ref": "#/$defs/fade"
+        },
+        "fadeOut": {
+          "$ref": "#/$defs/fade"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": ["frames"],
+      "additionalProperties": false,
+      "properties": {
+        "frames": {
+          "description": "The source's length in frames.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "asset": {
+          "$ref": "#/$defs/asset"
+        }
+      }
+    },
+    "asset": {
+      "description": "A content-addressed reference to the source's bytes (sdk-core ADR 0045, section 2).",
+      "type": "object",
+      "required": ["asset", "mediaType", "size"],
+      "additionalProperties": false,
+      "properties": {
+        "asset": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "mediaType": {
+          "type": "string",
+          "maxLength": 255,
+          "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]*/[a-z0-9][a-z0-9!#$&^_.+-]*$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "metadataText": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["title", "artist", "album", "year", "comment"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/metadataText"
+        },
+        "artist": {
+          "$ref": "#/$defs/metadataText"
+        },
+        "album": {
+          "$ref": "#/$defs/metadataText"
+        },
+        "year": {
+          "$ref": "#/$defs/metadataText"
+        },
+        "comment": {
+          "$ref": "#/$defs/metadataText"
+        }
+      }
+    }
+  }
+}

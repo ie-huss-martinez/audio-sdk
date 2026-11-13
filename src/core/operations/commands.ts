@@ -285,7 +285,12 @@ export type AudioCommandRejection =
   | "no-recording"
   | "not-plain-data";
 
-class Invalid extends Error {
+/**
+ * A refusal with its reason, before it becomes the caller's `AudioError`.
+ *
+ * @internal
+ */
+export class Invalid extends Error {
   readonly reason: AudioCommandRejection;
 
   constructor(reason: AudioCommandRejection, message: string) {
@@ -294,18 +299,21 @@ class Invalid extends Error {
   }
 }
 
-function invalid(reason: AudioCommandRejection, message: string): never {
+/** @internal */
+export function invalid(reason: AudioCommandRejection, message: string): never {
   throw new Invalid(reason, message);
 }
 
 /** An object whose fields, from a command that may have been stored or sent, are unchecked. */
-type Unchecked<T> = { readonly [Key in keyof T]?: unknown };
+export type Unchecked<T> = { readonly [Key in keyof T]?: unknown };
 
-function isRecord<T>(value: unknown): value is Unchecked<T> {
+/** @internal */
+export function isRecord<T>(value: unknown): value is Unchecked<T> {
   return typeof value === "object" && value !== null;
 }
 
-function isKey(value: unknown): value is string {
+/** @internal */
+export function isKey(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
@@ -315,6 +323,7 @@ function isIndex(value: unknown, max: number): value is number {
 
 function fade(value: unknown, name: string): AudioFade {
   if (!isRecord<AudioFade>(value)) invalid("malformed-command", `${name} isn't a fade`);
+  onlyFields(value, FADE_FIELDS, name);
   if (typeof value.curve !== "string" || !CURVES.has(value.curve)) {
     invalid("invalid-fade-curve", `${name}'s curve isn't linear or equalPower`);
   }
@@ -322,13 +331,58 @@ function fade(value: unknown, name: string): AudioFade {
 }
 
 /**
+ * The fields each command may have. Anything else fails as
+ * `malformed-command`, as the format's JSON Schema refuses it, so that the
+ * reducer accepts exactly what the schema does (sdk-core ADR 0045). A field
+ * whose value is `undefined` counts as absent.
+ */
+const COMMAND_FIELDS: Readonly<Record<AudioCommand["type"], readonly string[]>> = {
+  "audio.insertClips": ["at", "clips", "splitKey"],
+  "audio.removeClips": ["keys"],
+  "audio.restoreClips": ["entries"],
+  "audio.replaceClips": ["index", "count", "clips"],
+  "audio.updateClips": ["clips"],
+  "audio.deleteRange": ["start", "end", "newKey"],
+  "audio.trimClip": ["key", "start", "end"],
+  "audio.splitClip": ["key", "at", "newKey"],
+  "audio.moveClips": ["keys", "to"],
+  "audio.reorderClips": ["order"],
+  "audio.setGain": ["keys", "gainDb"],
+  "audio.setFade": ["key", "edge", "frames", "curve"],
+  "audio.setMetadata": ["field", "value"],
+};
+const CLIP_FIELDS = ["key", "source", "start", "end", "gainDb", "fadeIn", "fadeOut"];
+const FADE_FIELDS = ["frames", "curve"];
+const ENTRY_FIELDS = ["index", "clip"];
+
+/** Fails unless every field the object has is one of `allowed`. */
+/** @internal */
+export function onlyFields(value: object, allowed: readonly string[], what: string): void {
+  for (const [field, content] of Object.entries(value)) {
+    if (content !== undefined && !allowed.includes(field)) {
+      invalid("malformed-command", `${what} has no field ${field}`);
+    }
+  }
+}
+
+/** Fails unless an optional key, when it's there, is a non-empty string. */
+function optionalKey(value: unknown, name: string): string | undefined {
+  if (value !== undefined && !isKey(value)) {
+    invalid("malformed-command", `${name} must be a non-empty string`);
+  }
+  return value;
+}
+
+/**
  * A clean copy of a clip from a command, with only its own fields, or a
  * failure if it isn't valid within its source.
  */
-function checkClip(value: unknown, sourceFrames: SourceFrames): AudioClip {
+/** @internal */
+export function checkClip(value: unknown, sourceFrames: SourceFrames): AudioClip {
   if (!isRecord<AudioClip>(value) || !isKey(value.key) || !isKey(value.source)) {
     invalid("malformed-command", "a clip needs a key and a source");
   }
+  onlyFields(value, CLIP_FIELDS, "a clip");
   const clip: AudioClip = {
     key: value.key,
     source: value.source,
@@ -387,7 +441,9 @@ function position(plan: AudioPlan, key: unknown): number {
 function fitFades(clip: AudioClip): AudioClip {
   const length = clipLength(clip);
   const total = clip.fadeIn.frames + clip.fadeOut.frames;
-  if (total <= length) return clip;
+  // A clip of no frames, or of invalid ones, is left for validation to
+  // refuse with its own reason.
+  if (total <= length || !(length > 0)) return clip;
   return {
     ...clip,
     fadeIn: { ...clip.fadeIn, frames: Math.floor((clip.fadeIn.frames * length) / total) },
@@ -457,6 +513,11 @@ type Applied = { state: AudioPlan; inverse: AudioCommand };
 
 function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrames): Applied {
   if (!isRecord<AudioCommand>(command)) invalid("malformed-command", "a command is an object");
+  const fields = Object.hasOwn(COMMAND_FIELDS, command.type as string)
+    ? COMMAND_FIELDS[command.type as AudioCommand["type"]]
+    : undefined;
+  if (!fields) invalid("unknown-command", "unknown command");
+  onlyFields(command, ["type", ...fields], command.type as string);
   switch (command.type) {
     case "audio.insertClips": {
       const clips = checkClips(command.clips, sourceFrames);
@@ -466,6 +527,7 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
         keys,
         plan.clips.map((clip) => clip.key),
       );
+      const splitKey = optionalKey(command.splitKey, "splitKey");
       const { index, offset } = locate(plan, command.at);
       if (offset === 0) {
         return {
@@ -473,8 +535,9 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
           inverse: { type: "audio.replaceClips", index, count: clips.length, clips: [] },
         };
       }
-      const { splitKey } = command;
-      if (!isKey(splitKey)) invalid("new-key-required", "inserting inside a clip needs a splitKey");
+      if (splitKey === undefined) {
+        invalid("new-key-required", "inserting inside a clip needs a splitKey");
+      }
       checkNewKeys([splitKey], [...plan.clips.map((clip) => clip.key), ...keys]);
       const split = plan.clips[index] as AudioClip;
       const parts = [
@@ -507,8 +570,10 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
       if (!Array.isArray(command.entries)) invalid("malformed-command", "entries must be a list");
       if (command.entries.length === 0) invalid("no-clips", "it needs at least one clip");
       const entries = command.entries.map((entry: unknown) => {
-        if (!isRecord<{ index: number; clip: AudioClip }>(entry))
+        if (!isRecord<{ index: number; clip: AudioClip }>(entry)) {
           invalid("malformed-command", "an entry needs an index and a clip");
+        }
+        onlyFields(entry, ENTRY_FIELDS, "an entry");
         return { index: entry.index, clip: checkClip(entry.clip, sourceFrames) };
       });
       checkNewKeys(
@@ -565,6 +630,7 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
 
     case "audio.deleteRange": {
       const { start, end } = command;
+      const newKey = optionalKey(command.newKey, "newKey");
       if (!isIndex(start, planLength(plan)) || !isIndex(end, planLength(plan))) {
         invalid("frame-outside-plan", "the range must be inside the plan");
       }
@@ -578,8 +644,9 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
       if (last.offset + 1 < clipLength(lastClip)) {
         let key = lastClip.key;
         if (first.index === last.index && first.offset > 0) {
-          const { newKey } = command;
-          if (!isKey(newKey)) invalid("new-key-required", "deleting inside a clip needs a newKey");
+          if (newKey === undefined) {
+            invalid("new-key-required", "deleting inside a clip needs a newKey");
+          }
           checkNewKeys(
             [newKey],
             plan.clips.map((clip) => clip.key),
@@ -685,7 +752,7 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
       const clip = plan.clips[position(plan, command.key)] as AudioClip;
       const { edge, frames } = command;
       if (edge !== "in" && edge !== "out") invalid("invalid-edge", "the edge must be in or out");
-      const next = { frames, curve: fade(command, "the fade").curve };
+      const next = { frames, curve: fade({ frames, curve: command.curve }, "the fade").curve };
       const updated = checkClip(
         edge === "in" ? { ...clip, fadeIn: next } : { ...clip, fadeOut: next },
         sourceFrames,

@@ -1,4 +1,7 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "extends": ["@hussmartinez/sdk-config/biome"]
+  "extends": ["@hussmartinez/sdk-config/biome"],
+  "files": {
+    "includes": ["**", "!conformance"]
+  }
 }
