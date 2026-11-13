@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-12
+- **Amended:** 2026-11-13: `maxSessionSize` counts the decoded channels, not the probe's maximum.
 
 ## Context
 
@@ -63,6 +64,7 @@ So the largest file a session accepts briefly needs about `maxFileSize` plus `ma
 ### Session memory
 
 - **`maxSessionSize` counts every source the session holds,** whether the plan or the undo history refers to it. Deleting an inserted file's clips doesn't free its source while undo could bring them back.
+- **It counts what the decoder returned:** each source's frames × the decoded channel count × 4 bytes. The probe's channel count is a maximum, used only for the checks before decoding; mono AAC probes as two channels and decodes to one ([ADR 0001](0001-audio-engines.md)). So `maxSessionSize` is checked after decoding, and `maxDecodedSize` is what protects the decode itself.
 - **Warnings are part of the snapshot.** At the warning threshold, the snapshot carries a `maxSessionSize` warning, and the editor says that the session is large and that clearing undo history frees memory.
 - **The history gives way first.** When an insert would exceed the maximum, the session drops the oldest history steps that are the only references to a source, in `sdk-core`'s `dropOrder` ([ADR 0029](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0029-session-store-and-history.md)), and frees those sources. Only if that isn't enough does the insert fail with `SESSION_TOO_LARGE`. The editor shows when early steps can no longer be undone ([ADR 0010](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0010-edits-as-commands.md)).
 

@@ -50,6 +50,7 @@ describe("audioMessages", () => {
     for (const limit of Object.keys(audioLimitDefinitions)) {
       expect(audioMessages, limit).toHaveProperty(`warnings.${limit}`);
     }
+    expect(audioMessages).toHaveProperty("warnings.truncated");
   });
 
   it("is a valid catalogue", () => {

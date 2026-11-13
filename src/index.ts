@@ -75,5 +75,17 @@ export type {
   AudioSampleFormat,
 } from "./core/ports/audio-processor.js";
 export type { AudioCallOptions, AudioProgressOptions } from "./core/ports/options.js";
+export type {
+  AudioInsertOptions,
+  AudioRecordingFacts,
+  AudioSelection,
+  AudioSession,
+  AudioSessionEvent,
+  AudioSessionOptions,
+  AudioSessionSnapshot,
+  AudioSessionStatus,
+  AudioWarning,
+} from "./core/session/session.js";
+export { createAudioSession } from "./core/session/session.js";
 export type { AudioMessageCatalogue } from "./messages/en.js";
 export { audioMessages } from "./messages/en.js";
