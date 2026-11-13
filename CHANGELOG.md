@@ -1,5 +1,39 @@
 # @hussmartinez/audio-sdk
 
+## 0.2.0
+
+### Minor Changes
+
+- [#28](https://github.com/ie-huss-martinez/audio-sdk/pull/28) [`0dda45f`](https://github.com/ie-huss-martinez/audio-sdk/commit/0dda45f486554a6dfcc8bc87d7ec736d98d2c758) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Adds `createAudioSession({ engine, filePolicy, onEvent })`, the recording being edited as a framework-agnostic store: a clip plan over decoded sources, edited with `AudioCommand`s, with undo and redo.
+  
+  - **Opening:** `session.open(file)` checks the file's size before reading it, and its probe against the limits before decoding it. Sources take their channel count and memory from the decoded audio, so a mono AAC file, which probes as two channels, counts as one. A failed open keeps the recording already open, with its history. A newer open or `close()` cancels every load in progress.
+  - **Inserting:** `session.insert(file, { at })` adds another recording as one undoable step, splitting the clip at `at`. Recordings at another sample rate are refused with `UNSUPPORTED_FORMAT` until resampling arrives. When the sources would exceed `maxSessionSize`, the oldest history steps that alone hold a source are dropped first, and `historyTrimmed` says so.
+  - **Editing:** `execute`, `group`, `undo` and `redo`, with `createKey()` for the keys of new clips. Commands are copied, and those that would exceed `maxClips` fail with `TOO_MANY_CLIPS`.
+  - **Warnings:** the snapshot's `warnings` list limits past their warning thresholds, and a `truncated` warning, with text under `warnings.truncated`, for a WAV or AIFF file cut short, which opens with the audio it holds.
+  - **Events:** anonymous `onEvent` events for opens, inserts, commands, undo, redo, closes and failures, with durations in seconds and never file names, samples or metadata.
+
+- [#32](https://github.com/ie-huss-martinez/audio-sdk/pull/32) [`f9269e6`](https://github.com/ie-huss-martinez/audio-sdk/commit/f9269e6dde5a7722789d6e521c0ae94bcb12d5d5) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Every `INVALID_COMMAND` error now has a stable `details.reason` token saying why, such as `clip-too-short`, `unknown-clip`, `key-taken` or `no-recording`. Branch on it instead of the message, which is for developers and may change. The tokens are the new `AudioCommandRejection` type, and a clip's own problems are `AudioClipProblem`. They never change meaning once released (sdk-core ADR 0045).
+
+- [#34](https://github.com/ie-huss-martinez/audio-sdk/pull/34) [`2ae8c5c`](https://github.com/ie-huss-martinez/audio-sdk/commit/2ae8c5cb7bccdfa0b895a922bc84e88f2e4dc467) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Adds the clip plan's portable JSON format, `hm-audio-plan` version 1, with JSON Schemas for it and for the user-level commands, and language-neutral conformance vectors (sdk-core ADR 0045).
+  
+  - **`toAudioPlanDocument(plan, sources)`** writes a plan, with the sources its clips use, as plain JSON-ready data. **`readAudioPlanDocument(json)`** reads one back, and checks it fully. Another format or a later version fails with `UNSUPPORTED_FORMAT`, and anything else wrong fails with the new `INVALID_DOCUMENT` code, with a `details.reason` from `AudioDocumentRejection`. Text for `errors.INVALID_DOCUMENT` is in `audioMessages`.
+  - **Commands are strict.** A field a command's type doesn't have now fails with `INVALID_COMMAND` and `malformed-command`, instead of being ignored, as the command schema refuses it.
+  - **A reversed trim** is refused as `clip-too-short`, not `invalid-frames`.
+
+- [#31](https://github.com/ie-huss-martinez/audio-sdk/pull/31) [`2bcd2d3`](https://github.com/ie-huss-martinez/audio-sdk/commit/2bcd2d3250a4427f428a3a5e0645d79a1b603a3b) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Uses sdk-core's shared helpers in place of the SDK's own copies, and finishes two changes that waited for sdk-core.
+  
+  - **`maxSampleRate` errors** now have `details.unit` of `"hertz"`, instead of `"count"`.
+  - **Duration text:** `errors.DURATION_TOO_LONG` and `warnings.maxDuration` now state the length, and the limit, such as "This recording is 3 hr, 5 min long, which is over the 3 hr limit." Hosts that override these messages can use `{actual, duration}` and `{maximum, duration}`.
+  - **The worker's version check** is sdk-core's handshake: the worker announces its version when it starts, instead of answering a call. A self-hosted worker from another version is still refused with `WORKER_START_FAILED`, naming the asset and both versions. Copy `dist/assets` again with this release, as after every upgrade.
+  - **`assetsUrl`** is resolved by sdk-core's `resolveAssetsBase`. A URL with a query or a fragment now throws `TypeError` when the engine is created, because the worker's URL would lose it.
+  - **A WebM or Matroska element** whose size is too large to hold exactly fails with `INVALID_AUDIO`.
+
+### Patch Changes
+
+- [#33](https://github.com/ie-huss-martinez/audio-sdk/pull/33) [`9a4d2f4`](https://github.com/ie-huss-martinez/audio-sdk/commit/9a4d2f466de53d3ac1e0247dbc38854db39cc6d4) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Depends on `@hussmartinez/sdk-core` 0.4.1, the current release, so applications that also use other `@hussmartinez` packages resolve one copy of it.
+
+- [#30](https://github.com/ie-huss-martinez/audio-sdk/pull/30) [`6a12f5e`](https://github.com/ie-huss-martinez/audio-sdk/commit/6a12f5ee5877125b4245f61e6f165f56242a0592) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Uses `@hussmartinez/sdk-core` 0.4.0. `clipOffsets` is now built on sdk-core's timeline helpers, with no change in what it returns for any plan the SDK accepts.
+
 ## 0.1.0
 
 ### Minor Changes
