@@ -1,16 +1,66 @@
 # audio-sdk
 
-A client-side audio SDK: trim, split, fade, adjust gain and export audio entirely in the browser. Audio never leaves the device. It offers a headless core, a React editor (`AudioEditor`) and a `<hm-audio-editor>` custom element.
+A client-side audio SDK: trim, split, fade, adjust gain and export audio entirely in the browser. Audio never leaves the device. Its headless core is published; a React editor (`AudioEditor`) and a `<hm-audio-editor>` custom element come later.
 
-This repository will publish **`@hussmartinez/audio-sdk`**. It follows the family standards in [`sdk-core`'s `STANDARDS.md`](https://github.com/ie-huss-martinez/sdk-core/blob/main/STANDARDS.md), and in particular the decisions on [hostile input and no network](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0012-hostile-input-and-no-network.md), [workers and assets](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0011-worker-messaging-and-assets.md) and [ports and adapters](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0008-ports-adapters-and-session.md).
+This repository publishes **[`@hussmartinez/audio-sdk`](https://www.npmjs.com/package/@hussmartinez/audio-sdk)**. It follows the family standards in [`sdk-core`'s `STANDARDS.md`](https://github.com/ie-huss-martinez/sdk-core/blob/main/STANDARDS.md), and in particular the decisions on [hostile input and no network](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0012-hostile-input-and-no-network.md), [workers and assets](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0011-worker-messaging-and-assets.md) and [ports and adapters](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0008-ports-adapters-and-session.md).
 
-> Status: being bootstrapped. No packages are published yet.
+> Status: pre-1.0. The headless core is published: opening, editing with undo, and exporting to WAV. Playback and the editor UI are next, and the API may change between minor versions until 1.0.
 
-## Using the engine
+## Editing and exporting
 
-> The session, editor and custom element come later. What's shipped so far is the engine: it reads audio files safely and decodes them on the user's device.
+`createAudioSession()` holds the recording being edited: a clip plan over decoded sources, edited with commands, with undo and redo ([ADR 0003](docs/adr/0003-clip-plan-document-model.md)). It applies the file policy for you, and `export()` renders the result in a worker:
 
-`createAudioEngine()` probes a file in a Web Worker, which reads its headers and walks its frames to bound how much audio it can decode to. Check that against your file policy, then decode it and build its waveform overview:
+```ts
+import {
+  audioMessages,
+  createAudioEngine,
+  createAudioProcessor,
+  createAudioSession,
+} from "@hussmartinez/audio-sdk";
+import { createMessages } from "@hussmartinez/sdk-core";
+
+const messages = createMessages(audioMessages, { locale: "en" });
+const session = createAudioSession({
+  engine: createAudioEngine(),
+  processor: createAudioProcessor(),
+  filePolicy: { maxDuration: 30 * 60 * 1_000 }, // or leave it out for the defaults
+  onEvent: (event) => analytics.track(event), // anonymous: no names, samples or metadata
+});
+session.subscribe(() => render(session.getSnapshot())); // or useSyncExternalStore in React
+
+try {
+  await session.open(file, { onProgress: showProgress });
+
+  // Cut the first second, and fade the rest in over half a second.
+  const { plan } = session.getSnapshot();
+  const rate = plan?.sampleRate ?? 48_000;
+  session.execute({ type: "audio.deleteRange", start: 0, end: rate, newKey: session.createKey() });
+  const [clip] = session.getSnapshot().plan?.clips ?? [];
+  if (clip) {
+    session.execute({ type: "audio.setFade", key: clip.key, edge: "in", frames: rate / 2, curve: "equalPower" });
+  }
+  session.execute({ type: "audio.setMetadata", field: "title", value: "Interview" });
+  session.undo(); // and session.redo()
+
+  const wav = await session.export({
+    format: { container: "wav", sampleFormat: "pcm24" },
+    onProgress: showProgress,
+  });
+  offerDownload(wav); // a Blob: the session never downloads anything itself
+} catch (error) {
+  showError(messages.error(error)); // text by code, never the error's message
+}
+```
+
+- **The snapshot** has the `plan` (clips in frames, and the metadata), the `sources`, `canUndo` and `canRedo`, `busy`, the last `error`, and `warnings`: limits past their warning thresholds, and `truncated` for a WAV or AIFF file cut short, which opens with the audio it holds. Show their text from `warnings.<name>` in `audioMessages`.
+- **Commands** are plain data, such as `audio.splitClip` or `audio.setGain`, with an exact inverse for undo. One that doesn't apply throws `INVALID_COMMAND` with a stable `details.reason`, such as `unknown-clip`. `session.group(fn)` makes several commands, such as a drag, one undo step.
+- **`session.insert(file, { at })`** adds another recording at a frame, as one undo step. It must have the session's sample rate, for now.
+- **Exports** render the plan as it is when the export starts, as 16-bit (the default) or 24-bit PCM, or 32-bit float WAV, with the metadata in the file. They run under `maxProcessingTime`, and the `signal` option cancels them.
+- **Plans are portable JSON:** `toAudioPlanDocument` and `readAudioPlanDocument` write and read the `hm-audio-plan` format, whose JSON Schema ships in the package, at `@hussmartinez/audio-sdk/formats/hm-audio-plan/v1.schema.json` ([format record](docs/formats/hm-audio-plan.md)).
+
+## Using the engine directly
+
+The session uses the engine for you. Use it directly for a custom pipeline: `createAudioEngine()` probes a file in a Web Worker, which reads its headers and walks its frames to bound how much audio it can decode to. Check that against your file policy, then decode it and build its waveform overview:
 
 ```ts
 import {
@@ -66,8 +116,8 @@ try {
 
 | Mode | How | Directives |
 |---|---|---|
-| Inline (the default) | `createAudioEngine()`: the worker is inlined and starts from a `blob:` URL | `worker-src blob:` |
-| Self-hosted | `createAudioEngine({ assetsUrl: "/audio-sdk/" })`: serve the package's `dist/assets/` there; the worker is `audio/audio.worker.js` | `worker-src 'self'` |
+| Inline (the default) | `createAudioEngine()` and `createAudioProcessor()`: the worker is inlined and starts from a `blob:` URL | `worker-src blob:` |
+| Self-hosted | `createAudioEngine({ assetsUrl: "/audio-sdk/" })`, and the same option for `createAudioProcessor`: serve the package's `dist/assets/` there; the worker is `audio/audio.worker.js` | `worker-src 'self'` |
 
 Neither mode needs `'unsafe-eval'` or `'wasm-unsafe-eval'`, and the SDK makes no network requests of its own ([ADR 0002](docs/adr/0002-workers-and-assets.md)).
 
@@ -88,7 +138,13 @@ Every failure is an `AudioError` with a stable `code` and structured `details`; 
 | `UNSUPPORTED_ENVIRONMENT` | The browser lacks a feature, such as Web Audio, which `details.feature` names |
 | `WORKER_START_FAILED`, `WORKER_CRASHED` and other `WORKER_*` codes | The worker couldn't start, stopped unexpectedly, or is from another version |
 
-`TOO_MANY_FILES`, `SESSION_TOO_LARGE`, `TOO_MANY_CLIPS` and `INVALID_COMMAND` come with the session.
+The session adds:
+
+| Code | When |
+|---|---|
+| `TOO_MANY_FILES`, `SESSION_TOO_LARGE`, `TOO_MANY_CLIPS` | An insert or an edit would exceed `maxFiles`, `maxSessionSize` or `maxClips` |
+| `INVALID_COMMAND` | A command doesn't apply, or there's nothing to export; `details.reason` says why |
+| `INVALID_DOCUMENT` | A plan document isn't valid; `details.reason` says why. Another format or a later version is `UNSUPPORTED_FORMAT` |
 
 ## Development
 
