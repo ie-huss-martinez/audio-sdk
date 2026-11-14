@@ -1,5 +1,11 @@
 # @hussmartinez/audio-sdk
 
+## 0.3.1
+
+### Patch Changes
+
+- [#42](https://github.com/ie-huss-martinez/audio-sdk/pull/42) [`07233f9`](https://github.com/ie-huss-martinez/audio-sdk/commit/07233f95c6a9a6492d19c80720c7b3bee600a7bf) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The README now documents the session: opening, editing with commands and undo, and exporting to WAV with `createAudioSession`, `createAudioProcessor` and `session.export()`, in a worked example. It also states what's published, lists the session's and the plan documents' error codes, and points to the portable `hm-audio-plan` format.
+
 ## 0.3.0
 
 ### Minor Changes
