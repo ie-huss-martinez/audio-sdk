@@ -173,7 +173,7 @@ The browser and end-to-end tests run in the pinned browser test image of [`ci/Do
 | Browser tests | `test:browser` | Vitest in the browser test image: Chromium, and Firefox and WebKit too in CI |
 | Examples | `build:examples` | Vite, building `examples/vite` against the built package |
 | End-to-end tests | `test:e2e` | Playwright in the browser test image, against the built example: the [codec capability matrix](docs/capabilities.md), no requests to other origins, and the self-hosted worker under a strict Content Security Policy |
-| Size budgets | `check:size` | size-limit, brotli size of each entry point |
+| Size budgets | `check:size` | size-limit: a ceiling on each built entry point, and a budget for each factory an application imports, bundled as its bundler would ([`.size-limit.js`](.size-limit.js)) |
 | API reports | `check:api` | api-extractor, one report per entry point in [`api`](api) |
 | Package checks | `check:package` | publint and Are the Types Wrong? |
 
