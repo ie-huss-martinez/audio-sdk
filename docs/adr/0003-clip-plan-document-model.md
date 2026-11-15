@@ -9,6 +9,7 @@
 - **Amended:** 2026-11-13: the plan and the user-level commands have a portable JSON format, `hm-audio-plan` and `hm-audio-command` version 1 ([the format record](../formats/hm-audio-plan.md), sdk-core ADR 0045), and the reducer refuses unknown fields, as their schemas do.
 - **Amended:** 2026-11-13, with the session's export as built: the plan as it is when the export starts, the `empty-plan` refusal, and event durations rounded to two significant figures.
 - **Amended:** 2026-11-13: the metadata length limit counts Unicode code points, not UTF-16 code units (sdk-core ADR 0045, section 8).
+- **Amended:** 2026-11-15: `connectOutput` and `session.getAudio` keep an output in step with the session.
 
 ## Context
 
@@ -83,6 +84,7 @@ Every inverse is exact: it carries the previous state of what the command change
 - **The history is `sdk-core`'s `createHistory`,** with `group()` for gestures that make several commands, such as dragging a trim handle or typing into a metadata field, which are one undoable step each.
 - **Undo uses inverse commands, never snapshots of samples.** A step costs a few hundred bytes, plus the sources it still refers to, which [ADR 0004](0004-audio-limits.md) counts.
 - **The playhead isn't in the session.** It moves sixty times a second during playback, and putting it in the snapshot would re-render everything that reads the session. `AudioOutput` has its own small store, also from `createStore`, with its state (stopped, playing or paused) and a `position()` read from the audio clock, which the playhead's view polls on animation frames. Play and pause take the family's `play-pause` shortcut ([ADR 0030](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0030-tools-and-keyboard-shortcuts.md)).
+- **`connectOutput(session, output)` keeps playback in step with the session,** from outside it. On every change of the plan, the output loads it with the decoded sources its clips use, from `session.getAudio`, and carries on from the playhead while playing. When the recording closes, or another replaces it, which a plan sharing none of the held sources shows, because source ids are never reused, the output stops at the start.
 - **Events:** each command emits an anonymous event with its type and outcome for the host's `onEvent`, with durations in seconds. Events never carry file names, samples or metadata values. Durations are rounded to two significant figures, such as 3,500 seconds for 3,456.7: an exact length, with the sample rate and channel count, could fingerprint a recording.
 
 ### Exporting

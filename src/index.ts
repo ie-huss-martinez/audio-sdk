@@ -94,6 +94,7 @@ export type {
   AudioSampleFormat,
 } from "./core/ports/audio-processor.js";
 export type { AudioCallOptions, AudioProgressOptions } from "./core/ports/options.js";
+export { connectOutput } from "./core/session/connect-output.js";
 export type {
   AudioInsertOptions,
   AudioRecordingFacts,

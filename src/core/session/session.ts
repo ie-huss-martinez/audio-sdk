@@ -266,6 +266,11 @@ export interface AudioSession {
   /** A source's waveform overview, or `undefined` for a source the session doesn't hold. */
   getPeaks(source: string): AudioPeaks | undefined;
   /**
+   * A source's decoded audio, for playback, or `undefined` for a source the
+   * session doesn't hold. Don't modify it: sources never change.
+   */
+  getAudio(source: string): DecodedAudio | undefined;
+  /**
    * Renders and encodes the plan as it is now, with the session's
    * `processor`, under `maxProcessingTime`. It returns the file, and never
    * downloads it: the host decides what to do with it. Edits made while it
@@ -811,6 +816,8 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     },
 
     getPeaks: (id) => sources.get(id)?.peaks,
+
+    getAudio: (id) => sources.get(id)?.audio,
 
     async export(exportOptions = {}) {
       const current = plan;
