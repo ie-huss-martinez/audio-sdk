@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test:e2e": "tsc --noEmit && playwright test"
+    "test:e2e": "tsc --noEmit && hm-in-image playwright test"
   },
   "devDependencies": {
     "@hussmartinez/sdk-config": "catalog:",

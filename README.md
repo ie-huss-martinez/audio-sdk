@@ -150,7 +150,7 @@ The session adds:
 
 The repository root is the published package, laid out as in the family's [standard layout](https://github.com/ie-huss-martinez/sdk-core/blob/main/STANDARDS.md#repository-layout): the source is in [`src`](src), and the pnpm workspace adds [`examples/`](examples), which consume the built package as hosts do, and [`e2e/`](e2e), the end-to-end suite.
 
-You need Node 24 (see [`.node-version`](.node-version)) and pnpm. The exact pnpm version is pinned in `package.json`, and pnpm switches to it automatically.
+You need Node 24 (see [`.node-version`](.node-version)), pnpm, and Docker. The exact pnpm version is pinned in `package.json`, and pnpm switches to it automatically.
 
 ```sh
 pnpm install       # also installs the git hooks
@@ -158,7 +158,7 @@ pnpm verify        # everything CI runs
 pnpm verify:fast   # the subset the pre-push hook runs
 ```
 
-Browser tests need Playwright's browsers once: `pnpm exec playwright install chromium`, plus `firefox webkit` to run all three engines with `CI=1` or `pnpm test:browser:all`.
+The browser and end-to-end tests run in the pinned browser test image of [`ci/Dockerfile`](ci/Dockerfile), as in CI, through `hm-in-image` ([ADR 0049 in sdk-core](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0049-local-browser-tests-in-the-pinned-image.md)): the host needs Docker, but no Playwright browsers, and its system libraries don't matter. The first run builds the image and installs the dependencies into its own volumes. `pnpm test:browser:all`, or `CI=1`, runs all three engines.
 
 `pnpm verify` runs, in order:
 
@@ -170,9 +170,9 @@ Browser tests need Playwright's browsers once: `pnpm exec playwright install chr
 | Dependency rules | `lint:deps` | dependency-cruiser, through `hm-lint-deps` |
 | Build | `build` | Vite, then api-extractor for the type declarations |
 | Unit tests | `test` | Vitest |
-| Browser tests | `test:browser` | Vitest in Chromium, and in Firefox and WebKit too in CI |
+| Browser tests | `test:browser` | Vitest in the browser test image: Chromium, and Firefox and WebKit too in CI |
 | Examples | `build:examples` | Vite, building `examples/vite` against the built package |
-| End-to-end tests | `test:e2e` | Playwright against the built example: the [codec capability matrix](docs/capabilities.md), no requests to other origins, and the self-hosted worker under a strict Content Security Policy |
+| End-to-end tests | `test:e2e` | Playwright in the browser test image, against the built example: the [codec capability matrix](docs/capabilities.md), no requests to other origins, and the self-hosted worker under a strict Content Security Policy |
 | Size budgets | `check:size` | size-limit, brotli size of each entry point |
 | API reports | `check:api` | api-extractor, one report per entry point in [`api`](api) |
 | Package checks | `check:package` | publint and Are the Types Wrong? |
