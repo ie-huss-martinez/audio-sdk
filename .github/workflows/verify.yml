@@ -47,6 +47,10 @@ jobs:
       options: --user 1001 --ipc=host --init
     env:
       HUSKY: "0"
+      # The job runs in the browser test image, so hm-in-image runs the
+      # browser and end-to-end tests directly rather than through Docker
+      # (sdk-core ADR 0049).
+      HM_VISUAL_CONTAINER: "1"
     steps:
       - uses: ie-huss-martinez/sdk-ci/verify@b566576ae9a71f0e6dac0048e4cc79e60283c4f2 # v2.0.1
 
