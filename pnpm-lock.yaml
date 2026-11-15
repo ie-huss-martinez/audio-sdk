@@ -180,8 +180,8 @@ catalogs:
       specifier: ^21.2.4
       version: 21.2.4
     '@hussmartinez/sdk-config':
-      specifier: ^0.8.1
-      version: 0.8.1
+      specifier: ^0.9.0
+      version: 0.9.0
     '@hussmartinez/sdk-core':
       specifier: ^0.4.1
       version: 0.4.1
@@ -280,7 +280,7 @@ importers:
         version: 21.2.4(conventional-commits-parser@7.1.4)(typescript@6.0.3)
       '@hussmartinez/sdk-config':
         specifier: 'catalog:'
-        version: 0.8.1(@biomejs/biome@2.6.6)(@commitlint/cli@21.2.4(conventional-commits-parser@7.1.4)(typescript@6.0.3))(@microsoft/api-extractor@7.60.1(@types/node@24.19.2))(@playwright/test@1.65.0)(@vitest/browser-playwright@5.1.0)(ajv@8.20.0)(dependency-cruiser@18.7.2)(lint-staged@17.6.0)(secretlint@13.1.0(supports-color@10.2.2))(stylelint@18.0.0)(typescript@6.0.3)(vitest@5.1.0)
+        version: 0.9.0(@biomejs/biome@2.6.6)(@commitlint/cli@21.2.4(conventional-commits-parser@7.1.4)(typescript@6.0.3))(@microsoft/api-extractor@7.60.1(@types/node@24.19.2))(@playwright/test@1.65.0)(@vitest/browser-playwright@5.1.0)(ajv@8.20.0)(dependency-cruiser@18.7.2)(lint-staged@17.6.0)(secretlint@13.1.0(supports-color@10.2.2))(stylelint@18.0.0)(typescript@6.0.3)(vitest@5.1.0)
       '@microsoft/api-extractor':
         specifier: 'catalog:'
         version: 7.60.1(@types/node@24.19.2)
@@ -352,7 +352,7 @@ importers:
     devDependencies:
       '@hussmartinez/sdk-config':
         specifier: 'catalog:'
-        version: 0.8.1(@biomejs/biome@2.6.6)(@commitlint/cli@21.2.4(conventional-commits-parser@7.1.4)(typescript@6.0.3))(@microsoft/api-extractor@7.60.1(@types/node@24.19.2))(@playwright/test@1.65.0)(@vitest/browser-playwright@5.1.0)(ajv@8.20.0)(dependency-cruiser@18.7.2)(lint-staged@17.6.0)(secretlint@13.1.0(supports-color@10.2.2))(stylelint@18.0.0)(typescript@6.0.3)(vitest@5.1.0)
+        version: 0.9.0(@biomejs/biome@2.6.6)(@commitlint/cli@21.2.4(conventional-commits-parser@7.1.4)(typescript@6.0.3))(@microsoft/api-extractor@7.60.1(@types/node@24.19.2))(@playwright/test@1.65.0)(@vitest/browser-playwright@5.1.0)(ajv@8.20.0)(dependency-cruiser@18.7.2)(lint-staged@17.6.0)(secretlint@13.1.0(supports-color@10.2.2))(stylelint@18.0.0)(typescript@6.0.3)(vitest@5.1.0)
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.65.0
@@ -371,7 +371,7 @@ importers:
     devDependencies:
       '@hussmartinez/sdk-config':
         specifier: 'catalog:'
-        version: 0.8.1(@biomejs/biome@2.6.6)(@commitlint/cli@21.2.4(conventional-commits-parser@7.1.4)(typescript@6.0.3))(@microsoft/api-extractor@7.60.1(@types/node@24.19.2))(@playwright/test@1.65.0)(@vitest/browser-playwright@5.1.0)(ajv@8.20.0)(dependency-cruiser@18.7.2)(lint-staged@17.6.0)(secretlint@13.1.0(supports-color@10.2.2))(stylelint@18.0.0)(typescript@6.0.3)(vitest@5.1.0)
+        version: 0.9.0(@biomejs/biome@2.6.6)(@commitlint/cli@21.2.4(conventional-commits-parser@7.1.4)(typescript@6.0.3))(@microsoft/api-extractor@7.60.1(@types/node@24.19.2))(@playwright/test@1.65.0)(@vitest/browser-playwright@5.1.0)(ajv@8.20.0)(dependency-cruiser@18.7.2)(lint-staged@17.6.0)(secretlint@13.1.0(supports-color@10.2.2))(stylelint@18.0.0)(typescript@6.0.3)(vitest@5.1.0)
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
@@ -860,8 +860,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@hussmartinez/sdk-config@0.8.1':
-    resolution: {integrity: sha512-z89nO1i9/rlrg53poBRBH/s1PyuJzUVgBK+0v2djtfjuhNqgg+qMYFn/Gh2kHGF/ojozGIJXFl6MTJZ8ncrPMA==}
+  '@hussmartinez/sdk-config@0.9.0':
+    resolution: {integrity: sha512-s26RRK2G7xIWN0uqw+hOamarjLFdE5WCby7FMpTpt0HoGJEmkqwGYqkMxTTvnMgQ1caXppI6vEiw95n5O4bx+w==}
     engines: {node: '>=24'}
     hasBin: true
     peerDependencies:
@@ -2877,7 +2877,7 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@hussmartinez/sdk-config@0.8.1(@biomejs/biome@2.6.6)(@commitlint/cli@21.2.4(conventional-commits-parser@7.1.4)(typescript@6.0.3))(@microsoft/api-extractor@7.60.1(@types/node@24.19.2))(@playwright/test@1.65.0)(@vitest/browser-playwright@5.1.0)(ajv@8.20.0)(dependency-cruiser@18.7.2)(lint-staged@17.6.0)(secretlint@13.1.0(supports-color@10.2.2))(stylelint@18.0.0)(typescript@6.0.3)(vitest@5.1.0)':
+  '@hussmartinez/sdk-config@0.9.0(@biomejs/biome@2.6.6)(@commitlint/cli@21.2.4(conventional-commits-parser@7.1.4)(typescript@6.0.3))(@microsoft/api-extractor@7.60.1(@types/node@24.19.2))(@playwright/test@1.65.0)(@vitest/browser-playwright@5.1.0)(ajv@8.20.0)(dependency-cruiser@18.7.2)(lint-staged@17.6.0)(secretlint@13.1.0(supports-color@10.2.2))(stylelint@18.0.0)(typescript@6.0.3)(vitest@5.1.0)':
     dependencies:
       '@commitlint/config-conventional': 21.2.4
       '@secretlint/secretlint-rule-preset-recommend': 13.1.0
