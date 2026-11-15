@@ -1,5 +1,11 @@
 # @hussmartinez/audio-sdk
 
+## 0.5.0
+
+### Minor Changes
+
+- [#50](https://github.com/ie-huss-martinez/audio-sdk/pull/50) [`809bdb4`](https://github.com/ie-huss-martinez/audio-sdk/commit/809bdb4aa4abda2a2baae7c3b8abdc848a278567) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Adds `connectOutput(session, output)`, which keeps an `AudioOutput`, such as `createAudioOutput()`, playing what the session holds. Edits, undo and inserts reach playback at once, carrying on from the playhead, and closing or replacing the recording stops it at the start. It returns a function that disconnects them. `session.getAudio(id)` gives a source's decoded audio, for playback.
+
 ## 0.4.0
 
 ### Minor Changes
