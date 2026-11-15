@@ -28,7 +28,7 @@ jobs:
       ref: ${{ steps.image.outputs.ref }}
     steps:
       - id: image
-        uses: ie-huss-martinez/sdk-ci/image@b566576ae9a71f0e6dac0048e4cc79e60283c4f2 # v2.0.1
+        uses: ie-huss-martinez/sdk-ci/image@ace414beadabbad28a5e2609ebdf731a2cac473b # v2.1.0
 
   verify:
     name: verify
@@ -52,11 +52,11 @@ jobs:
       # (sdk-core ADR 0049).
       HM_VISUAL_CONTAINER: "1"
     steps:
-      - uses: ie-huss-martinez/sdk-ci/verify@b566576ae9a71f0e6dac0048e4cc79e60283c4f2 # v2.0.1
+      - uses: ie-huss-martinez/sdk-ci/verify@ace414beadabbad28a5e2609ebdf731a2cac473b # v2.1.0
 
       # This repository's workflows must match the skeleton of the sdk-ci
       # version it pins (ADR 0026).
-      - uses: ie-huss-martinez/sdk-ci/check-workflows@b566576ae9a71f0e6dac0048e4cc79e60283c4f2 # v2.0.1
+      - uses: ie-huss-martinez/sdk-ci/check-workflows@ace414beadabbad28a5e2609ebdf731a2cac473b # v2.1.0
 
   # The version pull request consumes changesets by design, so it's skipped.
   changeset:
@@ -65,4 +65,4 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: ie-huss-martinez/sdk-ci/changeset@b566576ae9a71f0e6dac0048e4cc79e60283c4f2 # v2.0.1
+      - uses: ie-huss-martinez/sdk-ci/changeset@ace414beadabbad28a5e2609ebdf731a2cac473b # v2.1.0

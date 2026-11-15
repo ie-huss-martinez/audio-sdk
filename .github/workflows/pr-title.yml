@@ -19,4 +19,4 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - uses: ie-huss-martinez/sdk-ci/pr-title@b566576ae9a71f0e6dac0048e4cc79e60283c4f2 # v2.0.1
+      - uses: ie-huss-martinez/sdk-ci/pr-title@ace414beadabbad28a5e2609ebdf731a2cac473b # v2.1.0
