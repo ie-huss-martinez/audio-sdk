@@ -38,6 +38,17 @@ describe("the browser test image", () => {
     expect(tag, "update ci/Dockerfile's tag and digest with playwright").toBe(installed);
   });
 
+  it("is the exact Playwright version the catalog pins, so no install can drift from it", async () => {
+    // A range such as ^1.65.0 resolves to a later patch, whose browsers the
+    // image doesn't have.
+    const tag = /playwright:v(\d+\.\d+\.\d+)-/.exec(await pinnedImage())?.[1];
+    const workspace = await read("pnpm-workspace.yaml");
+    for (const name of ['"@playwright/test"', "playwright"]) {
+      const pin = new RegExp(`^  ${name}: (\\S+)$`, "m").exec(workspace)?.[1];
+      expect(pin, `pin ${name} in the catalog to the image's version, without a range`).toBe(tag);
+    }
+  });
+
   it("has no copy in any workflow", async () => {
     const workflows = await readdir(new URL("../.github/workflows/", import.meta.url));
     expect(workflows.length).toBeGreaterThan(0);
