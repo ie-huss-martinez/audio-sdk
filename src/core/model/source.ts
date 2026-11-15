@@ -102,6 +102,7 @@ export interface AudioPeaks {
  * @public
  */
 export interface AudioSourceInfo {
+  /** Unique within the session, and never reused, even after the source is released. */
   readonly id: string;
   readonly sampleRate: number;
   readonly channels: number;

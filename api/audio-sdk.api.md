@@ -476,6 +476,7 @@ export interface AudioSession {
     createKey(): string;
     execute(commands: AudioCommand | readonly AudioCommand[]): void;
     export(options?: AudioSessionExportOptions): Promise<Blob>;
+    getAudio(source: string): DecodedAudio | undefined;
     getPeaks(source: string): AudioPeaks | undefined;
     getSnapshot(): AudioSessionSnapshot;
     group<T>(fn: () => T): T;
@@ -588,7 +589,6 @@ export interface AudioSourceInfo {
     // (undocumented)
     readonly container: AudioContainer;
     readonly frames: number;
-    // (undocumented)
     readonly id: string;
     // (undocumented)
     readonly sampleRate: number;
@@ -641,6 +641,9 @@ export function clipLength(clip: AudioClip): number;
 
 // @public
 export function clipOffsets(plan: AudioPlan): readonly number[];
+
+// @public
+export function connectOutput(session: AudioSession, output: AudioOutput): () => void;
 
 // @public
 export function createAudioEngine(options?: AudioEngineOptions): AudioEngine;
