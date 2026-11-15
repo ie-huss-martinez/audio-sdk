@@ -12,3 +12,4 @@ Use [`template.md`](template.md) for new records. Name files `NNNN-short-title.m
 | [0002](0002-workers-and-assets.md) | One audio worker, sources on the page, and assets without the network | Accepted |
 | [0003](0003-clip-plan-document-model.md) | The clip plan: edits change a model, and audio is rendered on export | Accepted |
 | [0004](0004-audio-limits.md) | Audio limits and session memory | Accepted |
+| [0005](0005-editor-shell.md) | The editor shell: layout, the waveform timeline, selection, shortcuts and focus | Accepted |
