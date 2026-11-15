@@ -646,6 +646,9 @@ export function clipOffsets(plan: AudioPlan): readonly number[];
 export function createAudioEngine(options?: AudioEngineOptions): AudioEngine;
 
 // @public
+export function createAudioOutput(): AudioOutput;
+
+// @public
 export function createAudioProcessor(options?: AudioProcessorOptions): AudioProcessor;
 
 // @public
