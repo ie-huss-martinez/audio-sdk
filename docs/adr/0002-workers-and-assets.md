@@ -5,6 +5,7 @@
 - **Amended:** 2026-11-12, with the self-hosted worker's version check (#19).
 - **Amended:** 2026-11-13: the version check is sdk-core's `packageVersion` handshake ([ADR 0038](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0038-self-hosted-assets-and-worker-version.md)), instead of a `version` call in the worker's contract.
 - **Amended:** 2026-11-13: an export is two stateless calls, `wavHeader` and `renderBlock`, and the processor starts its own worker.
+- **Amended:** 2026-11-15, with playback as built: the context's rate, the start lead, the bus, the fade curves, and what happens when the context won't run.
 
 ## Context
 
@@ -42,6 +43,9 @@ Every call takes an `AbortSignal`, and long ones report progress.
 - **Playback** is the `AudioOutput` adapter. It creates one `AudioContext` lazily, on the first play, which is a user gesture, as browsers' autoplay rules require. It closes the context with its session.
   - **Each clip is an `AudioBufferSourceNode`** on its source, started at the clip's offset, followed by a `GainNode` whose automation comes from `gainAt` ([ADR 0001](0001-audio-engines.md)).
   - **Playback is a function of the plan and the playhead.** Seeking, or any edit while playing, stops the scheduled nodes and schedules again from the current position. The replaced editor's bugs, where seeking or editing during playback didn't take effect, can't arise.
+  - **As built (`createAudioOutput`):** the context opens at the device's own rate, and each source buffer is resampled by its `AudioBufferSourceNode`. Playback starts 30 ms ahead of the context's clock, so the first clip is scheduled in time, and the playhead is read from `currentTime`. Clips feed one bus with the plan's channel count and the `speakers` interpretation, so they mix as export mixes them. Fades are `setValueCurveAtTime` curves of `gainAt`, a point per frame up to 1,024 points, and no automation events overlap. Playback isn't clamped: the device clips at full scale, where export clamps.
+  - **When the context won't run,** because there was no user gesture or no sound server, `play()` rejects after two seconds with `UNSUPPORTED_ENVIRONMENT` and `details.feature` of `audio-output`, and the output stays as it was. In the browser test image, Firefox has no sound server ([sdk-core ADR 0043](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0043-no-audio-output-in-firefox-tests.md)): its real-time tests are skipped through the family's probe, while the offline tests of the playback graph run in every engine.
+  - **Sources that aren't `AudioBuffer`s,** from a host's own engine, are copied into one once, on first use.
 - **No `AudioWorklet` in the first releases.** It would need a module URL, with its own asset and CSP rules, and nothing yet needs custom processing on the audio thread.
 
 ### Assets

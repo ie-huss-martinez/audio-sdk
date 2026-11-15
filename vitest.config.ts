@@ -28,6 +28,11 @@ export default defineConfig(({ mode }) => {
           define: versionDefine(),
           // Serves the self-hosted worker as the build writes it (docs/adr/0002).
           plugins: [testAssets()],
+          // Bundled before the run: discovered mid-run, Vite reloads the page,
+          // and a test file can fail to load.
+          optimizeDeps: {
+            include: ["@hussmartinez/sdk-config/testing/audio-output", "@hussmartinez/sdk-core"],
+          },
           test: {
             name: "browser",
             include: ["src/**/*.browser.test.{ts,tsx}", "test/**/*.browser.test.ts"],
