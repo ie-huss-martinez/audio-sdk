@@ -186,7 +186,7 @@ describe("AudioEditor", () => {
     const styled = container.querySelector(".styled") as HTMLElement;
     const plain = container.querySelector(".plain") as HTMLElement;
     expect(styled.classList.contains("hm-text")).toBe(true);
-    expect(getComputedStyle(styled).display).toBe("grid");
+    expect(getComputedStyle(styled).display).toBe("flex");
     expect(getComputedStyle(styled).fontFamily).not.toMatch(/^"?Times/);
     expect(plain.classList.contains("hm-text")).toBe(false);
     expect(getComputedStyle(plain).display).toBe("block");

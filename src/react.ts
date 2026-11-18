@@ -22,6 +22,8 @@ export type { AudioStageProps } from "./react/AudioStage.js";
 export { AudioStage } from "./react/AudioStage.js";
 export type { AudioTimelineProps } from "./react/AudioTimeline.js";
 export { AudioTimeline } from "./react/AudioTimeline.js";
+export type { AudioToolbarProps } from "./react/AudioToolbar.js";
+export { AudioToolbar } from "./react/AudioToolbar.js";
 export type { AudioTransportProps } from "./react/AudioTransport.js";
 export { AudioTransport } from "./react/AudioTransport.js";
 export type {

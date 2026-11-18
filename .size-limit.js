@@ -73,9 +73,10 @@ export default [
   },
   {
     disablePlugins: ["@size-limit/esbuild"],
-    // Measured at 25.22 kB with the timeline (docs/adr/0006, step 11): the
-    // provider, hooks, stage, notices, transport, the timeline and its
-    // waveforms, and the core's shared chunk they use. It was 22.64 kB with
+    // Measured at 28.70 kB with the track tools (docs/adr/0006, step 12): the
+    // provider, hooks, stage, notices, transport, toolbar, track headers,
+    // rename dialog, the timeline and its waveforms, and the core's shared
+    // chunk they use. It was 25.22 kB with the timeline, and 22.64 kB with
     // the shell alone. React and ui are the host's, so not counted.
     name: "React entry (./react), with the shared code it loads",
     path: loadedFiles("react.js"),
@@ -141,11 +142,12 @@ export default [
   // Measured 3.40 kB: reading hm-audio-plan documents of versions 1 and 2,
   // migrating the first, and writing version 2. It was 2.61 kB.
   coreImport("Import: plan documents", "{ readAudioPlanDocument, toAudioPlanDocument }", "4 kB"),
-  // Measured 14.48 kB: what an editor imports, shared code counted once.
-  // It was 10.97 kB with one track.
+  // Measured 14.50 kB: what an editor imports, shared code counted once.
+  // It was 10.97 kB with one track, and 14.48 kB on sdk-core 0.4.1; 0.4.4
+  // adds 21 B with no change in this package's core.
   coreImport(
     "Import: an editor's set",
     "{ createAudioSession, createAudioEngine, createAudioProcessor, createAudioOutput, audioMessages }",
-    "14.5 kB",
+    "15 kB",
   ),
 ];
