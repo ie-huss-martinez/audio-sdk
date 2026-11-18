@@ -1,4 +1,11 @@
-import { createMessages } from "@hussmartinez/sdk-core";
+import {
+  createMessages,
+  createShortcutRegistry,
+  createToolRegistry,
+  type ShortcutRegistry,
+  type ToolRegistry,
+} from "@hussmartinez/sdk-core";
+import { usePlatform } from "@hussmartinez/ui/react";
 import {
   createContext,
   type ReactNode,
@@ -28,6 +35,7 @@ import {
   createAudioSession,
 } from "../core/session/session.js";
 import { watchPlayhead } from "../core/session/watch-playhead.js";
+import { type AudioTool, audioTools, defaultAudioToolbar } from "../features/tools/tools.js";
 import {
   type AudioEditorMessageOverrides,
   type AudioEditorMessages,
@@ -59,6 +67,17 @@ export interface AudioEditorProviderProps {
   readonly locale?: string;
   /** Anonymous usage events: never file names, samples or metadata. */
   readonly onEvent?: (event: AudioSessionEvent) => void;
+  /**
+   * Which tools are present, by id, in order, such as
+   * `["audio.undo", "audio.redo", "audio.add-track"]`. All of them by
+   * default. A tool that's left out has no button and no shortcut.
+   */
+  readonly tools?: readonly string[];
+  /**
+   * The toolbar's groups, by tool id. By default: files, history, tracks
+   * and zoom, from the present tools.
+   */
+  readonly toolbar?: readonly (readonly string[])[];
   readonly children?: ReactNode;
 }
 
@@ -96,6 +115,23 @@ interface EditorContext {
   readonly setSelectedClip: (key: string | undefined) => void;
   /** The timeline's playhead slider, where focus goes after a recording opens. */
   readonly playhead: RefObject<HTMLInputElement | null>;
+  /** The track the track tools act on, by key: the one focus was last in. */
+  readonly currentTrack: string | undefined;
+  readonly setCurrentTrack: (key: string | undefined) => void;
+  /**
+   * A track whose header takes focus when it next renders, as after it's
+   * added, and how its header says it has.
+   */
+  readonly pendingFocus: RefObject<string | undefined>;
+  /** The present tools, and the toolbar's groups of them. */
+  readonly tools: ToolRegistry<AudioTool>;
+  /** The present tools' shortcuts, for this platform. */
+  readonly shortcuts: ShortcutRegistry;
+  /** Opens the toolbar's file chooser, when it's rendered. */
+  readonly fileChooser: RefObject<((purpose: "open" | "insert") => void) | null>;
+  /** The track being renamed, by key, while its dialog is open. */
+  readonly renaming: string | undefined;
+  readonly setRenaming: (key: string | undefined) => void;
 }
 
 const Context = createContext<EditorContext | null>(null);
@@ -236,6 +272,30 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
   const [maxZoom, setMaxZoom] = useState(1);
   const [selectedClip, setSelectedClip] = useState<string>();
   const playhead = useRef<HTMLInputElement>(null);
+  const [currentTrack, setCurrentTrack] = useState<string>();
+  const [renaming, setRenaming] = useState<string>();
+  const pendingFocus = useRef<string | undefined>(undefined);
+  const fileChooser = useRef<((purpose: "open" | "insert") => void) | null>(null);
+
+  // The registries, from the tools and toolbar props, as plain data.
+  const platform = usePlatform();
+  const toolIds = JSON.stringify(props.tools ?? null);
+  const toolbarIds = JSON.stringify(props.toolbar ?? null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the props, by value.
+  const tools = useMemo(
+    () =>
+      createToolRegistry(audioTools, {
+        ...(props.tools ? { tools: props.tools } : {}),
+        toolbar: (props.toolbar ?? defaultAudioToolbar).map((group) =>
+          group.filter((id) => !props.tools || props.tools.includes(id)),
+        ),
+      }),
+    [toolIds, toolbarIds],
+  );
+  const shortcuts = useMemo(
+    () => createShortcutRegistry({ platform, tools: tools.tools }),
+    [platform, tools],
+  );
 
   const value = useMemo<EditorContext>(
     () => ({
@@ -253,8 +313,31 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
       selectedClip,
       setSelectedClip,
       playhead,
+      currentTrack,
+      setCurrentTrack,
+      pendingFocus,
+      tools,
+      shortcuts,
+      fileChooser,
+      renaming,
+      setRenaming,
     }),
-    [session, output, messages, load, open, insert, cancelLoad, zoom, maxZoom, selectedClip],
+    [
+      session,
+      output,
+      messages,
+      load,
+      open,
+      insert,
+      cancelLoad,
+      zoom,
+      maxZoom,
+      selectedClip,
+      currentTrack,
+      tools,
+      shortcuts,
+      renaming,
+    ],
   );
   return <Context.Provider value={value}>{props.children}</Context.Provider>;
 }

@@ -61,10 +61,6 @@ export const audioEditorMessages: {
         readonly other: "{count} tracks, {duration} long.";
     };
     readonly "timeline.playhead": "Playhead";
-    readonly "timeline.zoom": "Zoom";
-    readonly "timeline.zoomIn": "Zoom in";
-    readonly "timeline.zoomOut": "Zoom out";
-    readonly "timeline.zoomFit": "Fit to width";
     readonly "timeline.track": "Track {index}";
     readonly "timeline.track.named": "Track {index}, {name}";
     readonly "timeline.lane": "{track}";
@@ -75,6 +71,45 @@ export const audioEditorMessages: {
     readonly "timeline.clip.named": "{name}, clip {index} of {count} on {track}, {start} to {end}";
     readonly "timeline.clip.gain": "Clip {index} of {count} on {track}, {start} to {end}, {gain, number} dB";
     readonly "timeline.clip.named.gain": "{name}, clip {index} of {count} on {track}, {start} to {end}, {gain, number} dB";
+    readonly "toolbar.label": "Tools";
+    readonly "toolbar.file": "File";
+    readonly "toolbar.history": "History";
+    readonly "toolbar.tracks": "Tracks";
+    readonly "toolbar.view": "Zoom";
+    readonly "toolbar.withKeys": "{label} ({keys})";
+    readonly "tools.open": "Open";
+    readonly "tools.insert": "Add recording";
+    readonly "tools.undo": "Undo";
+    readonly "tools.redo": "Redo";
+    readonly "tools.addTrack": "Add track";
+    readonly "tools.removeTrack": "Remove track";
+    readonly "tools.moveTrackUp": "Move track up";
+    readonly "tools.moveTrackDown": "Move track down";
+    readonly "tools.mute": "Mute track";
+    readonly "tools.zoomIn": "Zoom in";
+    readonly "tools.zoomOut": "Zoom out";
+    readonly "tools.zoomFit": "Fit to width";
+    readonly "tools.playPause": "Play or pause";
+    readonly "tools.start": "Go to the start";
+    readonly "tools.end": "Go to the end";
+    readonly "track.rename": "{track}, rename";
+    readonly "track.mute": "Mute";
+    readonly "track.solo": "Solo";
+    readonly "track.gain": "Gain";
+    readonly "track.gainValue": "{gain, number} dB";
+    readonly "rename.title": "Rename the track";
+    readonly "rename.name": "Name";
+    readonly "rename.description": "Leave it empty for no name.";
+    readonly "rename.save": "Rename";
+    readonly "announce.undone": "Undone.";
+    readonly "announce.redone": "Redone.";
+    readonly "announce.trackAdded": "Track added.";
+    readonly "announce.trackRemoved": "{track} removed.";
+    readonly "announce.trackMoved": "{track} moved.";
+    readonly "announce.muted": "{track} muted.";
+    readonly "announce.unmuted": "{track} unmuted.";
+    readonly "announce.soloed": "{track} soloed.";
+    readonly "announce.unsoloed": "{track} no longer soloed.";
     readonly "transport.label": "Playback";
     readonly "transport.play": "Play";
     readonly "transport.pause": "Pause";
@@ -179,7 +214,7 @@ export const audioEditorMessages: {
 };
 
 // @public
-export type AudioEditorPart = "root" | "notices" | "stage" | "timeline" | "transport";
+export type AudioEditorPart = "root" | "toolbar" | "notices" | "stage" | "timeline" | "transport";
 
 // @public
 export interface AudioEditorProps extends Omit<AudioEditorProviderProps, "children"> {
@@ -212,6 +247,8 @@ export interface AudioEditorProviderProps {
     readonly output?: AudioOutput;
     // Warning: (ae-forgotten-export) The symbol "AudioProcessor" needs to be exported by the entry point react.d.ts
     readonly processor?: AudioProcessor;
+    readonly toolbar?: readonly (readonly string[])[];
+    readonly tools?: readonly string[];
 }
 
 // @public
@@ -244,6 +281,15 @@ export function AudioTimeline(input: AudioTimelineProps): ReactNode;
 
 // @public
 export interface AudioTimelineProps {
+    // (undocumented)
+    readonly className?: string;
+}
+
+// @public
+export function AudioToolbar(input: AudioToolbarProps): ReactNode;
+
+// @public
+export interface AudioToolbarProps {
     // (undocumented)
     readonly className?: string;
 }

@@ -1,14 +1,9 @@
 import {
-  FitIcon,
-  IconButton,
   Timeline,
   TimelineClips,
   TimelineLane,
   TimelineLayer,
   TimelinePlayhead,
-  Toolbar,
-  ZoomInIcon,
-  ZoomOutIcon,
 } from "@hussmartinez/ui/react";
 import { type ReactNode, useCallback, useRef } from "react";
 import {
@@ -19,6 +14,7 @@ import {
   planLength,
 } from "../core/model/plan.js";
 import { formatTimecode } from "../core/model/time.js";
+import { AudioTrackHeader } from "./AudioTrackHeader.js";
 import { AudioWaveform } from "./AudioWaveform.js";
 import {
   useAudioEditorContext,
@@ -27,17 +23,8 @@ import {
   useAudioSession,
 } from "./context.js";
 import type { AudioEditorMessages } from "./editor-messages.js";
+import { trackName } from "./names.js";
 import { classes, type PartClassNames } from "./parts.js";
-
-/** How far one zoom step goes. */
-const ZOOM_STEP = 2;
-
-/** A track's name as people see it: "Track 2, Music", or "Track 2" without one. */
-export function trackName(messages: AudioEditorMessages, track: AudioTrack, index: number): string {
-  return track.name
-    ? messages.t("timeline.track.named", { index: index + 1, name: track.name })
-    : messages.t("timeline.track", { index: index + 1 });
-}
 
 /** A lane's accessible name: the track's, and whether it's heard. */
 function laneLabel(
@@ -68,8 +55,8 @@ export interface AudioTimelineProps {
  * track, with its name in a header that stays in view, its waveform drawn
  * from the peaks, and its clips where they sit in time; the playhead as a
  * slider over all of them, in 10 ms steps and seconds with Page Up and Page
- * Down; and zoom, with its buttons, from fitting the whole recording to the
- * closest the timeline allows. Inside an {@link AudioEditorProvider}.
+ * Down. Its zoom is the editor's, which the toolbar's zoom tools change.
+ * Inside an {@link AudioEditorProvider}.
  *
  * @public
  */
@@ -86,7 +73,7 @@ export function EditorTimeline({
   readonly classNames: PartClassNames | undefined;
 }): ReactNode {
   const context = useAudioEditorContext();
-  const { messages, output, session, zoom, setZoom, maxZoom, setMaxZoom, playhead } = context;
+  const { messages, output, session, zoom, setMaxZoom, playhead, setCurrentTrack } = context;
   const { snapshot } = useAudioSession();
   const { snapshot: playback } = useAudioOutput();
   const position = useAudioPlayhead();
@@ -111,35 +98,6 @@ export function EditorTimeline({
 
   return (
     <div className={classes("hm-audio-editor-timeline", classNames?.timeline, className)}>
-      <Toolbar label={messages.t("timeline.zoom")} className="hm-audio-editor-zoom">
-        <IconButton
-          variant="quiet"
-          size="small"
-          label={messages.t("timeline.zoomOut")}
-          icon={<ZoomOutIcon />}
-          disabled={zoom <= 1}
-          focusableWhenDisabled
-          onClick={() => setZoom(Math.max(1, zoom / ZOOM_STEP))}
-        />
-        <IconButton
-          variant="quiet"
-          size="small"
-          label={messages.t("timeline.zoomIn")}
-          icon={<ZoomInIcon />}
-          disabled={zoom >= maxZoom}
-          focusableWhenDisabled
-          onClick={() => setZoom(Math.min(maxZoom, zoom * ZOOM_STEP))}
-        />
-        <IconButton
-          variant="quiet"
-          size="small"
-          label={messages.t("timeline.zoomFit")}
-          icon={<FitIcon />}
-          disabled={zoom === 1}
-          focusableWhenDisabled
-          onClick={() => setZoom(1)}
-        />
-      </Toolbar>
       <Timeline
         label={messages.t("timeline.label")}
         length={length}
@@ -166,8 +124,10 @@ export function EditorTimeline({
               key={track.key}
               id={track.key}
               label={laneLabel(messages, plan, track, name, audible)}
-              header={<bdi className="hm-audio-editor-track-name">{name}</bdi>}
+              header={<AudioTrackHeader track={track} index={index} />}
               data-hm-silent={audible.has(track) ? undefined : ""}
+              // The track tools act on the track focus was last in.
+              onFocus={() => setCurrentTrack(track.key)}
             >
               <TimelineLayer className="hm-audio-editor-wave-layer" aria-hidden="true">
                 <AudioWaveform track={track} peaksOf={peaksOf} subscribeRange={subscribeRange} />

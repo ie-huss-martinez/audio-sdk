@@ -3,7 +3,9 @@ import { forwardRef, type ReactNode, useEffect, useImperativeHandle, useRef } fr
 import type { AudioPlan } from "../core/model/plan.js";
 import type { AudioInsertOptions } from "../core/session/session.js";
 import { Notices } from "./AudioNotices.js";
+import { AudioRenameDialog } from "./AudioRenameDialog.js";
 import { Stage } from "./AudioStage.js";
+import { EditorToolbar } from "./AudioToolbar.js";
 import { Transport } from "./AudioTransport.js";
 import {
   AudioEditorProvider,
@@ -12,6 +14,19 @@ import {
   useAudioSession,
 } from "./context.js";
 import { type AudioEditorPart, classes, type PartClassNames } from "./parts.js";
+import { useAudioTools } from "./tools.js";
+
+/** Tools whose keys are also a focused control's own, as Home and End are a list's. */
+const CONTROL_KEYS: ReadonlySet<string> = new Set(["audio.start", "audio.end"]);
+
+/** Whether a key's target is a control that uses Home and End itself. */
+function ownsHomeAndEnd(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest('[role="listbox"],[role="toolbar"],[role="slider"],input,textarea,select') !==
+      null
+  );
+}
 
 /**
  * Props of {@link AudioEditor}: the provider's, and the editor's own.
@@ -107,7 +122,8 @@ const Shell = forwardRef<AudioEditorHandle, ShellProps>(function Shell(props, re
 
 /** The editor's root, its regions in tab order, and what it says and where focus goes. */
 function Root({ onChange, theme, className, classNames, unstyled }: ShellProps): ReactNode {
-  const { messages, playhead } = useAudioEditorContext();
+  const { messages, playhead, shortcuts } = useAudioEditorContext();
+  const { run } = useAudioTools();
   const { snapshot } = useAudioSession();
   const announce = useAnnounce();
   const play = useRef<HTMLButtonElement>(null);
@@ -150,10 +166,21 @@ function Root({ onChange, theme, className, classNames, unstyled }: ShellProps):
       aria-label={messages.t("editor.label")}
       data-hm-theme={theme}
       data-hm-unstyled={unstyled ? "" : undefined}
+      onKeyDown={(event) => {
+        // Shortcuts apply only while focus is in the editor, as WCAG 2.1.4
+        // requires of single keys (sdk-core ADR 0030). The registry leaves
+        // fields, dialogs and controls' own keys alone; Home and End are a
+        // list's and a toolbar's own too (docs/adr/0005).
+        const id = shortcuts.match(event.nativeEvent, { root: event.currentTarget });
+        if (!id || (CONTROL_KEYS.has(id) && ownsHomeAndEnd(event.target))) return;
+        if (run(id)) event.preventDefault();
+      }}
     >
+      <EditorToolbar classNames={classNames} />
       <Notices classNames={classNames} />
       <Stage classNames={classNames} />
       <Transport ref={play} classNames={classNames} />
+      <AudioRenameDialog />
     </section>
   );
 }

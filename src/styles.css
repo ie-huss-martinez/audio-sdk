@@ -20,8 +20,8 @@
   }
 
   .hm-audio-editor:not([data-hm-unstyled]) {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    display: flex;
+    flex-direction: column;
     gap: var(--hm-gap-normal);
     min-block-size: 0;
     padding: var(--hm-gap-normal);
@@ -53,6 +53,7 @@
   }
 
   .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-stage {
+    flex: 1 1 auto;
     display: grid;
     gap: var(--hm-gap-normal);
     align-content: start;
@@ -92,16 +93,20 @@
     min-inline-size: 0;
   }
 
-  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-zoom {
-    justify-self: end;
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-toolbar {
+    flex-wrap: wrap;
   }
 
-  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-track-name {
+  /* A long name is cut with an ellipsis; its button's name holds it whole. */
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-track-name bdi {
     overflow: hidden;
-    min-inline-size: 0;
-    font-size: var(--hm-font-size-small);
+    max-inline-size: var(--hm-space-12);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-track-gain {
+    inline-size: var(--hm-space-12);
   }
 
   /*

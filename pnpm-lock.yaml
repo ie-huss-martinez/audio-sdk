@@ -183,8 +183,8 @@ catalogs:
       specifier: ^0.9.0
       version: 0.9.0
     '@hussmartinez/sdk-core':
-      specifier: ^0.4.1
-      version: 0.4.1
+      specifier: ^0.4.4
+      version: 0.4.4
     '@hussmartinez/ui':
       specifier: ^0.12.0
       version: 0.12.0
@@ -267,7 +267,7 @@ importers:
     dependencies:
       '@hussmartinez/sdk-core':
         specifier: 'catalog:'
-        version: 0.4.1
+        version: 0.4.4
       '@hussmartinez/ui':
         specifier: 'catalog:'
         version: 0.12.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -915,8 +915,8 @@ packages:
       vitest:
         optional: true
 
-  '@hussmartinez/sdk-core@0.4.1':
-    resolution: {integrity: sha512-v0xWD3CRCIvuoFn5mtHuDumalU6rwx+cuBgUqAtOyY+d3DacA7MIqjl1QjXZT7IuwTk6VZIjMc4tCsv01J6nRA==}
+  '@hussmartinez/sdk-core@0.4.4':
+    resolution: {integrity: sha512-WT8DUW1MTWk2mbMhF2uTBb4dYI1AFuBMAW8rI4ADtLi2zr+OsN5aSErmHUlrMNmqjw963PyPIPDd4dvDxw2VuQ==}
 
   '@hussmartinez/ui@0.12.0':
     resolution: {integrity: sha512-D8Ag4/7u35Icu2XrI4Eh5h2sKTIt8UICycVM/l4C2OtbaJTbhyItWhVa1Opt2w0So/KV7HipEAm596u8Ri9/GQ==}
@@ -1162,6 +1162,7 @@ packages:
   '@secretlint/secretlint-rule-preset-recommend@13.1.0':
     resolution: {integrity: sha512-dPnplMyjJYpVCJDNTjpUA8c/AfoHbWANJJJWKroK50DGGhAB4Oumzk+XinBMyMMAwgOsjU9CB9lUHXDvObMVCg==}
     engines: {node: '>=22.0.0'}
+    deprecated: Built into secretlint v14 and later. Remove this package; the rule id still works. https://github.com/secretlint/secretlint/blob/HEAD/docs/rules/preset-recommend.md
 
   '@secretlint/source-creator@13.1.0':
     resolution: {integrity: sha512-XTix5etCEZmF88YPQdmGP9n9Z2h/ESvVJ/Ueel7XcCQrjPXtZVXKaiHpcSUClK0Qdth1UQg7Bd2oZfXZJjozgA==}
@@ -2925,11 +2926,11 @@ snapshots:
       typescript: 6.0.3
       vitest: 5.1.0(@types/node@24.19.2)(@vitest/browser-playwright@5.1.0)(@vitest/ui@5.1.0)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
-  '@hussmartinez/sdk-core@0.4.1': {}
+  '@hussmartinez/sdk-core@0.4.4': {}
 
   '@hussmartinez/ui@0.12.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
-      '@hussmartinez/sdk-core': 0.4.1
+      '@hussmartinez/sdk-core': 0.4.4
     optionalDependencies:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
