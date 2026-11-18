@@ -34,8 +34,28 @@ export interface AudioRenderJob {
 }
 
 /**
- * The port for exporting: render a plan's clips, with their gain and fades,
- * and encode the result (ADR 0001, ADR 0003, ADR 0008). The SDK's own
+ * What an export gives: the file, and what clamping did to the mix
+ * (docs/adr/0006). A mix of full-scale tracks goes over full scale; export
+ * clamps it rather than changing levels nobody asked to change, and says so
+ * here, so an editor can offer to lower the master gain.
+ *
+ * @public
+ */
+export interface AudioRenderResult {
+  /** The encoded file. */
+  readonly blob: Blob;
+  /**
+   * The mix's peak before clamping, in decibels relative to full scale:
+   * above 0 means it clipped, by that much. `-Infinity` for silence.
+   */
+  readonly peakDb: number;
+  /** How many frames had a sample over full scale, which was clamped. */
+  readonly clippedFrames: number;
+}
+
+/**
+ * The port for exporting: mix a plan's audible tracks, with their clips'
+ * gain and fades, and encode the result (ADR 0001, ADR 0003, ADR 0008). The SDK's own
  * adapter renders and encodes in its worker, block by block; hosts can pass
  * their own to the editor's `processor` prop, and every implementation must
  * pass the processor's contract tests.
@@ -48,11 +68,12 @@ export interface AudioRenderJob {
  */
 export interface AudioProcessor {
   /**
-   * Renders and encodes a plan. Every sample is clamped to full scale before
-   * it's quantised, so a gain above full scale clips rather than wrapping
-   * around. The sources aren't modified.
+   * Mixes and encodes a plan, up to where its last audible clip ends. Every
+   * sample is clamped to full scale before it's quantised, so a mix above
+   * full scale clips rather than wrapping around, and the result says how
+   * far over it went. The sources aren't modified.
    */
-  render(job: AudioRenderJob, options?: AudioProgressOptions): Promise<Blob>;
+  render(job: AudioRenderJob, options?: AudioProgressOptions): Promise<AudioRenderResult>;
   /** Releases the processor and its worker. Pending calls reject, and later calls throw. */
   destroy(): Promise<void>;
 }

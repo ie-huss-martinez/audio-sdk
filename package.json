@@ -56,7 +56,7 @@
     "lint:deps": "hm-lint-deps src",
     "check:single-copy": "hm-check-single-copy",
     "check:playwright-image": "hm-check-playwright-image",
-    "conformance:update": "vitest run --project unit test/conformance --update",
+    "conformance:update": "vitest run --project unit test/conformance test/v1 --update",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "build": "vite build && pnpm check:api",
     "test": "vitest run --project unit",

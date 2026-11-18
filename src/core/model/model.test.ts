@@ -1,20 +1,9 @@
-import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { dbToGain, gainAt } from "./envelope.js";
-import {
-  type AudioClip,
-  type AudioPlan,
-  assertClip,
-  clipLength,
-  clipOffsets,
-  clipProblem,
-  EMPTY_METADATA,
-  NO_FADE,
-  planLength,
-} from "./plan.js";
+import { type AudioClipBody, assertClip, clipLength, clipProblem, NO_FADE } from "./plan.js";
 import { assertFrames, framesToSeconds, secondsToFrames } from "./time.js";
 
-function clip(overrides: Partial<AudioClip> = {}): AudioClip {
+function clip(overrides: Partial<AudioClipBody> = {}): AudioClipBody {
   return {
     key: "c",
     source: "s",
@@ -39,23 +28,9 @@ describe("time", () => {
   });
 });
 
-describe("the clip plan", () => {
-  const plan: AudioPlan = {
-    sampleRate: 48_000,
-    channels: 2,
-    clips: [
-      clip({ key: "a", start: 10, end: 60 }),
-      clip({ key: "b", start: 0, end: 30 }),
-      clip({ key: "c", start: 5, end: 25 }),
-    ],
-    metadata: EMPTY_METADATA,
-  };
-
-  it("derives lengths and timeline offsets from the clips", () => {
-    expect(plan.clips.map(clipLength)).toEqual([50, 30, 20]);
-    expect(planLength(plan)).toBe(100);
-    expect(clipOffsets(plan)).toEqual([0, 50, 80]);
-    expect(clipOffsets({ ...plan, clips: [] })).toEqual([]);
+describe("a clip", () => {
+  it("measures a clip by the range of its source it plays", () => {
+    expect(clipLength(clip({ start: 10, end: 60 }))).toBe(50);
   });
 
   it("accepts a well-formed clip", () => {
@@ -123,41 +98,5 @@ describe("gainAt", () => {
     // Frame 4 is 4/5 into the fade in, and 5/5 before the end.
     expect(gainAt(short, 4)).toBeCloseTo(dbToGain(-6) * 0.8, 10);
     expect(gainAt(short, 5)).toBeCloseTo(dbToGain(-6) * 0.8, 10);
-  });
-});
-
-describe("clipOffsets on sdk-core's sequenceOffsets (sdk-core ADR 0042)", () => {
-  // The implementation before sdk-core's helper replaced it, kept here to
-  // show that nothing changed.
-  function before(plan: AudioPlan): number[] {
-    const offsets: number[] = [];
-    let at = 0;
-    for (const each of plan.clips) {
-      offsets.push(at);
-      at += clipLength(each);
-    }
-    return offsets;
-  }
-
-  it("gives the same offsets as before, for any plan", () => {
-    fc.assert(
-      fc.property(
-        fc.array(fc.tuple(fc.nat(48_000_000), fc.integer({ min: 1, max: 5_000_000 })), {
-          maxLength: 20,
-        }),
-        (spans) => {
-          const plan: AudioPlan = {
-            sampleRate: 48_000,
-            channels: 2,
-            clips: spans.map(([start, length], index) =>
-              clip({ key: `c${index}`, start, end: start + length }),
-            ),
-            metadata: EMPTY_METADATA,
-          };
-          expect(clipOffsets(plan)).toEqual(before(plan));
-        },
-      ),
-      { numRuns: 300 },
-    );
   });
 });

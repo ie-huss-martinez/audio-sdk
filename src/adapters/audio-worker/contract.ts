@@ -1,6 +1,6 @@
 import type { AudioProbe } from "../../core/model/source.js";
 import type { PcmLayout } from "../pcm/layout.js";
-import type { RenderBlockInput } from "../wav/render-block.js";
+import type { RenderBlockInput, RenderedBlock } from "../wav/render-block.js";
 import type { WavSpec } from "../wav/wav-writer.js";
 
 /** A block of samples, with the peaks of its buckets for the waveform overview. */
@@ -42,10 +42,10 @@ export interface AudioWorkerContract {
     readonly input: WavSpec;
     readonly output: Uint8Array<ArrayBuffer>;
   };
-  /** Renders one output block of an export, and encodes it as WAV samples. */
+  /** Mixes one output block of an export, and encodes it as WAV samples. */
   readonly renderBlock: {
     readonly input: RenderBlockInput;
-    readonly output: Uint8Array<ArrayBuffer>;
+    readonly output: RenderedBlock;
   };
   /**
    * Converts a block of decoded samples to another sample rate

@@ -1,0 +1,2057 @@
+{
+  "format": "hm-conformance",
+  "version": 1,
+  "subject": "hm-audio-mix",
+  "description": "Mixing an hm-audio-plan of version 2 (docs/formats/hm-audio-plan.md, docs/adr/0006). input.plan is the document, and input.sources gives each source's samples, one list per channel. expected.channels is the mix, one list per channel of the plan, as long as the last audible clip, clamped to full scale; expected.peak is its largest absolute sample before clamping, where 1 is full scale; expected.clipped is how many frames were clamped. Every number is compared within the case's tolerance, because gains from decibels and fade curves are computed.",
+  "cases": [
+    {
+      "name": "plays one clip as its source",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 1,
+          "gainDb": 0,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "t",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 0,
+                  "end": 16,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            -0.5,
+            -0.4375,
+            -0.375,
+            -0.3125,
+            -0.25,
+            -0.1875,
+            -0.125,
+            -0.0625,
+            0,
+            0.0625,
+            0.125,
+            0.1875,
+            0.25,
+            0.3125,
+            0.375,
+            0.4375
+          ]
+        ],
+        "peak": 0.5,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "leaves silence before a clip and between clips",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 1,
+          "gainDb": 0,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "t",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 2,
+                  "source": "mono",
+                  "start": 8,
+                  "end": 11,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "b",
+                  "at": 7,
+                  "source": "mono",
+                  "start": 12,
+                  "end": 14,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            0,
+            0,
+            0,
+            0.0625,
+            0.125,
+            0,
+            0,
+            0.25,
+            0.3125
+          ]
+        ],
+        "peak": 0.3125,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "applies a clip's gain",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 1,
+          "gainDb": 0,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "t",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 0,
+                  "end": 16,
+                  "gainDb": -6,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            -0.2505936026573181,
+            -0.21926940977573395,
+            -0.18794521689414978,
+            -0.15662100911140442,
+            -0.12529680132865906,
+            -0.09397260844707489,
+            -0.06264840066432953,
+            -0.031324200332164764,
+            0,
+            0.031324200332164764,
+            0.06264840066432953,
+            0.09397260844707489,
+            0.12529680132865906,
+            0.15662100911140442,
+            0.18794521689414978,
+            0.21926940977573395
+          ]
+        ],
+        "peak": 0.2505936168136361,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "fades in linearly from silence on the first frame, and out by a quarter sine to silence on the last",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 1,
+          "gainDb": 0,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "t",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 0,
+                  "end": 16,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 6,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 5,
+                    "curve": "equalPower"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            0,
+            -0.0729166641831398,
+            -0.125,
+            -0.15625,
+            -0.1666666716337204,
+            -0.15625,
+            -0.125,
+            -0.0625,
+            0,
+            0.0625,
+            0.125,
+            0.17832309007644653,
+            0.2022542506456375,
+            0.1836828887462616,
+            0.11588137596845627,
+            0
+          ]
+        ],
+        "peak": 0.20225424859373686,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "sums two tracks at unity, where they overlap",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 1,
+          "gainDb": 0,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "ta",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 8,
+                  "end": 14,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "tb",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "b",
+                  "at": 3,
+                  "source": "mono",
+                  "start": 10,
+                  "end": 16,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            0,
+            0.0625,
+            0.125,
+            0.3125,
+            0.4375,
+            0.5625,
+            0.3125,
+            0.375,
+            0.4375
+          ]
+        ],
+        "peak": 0.5625,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "applies each track's gain, then the master gain",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 1,
+          "gainDb": -2,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "ta",
+              "name": "",
+              "gainDb": -3,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 8,
+                  "end": 14,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "tb",
+              "name": "",
+              "gainDb": 4,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "b",
+                  "at": 3,
+                  "source": "mono",
+                  "start": 10,
+                  "end": 16,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            0,
+            0.035146333277225494,
+            0.07029266655445099,
+            0.26280468702316284,
+            0.3766338527202606,
+            0.4904630184173584,
+            0.3934141993522644,
+            0.4720970392227173,
+            0.5507798790931702
+          ]
+        ],
+        "peak": 0.5507798676599482,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "leaves out a muted track, which doesn't lengthen the mix either",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 1,
+          "gainDb": 0,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "ta",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 8,
+                  "end": 12,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "tb",
+              "name": "",
+              "gainDb": 0,
+              "muted": true,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "b",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 0,
+                  "end": 16,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            0,
+            0.0625,
+            0.125,
+            0.1875
+          ]
+        ],
+        "peak": 0.1875,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "plays only the soloed tracks",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 1,
+          "gainDb": 0,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "ta",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 0,
+                  "end": 16,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "tb",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "b",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 12,
+                  "end": 16,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "tc",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "c",
+                  "at": 2,
+                  "source": "mono",
+                  "start": 8,
+                  "end": 10,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            0.25,
+            0.3125,
+            0.375,
+            0.5
+          ]
+        ],
+        "peak": 0.5,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "lets mute win over solo",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 1,
+          "gainDb": 0,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "ta",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 12,
+                  "end": 16,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "tb",
+              "name": "",
+              "gainDb": 0,
+              "muted": true,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "b",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 0,
+                  "end": 16,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            0.25,
+            0.3125,
+            0.375,
+            0.4375
+          ]
+        ],
+        "peak": 0.4375,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "plays a mono source on both channels of a stereo plan",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 2,
+          "gainDb": 0,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "t",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 10,
+                  "end": 14,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            0.125,
+            0.1875,
+            0.25,
+            0.3125
+          ],
+          [
+            0.125,
+            0.1875,
+            0.25,
+            0.3125
+          ]
+        ],
+        "peak": 0.3125,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "averages a stereo source's channels in a mono plan",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 1,
+          "gainDb": 0,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "t",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "stereo",
+                  "start": 10,
+                  "end": 14,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            -0.03125,
+            -0.046875,
+            -0.0625,
+            -0.078125
+          ]
+        ],
+        "peak": 0.078125,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "mixes a mono and a stereo source in a stereo plan",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 2,
+          "gainDb": 0,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "ta",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 10,
+                  "end": 14,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "tb",
+              "name": "",
+              "gainDb": -6,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "b",
+                  "at": 1,
+                  "source": "stereo",
+                  "start": 0,
+                  "end": 4,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            0.125,
+            0.062203191220760345,
+            0.14036528766155243,
+            0.2185273915529251,
+            -0.07831050455570221
+          ],
+          [
+            0.125,
+            0.4380936026573181,
+            0.46926942467689514,
+            0.5004451870918274,
+            0.15662100911140442
+          ]
+        ],
+        "peak": 0.5004452126102271,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "clamps a mix over full scale, and reports its peak and the frames it clamped",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 1,
+          "gainDb": 6,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "ta",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 0,
+                  "end": 16,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "tb",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "b",
+                  "at": 0,
+                  "source": "mono",
+                  "start": 0,
+                  "end": 16,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          [
+            -1,
+            -1,
+            -1,
+            -1,
+            -0.9976311326026917,
+            -0.7482233643531799,
+            -0.4988155663013458,
+            -0.2494077831506729,
+            0,
+            0.2494077831506729,
+            0.4988155663013458,
+            0.7482233643531799,
+            0.9976311326026917,
+            1,
+            1,
+            1
+          ]
+        ],
+        "peak": 1.9952623149688795,
+        "clipped": 7
+      },
+      "tolerance": 0.000001
+    },
+    {
+      "name": "mixes a plan with no clips to nothing",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 8000,
+          "channels": 1,
+          "gainDb": 0,
+          "sources": {
+            "mono": {
+              "frames": 16
+            },
+            "stereo": {
+              "frames": 16
+            }
+          },
+          "tracks": [
+            {
+              "key": "t",
+              "name": "",
+              "gainDb": 0,
+              "muted": false,
+              "soloed": false,
+              "clips": []
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "sources": {
+          "mono": [
+            [
+              -0.5,
+              -0.4375,
+              -0.375,
+              -0.3125,
+              -0.25,
+              -0.1875,
+              -0.125,
+              -0.0625,
+              0,
+              0.0625,
+              0.125,
+              0.1875,
+              0.25,
+              0.3125,
+              0.375,
+              0.4375
+            ]
+          ],
+          "stereo": [
+            [
+              -0.25,
+              -0.21875,
+              -0.1875,
+              -0.15625,
+              -0.125,
+              -0.09375,
+              -0.0625,
+              -0.03125,
+              0,
+              0.03125,
+              0.0625,
+              0.09375,
+              0.125,
+              0.15625,
+              0.1875,
+              0.21875
+            ],
+            [
+              0.5,
+              0.4375,
+              0.375,
+              0.3125,
+              0.25,
+              0.1875,
+              0.125,
+              0.0625,
+              0,
+              -0.0625,
+              -0.125,
+              -0.1875,
+              -0.25,
+              -0.3125,
+              -0.375,
+              -0.4375
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "channels": [
+          []
+        ],
+        "peak": 0,
+        "clipped": 0
+      },
+      "tolerance": 0.000001
+    }
+  ]
+}

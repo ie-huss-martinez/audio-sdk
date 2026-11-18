@@ -1,5 +1,5 @@
 import { gainAt } from "../../core/model/envelope.js";
-import { type AudioClip, clipLength } from "../../core/model/plan.js";
+import { type AudioClipBody, clipLength } from "../../core/model/plan.js";
 
 /**
  * The most points a fade's curve gets: Web Audio interpolates linearly
@@ -18,7 +18,7 @@ export type GainEvent =
     };
 
 /** Samples `gainAt` from frame `from` to frame `to`, both included, at no more than the maximum points. */
-function curve(clip: AudioClip, from: number, to: number): Float32Array {
+function curve(clip: AudioClipBody, from: number, to: number): Float32Array {
   const points = Math.min(MAX_CURVE_POINTS, to - from + 1);
   const values = new Float32Array(points);
   for (let i = 0; i < points; i += 1) {
@@ -41,7 +41,7 @@ function curve(clip: AudioClip, from: number, to: number): Float32Array {
  *   Web Audio refuses: a fade out that starts where the fade in ends follows
  *   its curve directly.
  */
-export function gainEvents(clip: AudioClip, from: number, sampleRate: number): GainEvent[] {
+export function gainEvents(clip: AudioClipBody, from: number, sampleRate: number): GainEvent[] {
   const length = clipLength(clip);
   const fadeInEnd = clip.fadeIn.frames;
   const fadeOutStart = length - clip.fadeOut.frames;

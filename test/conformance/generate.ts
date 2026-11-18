@@ -3,39 +3,47 @@ import type {
   ConformanceFile,
 } from "@hussmartinez/sdk-config/testing/conformance";
 import fc from "fast-check";
-import { type AudioClip, NO_FADE, toAudioPlanDocument } from "../../src/index.js";
+import {
+  type AudioClip,
+  type AudioClipV1,
+  type AudioTrack,
+  NO_FADE,
+  toAudioPlanDocument,
+} from "../../src/index.js";
 import { commandFor, planArb, SOURCES } from "../arbitraries/audio-plan.js";
-import { applyToDocument, readAndWrite } from "./run.js";
+import { commandFor as commandForV1, planArb as planArbV1 } from "../v1/arbitraries.js";
+import { applied, make, type Outcome, refused } from "../v1/generate.js";
+import { toAudioPlanDocument as toDocumentV1 } from "../v1/plan-document.js";
+import { applyToDocument, migrateAndApply, mixPlan, readAndWrite } from "./run.js";
 
 /**
- * Writes the conformance cases (sdk-core ADR 0045): hand-written cases for
- * every outcome a port must reproduce, and cases generated from the
- * reducer's property-test generators with a fixed seed. The files in
- * conformance/ are this module's output, checked in; `pnpm conformance:update`
- * rewrites them, and the tests fail when they're out of date.
+ * Writes the multitrack conformance cases (docs/adr/0006, sdk-core ADR
+ * 0045): hand-written cases for every outcome a port must reproduce, and
+ * cases generated from the reducer's property-test generators with a fixed
+ * seed. `pnpm conformance:update` rewrites the files, and the tests fail
+ * when they're out of date.
  */
 
-/** The seed of the generated cases. Changing it, or fast-check's version, rewrites them. */
-const SEED = 45;
-/** How many generated commands that apply, and of each refusal, the file keeps. */
-const GENERATED_APPLIED = 60;
+const SEED = 6;
+const GENERATED_APPLIED = 80;
 const GENERATED_PER_REFUSAL = 2;
-/** How many generated documents the plan file keeps. */
+/** The most generated cases that apply, of any one command. */
+const GENERATED_PER_COMMAND = 6;
 const GENERATED_PLANS = 20;
+const GENERATED_MIGRATIONS = 40;
 
 const sources = Object.fromEntries(Object.entries(SOURCES).map(([id, frames]) => [id, { frames }]));
 
-/** The value as JSON carries it: what a port reads from the file. */
-const asJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
-
 const clip = (
   key: string,
+  at: number,
   source: string,
   start: number,
   end: number,
   extra: Partial<AudioClip> = {},
 ): AudioClip => ({
   key,
+  at,
   source,
   start,
   end,
@@ -45,18 +53,39 @@ const clip = (
   ...extra,
 });
 
-/** Two clips: `a` plays s1 0–100, and `b` plays s2 200–300 with fades. */
+const track = (key: string, clips: AudioClip[], extra: Partial<AudioTrack> = {}): AudioTrack => ({
+  key,
+  name: "",
+  gainDb: 0,
+  muted: false,
+  soloed: false,
+  clips,
+  ...extra,
+});
+
+/**
+ * Voice: `a` at 0–100, and `b` at 150–250 with fades. Music, at −6 dB: `m`
+ * at 50–350.
+ */
 const BASE = toAudioPlanDocument(
   {
     sampleRate: 48_000,
     channels: 2,
-    clips: [
-      clip("a", "s1", 0, 100),
-      clip("b", "s2", 200, 300, {
-        gainDb: -3.5,
-        fadeIn: { frames: 20, curve: "equalPower" },
-        fadeOut: { frames: 30, curve: "linear" },
-      }),
+    gainDb: -1.5,
+    tracks: [
+      track(
+        "voice",
+        [
+          clip("a", 0, "s1", 0, 100),
+          clip("b", 150, "s1", 200, 300, {
+            gainDb: -3.5,
+            fadeIn: { frames: 20, curve: "equalPower" },
+            fadeOut: { frames: 30, curve: "linear" },
+          }),
+        ],
+        { name: "Voice" },
+      ),
+      track("music", [clip("m", 50, "s2", 0, 300)], { gainDb: -6, name: "Music 🎵" }),
     ],
     metadata: { title: "Take 1", artist: "", album: "", year: "", comment: "" },
   },
@@ -64,97 +93,148 @@ const BASE = toAudioPlanDocument(
 );
 
 /**
- * A plan whose source ids and clip keys are the names of `Object.prototype`'s
- * properties, built from JSON text, so `__proto__` is an own field as any
- * JSON parser makes it. Readers that keep ids in plain objects, in any
- * language, must still treat them as data.
+ * A plan whose source ids, track keys and clip keys are the names of
+ * `Object.prototype`'s properties, built from JSON text, so `__proto__` is
+ * an own field as any JSON parser makes it.
  */
 const PROTOTYPE_NAMED = JSON.parse(
   JSON.stringify({
     ...BASE,
-    sources: { PROTO: { frames: 100 }, constructor: { frames: 100 }, toString: { frames: 100 } },
-    clips: ["PROTO", "constructor", "toString"].map((name) => ({
-      ...clip(name, name, 0, 50),
-    })),
+    sources: { PROTO: { frames: 100 }, constructor: { frames: 100 } },
+    tracks: [
+      track("PROTO", [clip("toString", 0, "PROTO", 0, 50)]),
+      track("constructor", [clip("valueOf", 10, "constructor", 0, 50)]),
+    ],
   }).replaceAll('"PROTO"', '"__proto__"'),
 ) as typeof BASE;
 
-export type Outcome = { readonly ok: true } | { readonly code: string; readonly reason: string };
+const invalidDocument = (reason: string) => refused(reason, "INVALID_DOCUMENT");
 
-/**
- * A case whose expected result is what the runner gives. For a hand-written
- * case, `outcome` is what the case is meant to show, and a runner that
- * disagrees fails here, before any file is written.
- */
-export function make(
-  name: string,
-  input: unknown,
+/** The generated cases a file keeps: some that apply, and a few of each refusal. */
+function keepSome(
+  samples: readonly { input: unknown; label: string }[],
   run: (input: never) => unknown,
-  outcome?: Outcome,
-): ConformanceCase {
-  const json = asJson(input);
-  let expected: unknown;
-  try {
-    expected = asJson(run(json as never));
-  } catch (error) {
-    const { code, details } = error as { code?: string; details?: { reason?: string } };
-    if (typeof code !== "string" || typeof details?.reason !== "string") throw error;
-    expected = { error: { code, reason: details.reason } };
-  }
-  if (outcome) {
-    const got = (expected as { error?: Outcome }).error ?? { ok: true };
-    if (JSON.stringify(got) !== JSON.stringify(outcome)) {
-      throw new Error(
-        `Case "${name}" gave ${JSON.stringify(got)}, not ${JSON.stringify(outcome)}.`,
-      );
+  applies: number,
+): ConformanceCase[] {
+  const kept: ConformanceCase[] = [];
+  const refusals = new Map<string, number>();
+  const perLabel = new Map<string, number>();
+  let appliedCount = 0;
+  for (const { input, label } of samples) {
+    const made = make("", input, run);
+    const reason = (made.expected as { error?: { reason: string } }).error?.reason;
+    if (
+      reason === undefined
+        ? appliedCount >= applies || (perLabel.get(label) ?? 0) >= GENERATED_PER_COMMAND
+        : (refusals.get(reason) ?? 0) >= GENERATED_PER_REFUSAL
+    ) {
+      continue;
     }
+    if (reason === undefined) {
+      appliedCount += 1;
+      perLabel.set(label, (perLabel.get(label) ?? 0) + 1);
+    } else refusals.set(reason, (refusals.get(reason) ?? 0) + 1);
+    const outcome = reason === undefined ? "applied" : `refused, ${reason}`;
+    kept.push({ ...made, name: `generated ${kept.length + 1}: ${label}, ${outcome}` });
   }
-  return { name, input: json, expected };
+  return kept;
 }
 
-export const applied: Outcome = { ok: true };
-export const refused = (reason: string, code = "INVALID_COMMAND"): Outcome => ({ code, reason });
-
-/** `hm-audio-commands`: a user-level command applied to a plan document. */
+/** `hm-audio-commands-2`: a version 2 command applied to a plan document. */
 export function commandCases(): ConformanceFile {
   const on = (command: unknown) => ({ plan: BASE, command });
+  const range = (extra: object) => ({
+    type: "audio.deleteRange",
+    start: 60,
+    end: 200,
+    tracks: ["voice"],
+    ripple: true,
+    ...extra,
+  });
   const handWritten: [string, unknown, Outcome][] = [
     [
-      "inserts a clip at the plan's end",
-      on({ type: "audio.insertClips", at: 200, clips: [clip("c", "s1", 0, 10)] }),
+      "inserts clips in free space, in any order",
+      on({
+        type: "audio.insertClips",
+        track: "voice",
+        clips: [clip("d", 300, "s1", 0, 10), clip("c", 100, "s1", 0, 50)],
+      }),
       applied,
     ],
     [
-      "inserts inside a clip, splitting it, each part keeping the fade of its own edge",
-      on({ type: "audio.insertClips", at: 150, clips: [clip("c", "s1", 0, 10)], splitKey: "b2" }),
-      applied,
-    ],
-    ["removes clips", on({ type: "audio.removeClips", keys: ["a"] }), applied],
-    [
-      "removes every clip, leaving an empty plan",
-      on({ type: "audio.removeClips", keys: ["b", "a"] }),
-      applied,
+      "refuses an insert that would overlap",
+      on({ type: "audio.insertClips", track: "voice", clips: [clip("c", 90, "s1", 0, 20)] }),
+      refused("clips-overlap"),
     ],
     [
-      "deletes a range across clips, trimming both",
-      on({ type: "audio.deleteRange", start: 50, end: 150 }),
+      "refuses a new clip with a track's key",
+      on({ type: "audio.insertClips", track: "voice", clips: [clip("music", 300, "s1", 0, 20)] }),
+      refused("key-taken"),
+    ],
+    [
+      "refuses an insert on a track the plan doesn't have",
+      on({ type: "audio.insertClips", track: "drums", clips: [clip("c", 300, "s1", 0, 20)] }),
+      refused("unknown-track"),
+    ],
+    [
+      "refuses a clip without a position",
+      on({
+        type: "audio.insertClips",
+        track: "voice",
+        clips: [{ ...clip("c", 300, "s1", 0, 20), at: undefined }],
+      }),
+      refused("invalid-frames"),
+    ],
+    [
+      "removes clips on two tracks, leaving silence",
+      on({ type: "audio.removeClips", keys: ["m", "a"] }),
       applied,
     ],
     [
-      "deletes a range inside a clip, splitting it with newKey",
-      on({ type: "audio.deleteRange", start: 10, end: 20, newKey: "a2" }),
+      "trims a clip's start, keeping its audio where it was",
+      on({ type: "audio.trimClip", key: "b", start: 220, end: 300 }),
       applied,
     ],
     [
       "trims a clip, shortening its fades in proportion",
-      on({ type: "audio.trimClip", key: "b", start: 220, end: 245 }),
+      on({ type: "audio.trimClip", key: "b", start: 200, end: 225 }),
       applied,
     ],
-    ["splits a clip", on({ type: "audio.splitClip", key: "b", at: 130, newKey: "b2" }), applied],
-    ["moves clips as a block", on({ type: "audio.moveClips", keys: ["b"], to: 0 }), applied],
+    [
+      "refuses a trim that would reach into the clip before",
+      on({ type: "audio.trimClip", key: "b", start: 140, end: 300 }),
+      refused("clips-overlap"),
+    ],
+    ["splits a clip", on({ type: "audio.splitClip", key: "m", at: 100, newKey: "m2" }), applied],
+    [
+      "refuses a split on a clip's edge",
+      on({ type: "audio.splitClip", key: "b", at: 150, newKey: "b2" }),
+      refused("not-inside-clip"),
+    ],
+    ["moves a clip earlier", on({ type: "audio.moveClips", keys: ["b"], by: -50 }), applied],
+    [
+      "moves clips to another track, keeping their spacing",
+      on({ type: "audio.moveClips", keys: ["a", "b"], by: 400, track: "music" }),
+      applied,
+    ],
+    [
+      "moves a clip past its neighbour, where there's room",
+      on({ type: "audio.moveClips", keys: ["a"], by: 250 }),
+      applied,
+    ],
+    [
+      "refuses a move that would overlap",
+      on({ type: "audio.moveClips", keys: ["b"], by: -51 }),
+      refused("clips-overlap"),
+    ],
+    [
+      "refuses a move before the timeline's start",
+      on({ type: "audio.moveClips", keys: ["a"], by: -1 }),
+      refused("frame-outside-plan"),
+    ],
     [
       "sets a fractional gain, which compares exactly",
-      on({ type: "audio.setGain", keys: ["a", "b"], gainDb: -0.1 }),
+      on({ type: "audio.setGain", keys: ["a", "m"], gainDb: -0.1 }),
       applied,
     ],
     [
@@ -162,362 +242,289 @@ export function commandCases(): ConformanceFile {
       on({ type: "audio.setFade", key: "a", edge: "out", frames: 100, curve: "equalPower" }),
       applied,
     ],
+    ["deletes a range with ripple, on one track", on(range({})), applied],
+    [
+      "deletes a range without ripple, on two tracks, splitting a clip",
+      on(range({ tracks: ["voice", "music"], ripple: false, newKeys: { music: "m2" } })),
+      applied,
+    ],
+    [
+      "deletes a range of silence with ripple, moving what's after it",
+      on(range({ start: 100, end: 150 })),
+      applied,
+    ],
+    [
+      "ignores a new key a track doesn't need, even a taken one",
+      on(range({ start: 100, end: 150, newKeys: { voice: "a" } })),
+      applied,
+    ],
+    [
+      "refuses a range inside a clip without a new key for its track",
+      on(range({ start: 100, end: 110, tracks: ["music"] })),
+      refused("new-key-required"),
+    ],
+    [
+      "refuses a new key for a track the command doesn't edit",
+      on(range({ newKeys: { music: "m2" } })),
+      refused("unknown-track"),
+    ],
+    ["refuses an empty range", on(range({ end: 60 })), refused("empty-range")],
+    ["refuses a range past the plan's end", on(range({ end: 351 })), refused("frame-outside-plan")],
+    ["refuses a range that names no tracks", on(range({ tracks: [] })), refused("no-tracks")],
+    [
+      "refuses a range that names a track twice",
+      on(range({ tracks: ["voice", "voice"] })),
+      refused("duplicate-key"),
+    ],
+    [
+      "keeps a range on every track, moved to the start",
+      on({ type: "audio.keepRange", start: 80, end: 200 }),
+      applied,
+    ],
+    [
+      "opens time on two tracks, splitting the clip across the frame",
+      on({
+        type: "audio.insertTime",
+        at: 100,
+        frames: 30,
+        tracks: ["voice", "music"],
+        newKeys: { music: "m2" },
+      }),
+      applied,
+    ],
+    [
+      "refuses to open no time",
+      on({ type: "audio.insertTime", at: 100, frames: 0, tracks: ["voice"] }),
+      refused("invalid-frames"),
+    ],
+    [
+      "adds a named track",
+      on({ type: "audio.addTrack", key: "fx", index: 1, name: "Effects" }),
+      applied,
+    ],
+    [
+      "adds a track named with 100 emoji: 100 code points, though 200 UTF-16 units",
+      on({ type: "audio.addTrack", key: "fx", index: 2, name: "🎵".repeat(100) }),
+      applied,
+    ],
+    [
+      "refuses a track name of 101 emoji",
+      on({ type: "audio.addTrack", key: "fx", index: 2, name: "🎵".repeat(101) }),
+      refused("name-too-long"),
+    ],
+    [
+      "refuses a track past the end",
+      on({ type: "audio.addTrack", key: "fx", index: 3 }),
+      refused("invalid-index"),
+    ],
+    ["removes a track", on({ type: "audio.removeTracks", keys: ["voice"] }), applied],
+    [
+      "refuses to remove every track",
+      on({ type: "audio.removeTracks", keys: ["music", "voice"] }),
+      refused("last-track"),
+    ],
+    ["moves a track", on({ type: "audio.moveTrack", key: "voice", to: 1 }), applied],
+    [
+      "mutes a track and sets its gain, leaving its other fields",
+      on({ type: "audio.setTrack", key: "music", muted: true, gainDb: -12 }),
+      applied,
+    ],
+    ["solos a track", on({ type: "audio.setTrack", key: "voice", soloed: true }), applied],
+    [
+      "refuses a track change that sets nothing",
+      on({ type: "audio.setTrack", key: "music" }),
+      refused("empty-change"),
+    ],
+    ["sets the master gain", on({ type: "audio.setMasterGain", gainDb: -3.25 }), applied],
+    ["sets the channel count", on({ type: "audio.setChannels", channels: 1 }), applied],
     [
       "sets metadata",
       on({ type: "audio.setMetadata", field: "artist", value: "Ana Pérez 🎙" }),
       applied,
     ],
     [
-      "removes a clip keyed __proto__",
-      { plan: PROTOTYPE_NAMED, command: { type: "audio.removeClips", keys: ["__proto__"] } },
-      applied,
-    ],
-    [
-      "splits a clip keyed constructor, naming the new part valueOf",
+      "deletes inside a clip on a track keyed __proto__, with its new key by that name",
       {
         plan: PROTOTYPE_NAMED,
-        command: { type: "audio.splitClip", key: "constructor", at: 75, newKey: "valueOf" },
+        command: JSON.parse(
+          '{"type":"audio.deleteRange","start":10,"end":20,"tracks":["__proto__"],"ripple":false,"newKeys":{"__proto__":"hasOwnProperty"}}',
+        ),
       },
       applied,
     ],
     [
-      "refuses a new key named toString when a clip has it",
+      "refuses a new key named valueOf when a clip has it",
       {
         plan: PROTOTYPE_NAMED,
-        command: { type: "audio.splitClip", key: "constructor", at: 75, newKey: "toString" },
+        command: { type: "audio.splitClip", key: "toString", at: 25, newKey: "valueOf" },
       },
       refused("key-taken"),
     ],
     [
-      "refuses a key that only Object.prototype has as an unknown clip",
-      {
-        plan: PROTOTYPE_NAMED,
-        command: { type: "audio.setGain", keys: ["hasOwnProperty"], gainDb: 0 },
-      },
-      refused("unknown-clip"),
+      "refuses a track that only Object.prototype has",
+      { plan: PROTOTYPE_NAMED, command: { type: "audio.removeTracks", keys: ["hasOwnProperty"] } },
+      refused("unknown-track"),
     ],
     ["refuses a command that isn't an object", on(null), refused("malformed-command")],
     [
-      "refuses an unknown field",
-      on({ type: "audio.removeClips", keys: ["a"], all: true }),
-      refused("malformed-command"),
-    ],
-    [
-      "refuses an unknown command",
-      on({ type: "audio.normalize", keys: ["a"] }),
+      "refuses a version 1 command that version 2 doesn't have",
+      on({ type: "audio.reorderClips", order: ["a", "b", "m"] }),
       refused("unknown-command"),
     ],
     [
-      "refuses a clip of a source the document doesn't list",
-      on({ type: "audio.insertClips", at: 0, clips: [clip("c", "s9", 0, 10)] }),
-      refused("unknown-source"),
-    ],
-    [
-      "refuses an unknown fade curve",
-      on({ type: "audio.setFade", key: "a", edge: "in", frames: 5, curve: "cubic" }),
-      refused("invalid-fade-curve"),
-    ],
-    [
-      "refuses an empty list of clips",
-      on({ type: "audio.removeClips", keys: [] }),
-      refused("no-clips"),
-    ],
-    [
-      "refuses a clip named twice",
-      on({ type: "audio.removeClips", keys: ["a", "a"] }),
-      refused("duplicate-key"),
-    ],
-    [
-      "refuses a new key the plan has",
-      on({ type: "audio.splitClip", key: "a", at: 50, newKey: "b" }),
-      refused("key-taken"),
-    ],
-    [
-      "refuses an unknown clip",
-      on({ type: "audio.setGain", keys: ["z"], gainDb: 0 }),
-      refused("unknown-clip"),
-    ],
-    [
-      "refuses a frame past the plan's end",
-      on({ type: "audio.insertClips", at: 201, clips: [clip("c", "s1", 0, 10)] }),
-      refused("frame-outside-plan"),
-    ],
-    [
-      "refuses an empty range",
-      on({ type: "audio.deleteRange", start: 40, end: 40 }),
-      refused("empty-range"),
-    ],
-    [
-      "refuses a split on a clip's edge",
-      on({ type: "audio.splitClip", key: "b", at: 100, newKey: "b2" }),
-      refused("not-inside-clip"),
-    ],
-    [
-      "refuses a split without the new part's key",
-      on({ type: "audio.insertClips", at: 50, clips: [clip("c", "s1", 0, 10)] }),
-      refused("new-key-required"),
-    ],
-    [
-      "refuses a move past the end",
-      on({ type: "audio.moveClips", keys: ["a"], to: 2 }),
-      refused("invalid-index"),
-    ],
-    [
-      "refuses an unknown fade edge",
-      on({ type: "audio.setFade", key: "a", edge: "both", frames: 5, curve: "linear" }),
-      refused("invalid-edge"),
-    ],
-    [
-      "refuses an unknown metadata field",
-      on({ type: "audio.setMetadata", field: "genre", value: "" }),
-      refused("unknown-metadata-field"),
-    ],
-    [
-      "sets metadata of 1,000 emoji: 1,000 code points, though 2,000 UTF-16 units",
-      on({ type: "audio.setMetadata", field: "comment", value: "🎙".repeat(1_000) }),
-      applied,
-    ],
-    [
-      "refuses metadata of 1,001 emoji",
-      on({ type: "audio.setMetadata", field: "comment", value: "🎙".repeat(1_001) }),
-      refused("metadata-too-long"),
-    ],
-    [
-      "refuses metadata over 1,000 code points",
-      on({ type: "audio.setMetadata", field: "comment", value: "x".repeat(1_001) }),
-      refused("metadata-too-long"),
-    ],
-    [
-      "refuses a trim to no frames",
-      on({ type: "audio.trimClip", key: "a", start: 10, end: 10 }),
-      refused("clip-too-short"),
-    ],
-    [
-      "refuses a trim past the source",
-      on({ type: "audio.trimClip", key: "b", start: 0, end: 501 }),
-      refused("clip-outside-source"),
-    ],
-    [
-      "refuses a fractional frame",
-      on({ type: "audio.trimClip", key: "a", start: 1.5, end: 10 }),
-      refused("invalid-frames"),
-    ],
-    [
-      "refuses a gain over 120 dB",
-      on({ type: "audio.setGain", keys: ["a"], gainDb: 120.5 }),
-      refused("gain-out-of-range"),
-    ],
-    [
-      "refuses fades that don't fit the clip together",
-      on({ type: "audio.setFade", key: "b", edge: "in", frames: 71, curve: "linear" }),
-      refused("fades-too-long"),
+      "refuses a field the command doesn't have",
+      on({ type: "audio.removeClips", keys: ["a"], ripple: true }),
+      refused("malformed-command"),
     ],
   ];
-  // A balanced sample: commands that apply, and a few of each refusal, so
-  // the file stays small enough to review.
-  const generated: ConformanceCase[] = [];
-  const refusals = new Map<string, number>();
-  let applies = 0;
-  const samples = fc.sample(
-    planArb.chain((state) => fc.tuple(fc.constant(state), commandFor(state))),
-    { seed: SEED, numRuns: 2_000 },
-  );
-  for (const [state, command] of samples) {
-    const made = make("", { plan: toAudioPlanDocument(state, sources), command }, applyToDocument);
-    const reason = (made.expected as { error?: { reason: string } }).error?.reason;
-    if (
-      reason === undefined
-        ? applies >= GENERATED_APPLIED
-        : (refusals.get(reason) ?? 0) >= GENERATED_PER_REFUSAL
-    ) {
-      continue;
-    }
-    if (reason === undefined) applies += 1;
-    else refusals.set(reason, (refusals.get(reason) ?? 0) + 1);
-    const outcome = reason === undefined ? "applied" : `refused, ${reason}`;
-    generated.push({
-      ...made,
-      name: `generated ${generated.length + 1}: ${command.type}, ${outcome}`,
-    });
-  }
+  const samples = fc
+    .sample(
+      planArb.chain((state) => fc.tuple(fc.constant(state), commandFor(state))),
+      { seed: SEED, numRuns: 3_000 },
+    )
+    .map(([state, command]) => ({
+      input: { plan: toAudioPlanDocument(state, sources), command },
+      label: command.type,
+    }));
   return {
     format: "hm-conformance",
     version: 1,
-    subject: "hm-audio-commands",
+    subject: "hm-audio-commands-2",
     description:
-      "audio-sdk's edit commands (docs/formats/hm-audio-plan.md). input.plan is an hm-audio-plan document and input.command an hm-audio-command; expected is the resulting document, or the rejection. Applying the command's inverse must restore the plan, but the inverse itself is internal. Generated cases come from the reducer's property-test generators, with a fixed seed.",
+      "audio-sdk's edit commands on a multitrack plan (docs/formats/hm-audio-plan.md, docs/adr/0006). input.plan is an hm-audio-plan document of version 2 and input.command an hm-audio-command of version 2; expected is the resulting document, or the rejection. Applying the command's inverse must restore the plan, but the inverse itself is internal. Generated cases come from the reducer's property-test generators, with a fixed seed.",
     cases: [
       ...handWritten.map(([name, input, outcome]) => make(name, input, applyToDocument, outcome)),
-      ...generated,
+      ...keepSome(samples, applyToDocument, GENERATED_APPLIED),
     ],
   };
 }
 
-/** `hm-audio-plan`: a document read, checked and written back. */
+/** `hm-audio-plan-2`: a document of version 1 or 2, read and written back as version 2. */
 export function planCases(): ConformanceFile {
-  const document = (changes: Record<string, unknown>) => ({ ...BASE, ...changes });
-  const withClip = (changes: Record<string, unknown>) =>
-    document({ clips: [{ ...BASE.clips[0], ...changes }] });
-  const invalidDocument = (reason: string) => refused(reason, "INVALID_DOCUMENT");
+  const document = (changes: object) => ({ ...BASE, ...changes });
+  const [voice, music] = BASE.tracks as [AudioTrack, AudioTrack];
+  const [a, b] = voice.clips as [AudioClip, AudioClip];
+  const withVoice = (changes: object) => document({ tracks: [{ ...voice, ...changes }, music] });
+  const earlier = (clips: AudioClipV1[]) =>
+    toDocumentV1({ sampleRate: 44_100, channels: 1, clips, metadata: BASE.metadata }, sources);
+  const v1Clip = (key: string, start: number, end: number): AudioClipV1 => ({
+    key,
+    source: "s1",
+    start,
+    end,
+    gainDb: -2,
+    fadeIn: { frames: 5, curve: "linear" },
+    fadeOut: NO_FADE,
+  });
   const handWritten: [string, unknown, Outcome][] = [
-    ["reads a document unchanged", BASE, applied],
-    ["reads an empty plan", document({ clips: [], sources: {} }), applied],
+    ["reads a plan of two tracks", BASE, applied],
+    ["reads tracks and clips named like Object.prototype's properties", PROTOTYPE_NAMED, applied],
+    ["reads a track with no clips", document({ tracks: [track("only", [])] }), applied],
+    ["reads clips that touch", withVoice({ clips: [a, { ...b, at: 100 }] }), applied],
     [
-      "reads source ids and clip keys named __proto__, constructor and toString",
-      PROTOTYPE_NAMED,
+      "migrates a version 1 document: one track, its clips back to back",
+      earlier([v1Clip("a", 0, 100), v1Clip("b", 200, 250)]),
+      applied,
+    ],
+    ["migrates a version 1 document with no clips", earlier([]), applied],
+    [
+      "migrates a version 1 document whose clips are keyed t1 and t2: the track takes t3",
+      earlier([v1Clip("t1", 0, 10), v1Clip("t2", 0, 10)]),
       applied,
     ],
     [
-      "refuses a clip of a source only Object.prototype has",
-      { ...PROTOTYPE_NAMED, clips: [clip("a", "hasOwnProperty", 0, 10)] },
-      invalidDocument("unknown-source"),
+      "refuses a version 1 document with tracks",
+      { ...earlier([v1Clip("a", 0, 100)]), tracks: [] },
+      invalidDocument("malformed-document"),
     ],
     [
-      "refuses two clips keyed __proto__",
-      {
-        ...PROTOTYPE_NAMED,
-        clips: [PROTOTYPE_NAMED.clips[0], { ...PROTOTYPE_NAMED.clips[1], key: "__proto__" }],
-      },
-      invalidDocument("duplicate-key"),
+      "refuses a version 2 document with version 1's clips",
+      document({ clips: [] }),
+      invalidDocument("malformed-document"),
     ],
     [
-      "reads a source with its asset",
-      document({
-        sources: {
-          ...BASE.sources,
-          s1: {
-            frames: 1_000,
-            asset: { asset: `sha256:${"0a".repeat(32)}`, mediaType: "audio/wav", size: 4_044 },
-          },
-        },
-      }),
-      applied,
+      "refuses a later version",
+      document({ version: 3 }),
+      refused("unknown-format-version", "UNSUPPORTED_FORMAT"),
     ],
     [
       "refuses another format",
       document({ format: "hm-video-plan" }),
       refused("unknown-format", "UNSUPPORTED_FORMAT"),
     ],
+    ["refuses a plan with no tracks", document({ tracks: [] }), invalidDocument("no-tracks")],
     [
-      "refuses a later version",
-      document({ version: 2 }),
-      refused("unknown-format-version", "UNSUPPORTED_FORMAT"),
-    ],
-    ["refuses a list", [BASE], invalidDocument("malformed-document")],
-    [
-      "refuses a version that isn't a number",
-      document({ version: "1" }),
-      invalidDocument("malformed-document"),
-    ],
-    ["refuses an unknown field", document({ tempo: 120 }), invalidDocument("malformed-document")],
-    [
-      "refuses a missing field",
-      { ...BASE, metadata: undefined },
-      invalidDocument("malformed-document"),
+      "refuses clips that overlap",
+      withVoice({ clips: [a, { ...b, at: 99 }] }),
+      invalidDocument("clips-overlap"),
     ],
     [
-      "refuses a sample rate of 0",
-      document({ sampleRate: 0 }),
-      invalidDocument("malformed-document"),
+      "refuses clips out of time order",
+      withVoice({ clips: [b, a] }),
+      invalidDocument("clips-out-of-order"),
     ],
     [
-      "refuses a source of 0 frames",
-      document({ sources: { ...BASE.sources, s1: { frames: 0 } } }),
-      invalidDocument("malformed-document"),
+      "refuses a clip with a track's key",
+      withVoice({ clips: [a, { ...b, key: "music" }] }),
+      invalidDocument("duplicate-key"),
     ],
     [
-      "refuses an asset that isn't a SHA-256",
-      document({
-        sources: {
-          ...BASE.sources,
-          s1: { frames: 1_000, asset: { asset: "md5:00", mediaType: "audio/wav", size: 1 } },
-        },
-      }),
-      invalidDocument("malformed-document"),
+      "refuses a key used on two tracks",
+      document({ tracks: [voice, { ...music, clips: [{ ...music.clips[0], key: "a" }] }] }),
+      invalidDocument("duplicate-key"),
     ],
     [
-      "refuses a media type in capitals",
-      document({
-        sources: {
-          ...BASE.sources,
-          s1: {
-            frames: 1_000,
-            asset: { asset: `sha256:${"0a".repeat(32)}`, mediaType: "Audio/WAV", size: 1 },
-          },
-        },
-      }),
-      invalidDocument("malformed-document"),
+      "refuses a clip without a position",
+      withVoice({ clips: [{ ...a, at: undefined }] }),
+      invalidDocument("invalid-frames"),
     ],
     [
-      "refuses an unknown clip field",
-      withClip({ muted: true }),
+      "refuses a position that isn't a whole frame",
+      withVoice({ clips: [{ ...a, at: 0.5 }] }),
+      invalidDocument("invalid-frames"),
+    ],
+    ["reads a track name of 100 emoji", withVoice({ name: "🎙".repeat(100) }), applied],
+    [
+      "refuses a track name of 101 emoji",
+      withVoice({ name: "🎙".repeat(101) }),
+      invalidDocument("name-too-long"),
+    ],
+    [
+      "refuses a track gain over 120 dB",
+      withVoice({ gainDb: 121 }),
+      invalidDocument("gain-out-of-range"),
+    ],
+    [
+      "refuses a master gain under -120 dB",
+      document({ gainDb: -121 }),
+      invalidDocument("gain-out-of-range"),
+    ],
+    [
+      "refuses a track without mute",
+      withVoice({ muted: undefined }),
       invalidDocument("malformed-document"),
     ],
     [
-      "refuses an unknown metadata field",
-      document({ metadata: { ...BASE.metadata, genre: "" } }),
+      "refuses an unknown track field",
+      withVoice({ pan: 0 }),
       invalidDocument("malformed-document"),
     ],
     [
       "refuses a clip of a source it doesn't list",
-      withClip({ source: "s9" }),
+      withVoice({ clips: [{ ...a, source: "s9" }] }),
       invalidDocument("unknown-source"),
     ],
     [
-      "refuses two clips with one key",
-      document({ clips: [BASE.clips[0], { ...BASE.clips[1], key: "a" }] }),
-      invalidDocument("duplicate-key"),
-    ],
-    [
-      "refuses an unknown fade curve",
-      withClip({ fadeIn: { frames: 0, curve: "cubic" } }),
-      invalidDocument("invalid-fade-curve"),
-    ],
-    [
-      "reads metadata of 1,000 emoji: 1,000 code points, though 2,000 UTF-16 units",
-      document({ metadata: { ...BASE.metadata, title: "🎙".repeat(1_000) } }),
-      applied,
-    ],
-    [
-      "refuses metadata of 1,001 emoji",
-      document({ metadata: { ...BASE.metadata, title: "🎙".repeat(1_001) } }),
-      invalidDocument("metadata-too-long"),
-    ],
-    [
-      "refuses metadata over 1,000 code points",
-      document({ metadata: { ...BASE.metadata, title: "x".repeat(1_001) } }),
-      invalidDocument("metadata-too-long"),
-    ],
-    [
-      "refuses a clip of no frames",
-      withClip({ start: 50, end: 50 }),
-      invalidDocument("clip-too-short"),
-    ],
-    [
       "refuses a clip past its source",
-      withClip({ end: 1_001 }),
+      withVoice({ clips: [{ ...a, end: 1_001 }] }),
       invalidDocument("clip-outside-source"),
-    ],
-    ["refuses a negative frame", withClip({ start: -1 }), invalidDocument("invalid-frames")],
-    [
-      "refuses a gain under -120 dB",
-      withClip({ gainDb: -121 }),
-      invalidDocument("gain-out-of-range"),
-    ],
-    [
-      "refuses fades that don't fit their clip",
-      withClip({
-        fadeIn: { frames: 60, curve: "linear" },
-        fadeOut: { frames: 41, curve: "linear" },
-      }),
-      invalidDocument("fades-too-long"),
     ],
   ];
   const generated = fc
     .sample(planArb, { seed: SEED, numRuns: GENERATED_PLANS })
     .map((state, index) =>
       make(
-        `generated ${index + 1}: ${state.clips.length} clips`,
+        `generated ${index + 1}: ${state.tracks.length} tracks`,
         toAudioPlanDocument(state, sources),
         readAndWrite,
         applied,
@@ -526,12 +533,150 @@ export function planCases(): ConformanceFile {
   return {
     format: "hm-conformance",
     version: 1,
-    subject: "hm-audio-plan",
+    subject: "hm-audio-plan-2",
     description:
-      "Reading hm-audio-plan documents (docs/formats/hm-audio-plan.md): input is the document, and expected is the document as a reader writes it back, or the rejection.",
+      "Reading hm-audio-plan documents as version 2 (docs/formats/hm-audio-plan.md, docs/adr/0006): input is a document of version 1 or 2, and expected is the version 2 document a reader writes back, or the rejection. A version 1 document comes back migrated.",
     cases: [
       ...handWritten.map(([name, input, outcome]) => make(name, input, readAndWrite, outcome)),
       ...generated,
     ],
+  };
+}
+
+/** `hm-audio-command-migration`: a version 1 command, migrated and applied. */
+export function migrationCases(): ConformanceFile {
+  const samples = fc
+    .sample(
+      planArbV1.chain((state) => fc.tuple(fc.constant(state), commandForV1(state))),
+      { seed: SEED, numRuns: 2_000 },
+    )
+    .map(([state, command]) => ({
+      input: { plan: toDocumentV1(state, sources), command },
+      label: command.type,
+    }));
+  return {
+    format: "hm-conformance",
+    version: 1,
+    subject: "hm-audio-command-migration",
+    description:
+      "Migrating version 1 commands (docs/formats/hm-audio-plan.md, docs/adr/0006). input.plan is an hm-audio-plan document of version 1 and input.command an hm-audio-command of version 1. The plan migrates to version 2, the command to the version 2 commands the format record lists, and they're applied in order; expected is the resulting version 2 document, or the first rejection. The migrated commands themselves aren't compared. Generated cases come from version 1's property-test generators, with a fixed seed.",
+    cases: keepSome(samples, migrateAndApply, GENERATED_MIGRATIONS),
+  };
+}
+
+/** How far a mixed sample may be from the expected one: gains and fades are computed. */
+const MIX_TOLERANCE = 1e-6;
+
+/** `hm-audio-mix`: plans mixed over small sources. */
+export function mixCases(): ConformanceFile {
+  // A ramp from -0.5, and a stereo source: its left channel half the ramp, its right the ramp upside down.
+  const ramp = Array.from({ length: 16 }, (_, i) => (i - 8) / 16);
+  const samples = {
+    mono: [ramp],
+    stereo: [ramp.map((sample) => sample / 2), ramp.map((sample) => -sample)],
+  };
+  const lengths = { mono: { frames: 16 }, stereo: { frames: 16 } };
+  const mix = (tracks: AudioTrack[], extra: { channels?: number; gainDb?: number } = {}) => ({
+    plan: toAudioPlanDocument(
+      {
+        sampleRate: 8_000,
+        channels: extra.channels ?? 1,
+        gainDb: extra.gainDb ?? 0,
+        tracks,
+        metadata: { title: "", artist: "", album: "", year: "", comment: "" },
+      },
+      lengths,
+    ),
+    sources: samples,
+  });
+  const whole = (key: string, extra: Partial<AudioClip> = {}) => clip(key, 0, "mono", 0, 16, extra);
+  const cases: [string, unknown][] = [
+    ["plays one clip as its source", mix([track("t", [whole("a")])])],
+    [
+      "leaves silence before a clip and between clips",
+      mix([track("t", [clip("a", 2, "mono", 8, 11), clip("b", 7, "mono", 12, 14)])]),
+    ],
+    ["applies a clip's gain", mix([track("t", [whole("a", { gainDb: -6 })])])],
+    [
+      "fades in linearly from silence on the first frame, and out by a quarter sine to silence on the last",
+      mix([
+        track("t", [
+          whole("a", {
+            fadeIn: { frames: 6, curve: "linear" },
+            fadeOut: { frames: 5, curve: "equalPower" },
+          }),
+        ]),
+      ]),
+    ],
+    [
+      "sums two tracks at unity, where they overlap",
+      mix([
+        track("ta", [clip("a", 0, "mono", 8, 14)]),
+        track("tb", [clip("b", 3, "mono", 10, 16)]),
+      ]),
+    ],
+    [
+      "applies each track's gain, then the master gain",
+      mix(
+        [
+          track("ta", [clip("a", 0, "mono", 8, 14)], { gainDb: -3 }),
+          track("tb", [clip("b", 3, "mono", 10, 16)], { gainDb: 4 }),
+        ],
+        { gainDb: -2 },
+      ),
+    ],
+    [
+      "leaves out a muted track, which doesn't lengthen the mix either",
+      mix([track("ta", [clip("a", 0, "mono", 8, 12)]), track("tb", [whole("b")], { muted: true })]),
+    ],
+    [
+      "plays only the soloed tracks",
+      mix([
+        track("ta", [whole("a")]),
+        track("tb", [clip("b", 0, "mono", 12, 16)], { soloed: true }),
+        track("tc", [clip("c", 2, "mono", 8, 10)], { soloed: true }),
+      ]),
+    ],
+    [
+      "lets mute win over solo",
+      mix([
+        track("ta", [clip("a", 0, "mono", 12, 16)], { soloed: true }),
+        track("tb", [whole("b")], { soloed: true, muted: true }),
+      ]),
+    ],
+    [
+      "plays a mono source on both channels of a stereo plan",
+      mix([track("t", [clip("a", 0, "mono", 10, 14)])], { channels: 2 }),
+    ],
+    [
+      "averages a stereo source's channels in a mono plan",
+      mix([track("t", [clip("a", 0, "stereo", 10, 14)])]),
+    ],
+    [
+      "mixes a mono and a stereo source in a stereo plan",
+      mix(
+        [
+          track("ta", [clip("a", 0, "mono", 10, 14)]),
+          track("tb", [clip("b", 1, "stereo", 0, 4)], { gainDb: -6 }),
+        ],
+        { channels: 2 },
+      ),
+    ],
+    [
+      "clamps a mix over full scale, and reports its peak and the frames it clamped",
+      mix([track("ta", [whole("a")]), track("tb", [whole("b")])], { gainDb: 6 }),
+    ],
+    ["mixes a plan with no clips to nothing", mix([track("t", [])])],
+  ];
+  return {
+    format: "hm-conformance",
+    version: 1,
+    subject: "hm-audio-mix",
+    description:
+      "Mixing an hm-audio-plan of version 2 (docs/formats/hm-audio-plan.md, docs/adr/0006). input.plan is the document, and input.sources gives each source's samples, one list per channel. expected.channels is the mix, one list per channel of the plan, as long as the last audible clip, clamped to full scale; expected.peak is its largest absolute sample before clamping, where 1 is full scale; expected.clipped is how many frames were clamped. Every number is compared within the case's tolerance, because gains from decibels and fade curves are computed.",
+    cases: cases.map(([name, input]) => ({
+      ...make(name, input, mixPlan, applied),
+      tolerance: MIX_TOLERANCE,
+    })),
   };
 }

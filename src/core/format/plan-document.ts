@@ -1,63 +1,30 @@
 import { AudioError } from "../errors/audio-error.js";
-import type { AudioClip, AudioClipProblem, AudioMetadata, AudioPlan } from "../model/plan.js";
+import type { AudioClipProblem, AudioMetadata, AudioPlan, AudioTrack } from "../model/plan.js";
+import { Invalid, isRecord, onlyFields } from "../operations/checks.js";
+import { checkTrack, checkUniqueKeys, refuse } from "../operations/commands.js";
 import {
-  checkClip,
-  Invalid,
-  invalid,
-  isKey,
-  isRecord,
-  longerThan,
-  MAX_METADATA_LENGTH,
-  onlyFields,
-} from "../operations/commands.js";
-
-/**
- * The name of the clip plan's portable format (sdk-core ADR 0045).
- *
- * @public
- */
-export const AUDIO_PLAN_FORMAT = "hm-audio-plan";
+  AUDIO_PLAN_FORMAT,
+  type AudioPlanDocumentSource,
+  isCount,
+  malformed,
+  readMetadata,
+  readSources,
+} from "./document-parts.js";
+import { migratePlan, readPlanDocumentV1 } from "./version-1.js";
 
 /**
  * The version of {@link AUDIO_PLAN_FORMAT} this release writes, and the
- * latest it reads.
+ * latest it reads. It reads version 1 too, by migrating it.
  *
  * @public
  */
-export const AUDIO_PLAN_VERSION = 1;
+export const AUDIO_PLAN_VERSION = 2;
 
 /**
- * A content-addressed reference to binary data, such as a source's file
- * (sdk-core ADR 0045). Documents never inline bytes.
- *
- * @public
- */
-export interface AudioAssetReference {
-  /** `sha256:` and the lowercase hex SHA-256 of the bytes. */
-  readonly asset: string;
-  /** The bytes' media type, such as `audio/wav`, in lowercase. */
-  readonly mediaType: string;
-  /** The size of the bytes. */
-  readonly size: number;
-}
-
-/**
- * A source, as a plan document records it: its length, which its clips must
- * lie within, and, once documents travel with their files, its content.
- *
- * @public
- */
-export interface AudioPlanDocumentSource {
-  /** The source's length in frames, at the plan's sample rate. */
-  readonly frames: number;
-  readonly asset?: AudioAssetReference;
-}
-
-/**
- * The clip plan as portable JSON: `hm-audio-plan` version 1, which
- * `formats/hm-audio-plan/v1.schema.json` describes (docs/formats/hm-audio-plan.md).
- * Every position is a whole number of frames, and sources are named by the
- * ids their clips use.
+ * The plan as portable JSON: `hm-audio-plan` version 2, which
+ * `formats/hm-audio-plan/v2.schema.json` describes
+ * (docs/formats/hm-audio-plan.md). Every position is a whole number of
+ * frames, and sources are named by the ids their clips use.
  *
  * @public
  */
@@ -66,8 +33,9 @@ export interface AudioPlanDocument {
   readonly version: typeof AUDIO_PLAN_VERSION;
   readonly sampleRate: number;
   readonly channels: number;
+  readonly gainDb: number;
   readonly sources: Readonly<Record<string, AudioPlanDocumentSource>>;
-  readonly clips: readonly AudioClip[];
+  readonly tracks: readonly AudioTrack[];
   readonly metadata: AudioMetadata;
 }
 
@@ -80,9 +48,12 @@ export interface AudioPlanDocument {
  *   reads.
  * - With `INVALID_DOCUMENT`: `malformed-document`, a document that isn't
  *   shaped as the schema says; `unknown-source`, a clip whose source the
- *   document doesn't list; `duplicate-key`, two clips with one key;
- *   `invalid-fade-curve` and `metadata-too-long`, as for commands; and a
- *   clip's own problems, {@link AudioClipProblem}.
+ *   document doesn't list; `duplicate-key`, a key used twice among tracks
+ *   and clips; `clips-overlap` and `clips-out-of-order`, a track whose
+ *   clips aren't in time order without overlap; `no-tracks`, a plan with
+ *   none; `invalid-fade-curve`, `metadata-too-long`, `name-too-long` and
+ *   `gain-out-of-range`, as for commands; and a clip's own problems,
+ *   {@link AudioClipProblem}.
  *
  * @public
  */
@@ -94,88 +65,26 @@ export type AudioDocumentRejection =
   | "unknown-source"
   | "duplicate-key"
   | "invalid-fade-curve"
-  | "metadata-too-long";
+  | "metadata-too-long"
+  | "name-too-long"
+  | "clips-overlap"
+  | "clips-out-of-order"
+  | "no-tracks";
 
 const DOCUMENT_FIELDS = [
   "format",
   "version",
   "sampleRate",
   "channels",
+  "gainDb",
   "sources",
-  "clips",
+  "tracks",
   "metadata",
 ];
-const SOURCE_FIELDS = ["frames", "asset"];
-const ASSET_FIELDS = ["asset", "mediaType", "size"];
-const METADATA_FIELDS: readonly (keyof AudioMetadata)[] = [
-  "title",
-  "artist",
-  "album",
-  "year",
-  "comment",
-];
-/** The patterns the schema uses too, so both accept the same documents. */
-const ASSET_ID = /^sha256:[0-9a-f]{64}$/;
-const MEDIA_TYPE = /^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/;
-
-function malformed(message: string): never {
-  return invalid("malformed-command", message);
-}
-
-/** @internal */
-export const isCount = (value: unknown, min: number): value is number =>
-  Number.isSafeInteger(value) && (value as number) >= min;
-
-function readAsset(value: unknown): AudioAssetReference {
-  if (!isRecord<AudioAssetReference>(value)) malformed("an asset is an object");
-  onlyFields(value, ASSET_FIELDS, "an asset");
-  const { asset, mediaType, size } = value;
-  if (typeof asset !== "string" || !ASSET_ID.test(asset)) malformed("an asset id is sha256:<hex>");
-  if (typeof mediaType !== "string" || mediaType.length > 255 || !MEDIA_TYPE.test(mediaType)) {
-    malformed("a media type is type/subtype, in lowercase");
-  }
-  if (!isCount(size, 0)) malformed("an asset's size is a whole number of bytes");
-  return { asset, mediaType, size };
-}
-
-/** @internal */
-export function readSources(value: unknown): Record<string, AudioPlanDocumentSource> {
-  if (!isRecord<Record<string, unknown>>(value) || Array.isArray(value)) {
-    malformed("sources is an object");
-  }
-  return Object.fromEntries(
-    Object.entries(value).map(([id, source]) => {
-      if (!isKey(id)) malformed("a source id is a non-empty string");
-      if (!isRecord<AudioPlanDocumentSource>(source)) malformed("a source is an object");
-      onlyFields(source, SOURCE_FIELDS, "a source");
-      if (!isCount(source.frames, 1)) malformed("a source's frames are a whole number above 0");
-      const entry: AudioPlanDocumentSource =
-        source.asset === undefined
-          ? { frames: source.frames }
-          : { frames: source.frames, asset: readAsset(source.asset) };
-      return [id, entry];
-    }),
-  );
-}
-
-/** @internal */
-export function readMetadata(value: unknown): AudioMetadata {
-  if (!isRecord<AudioMetadata>(value)) malformed("metadata is an object");
-  onlyFields(value, METADATA_FIELDS, "metadata");
-  const fields = METADATA_FIELDS.map((field) => {
-    const text = value[field];
-    if (typeof text !== "string") malformed(`metadata.${field} is text`);
-    if (longerThan(text, MAX_METADATA_LENGTH)) {
-      invalid("metadata-too-long", `metadata.${field} is over ${MAX_METADATA_LENGTH} code points`);
-    }
-    return [field, text] as const;
-  });
-  return Object.fromEntries(fields) as unknown as AudioMetadata;
-}
 
 function read(value: unknown): {
   plan: AudioPlan;
-  sources: Record<string, AudioPlanDocumentSource>;
+  sources: Readonly<Record<string, AudioPlanDocumentSource>>;
 } {
   if (!isRecord<AudioPlanDocument>(value) || Array.isArray(value)) {
     malformed("a document is an object");
@@ -194,38 +103,41 @@ function read(value: unknown): {
       { details: { format: AUDIO_PLAN_FORMAT, reason: "unknown-format-version" } },
     );
   }
-  if (version !== AUDIO_PLAN_VERSION) malformed("version is 1");
+  if (version === 1) {
+    // Version 1's own reader checks it, and its plan migrates.
+    const earlier = readPlanDocumentV1(value);
+    return { plan: migratePlan(earlier.plan), sources: earlier.sources };
+  }
+  if (version !== AUDIO_PLAN_VERSION) malformed("version is 1 or 2");
   onlyFields(value, DOCUMENT_FIELDS, "a document");
   if (!isCount(value.sampleRate, 1)) malformed("sampleRate is a whole number above 0");
   if (!isCount(value.channels, 1)) malformed("channels is a whole number above 0");
-  const sources = readSources(value.sources);
-  if (!Array.isArray(value.clips)) malformed("clips is a list");
-  const lookup = (id: string) => (Object.hasOwn(sources, id) ? sources[id]?.frames : undefined);
-  const clips = value.clips.map((clip: unknown) => checkClip(clip, lookup));
-  const keys = new Set<string>();
-  for (const { key } of clips) {
-    if (keys.has(key)) invalid("duplicate-key", `two clips have the key ${key}`);
-    keys.add(key);
+  const { gainDb } = value;
+  if (typeof gainDb !== "number" || !(gainDb >= -120 && gainDb <= 120)) {
+    refuse("gain-out-of-range", "the master gain must be from -120 to 120 dB");
   }
-  return {
-    plan: {
-      sampleRate: value.sampleRate,
-      channels: value.channels,
-      clips,
-      metadata: readMetadata(value.metadata),
-    },
-    sources,
+  const sources = readSources(value.sources);
+  if (!Array.isArray(value.tracks)) malformed("tracks is a list");
+  if (value.tracks.length === 0) refuse("no-tracks", "a plan has at least one track");
+  const lookup = (id: string) => (Object.hasOwn(sources, id) ? sources[id]?.frames : undefined);
+  const plan: AudioPlan = {
+    sampleRate: value.sampleRate,
+    channels: value.channels,
+    gainDb,
+    tracks: value.tracks.map((track: unknown) => checkTrack(track, lookup)),
+    metadata: readMetadata(value.metadata),
   };
+  checkUniqueKeys(plan);
+  return { plan, sources };
 }
 
 /**
- * Reads a plan document, such as one parsed from JSON, checking it as
- * {@link AudioPlanDocument}'s schema does and more: every clip must lie
- * within a source the document lists, and keys must be unique. Unknown
- * fields are refused, never dropped.
+ * Reads a plan document of version 1 or 2, and returns a multitrack plan:
+ * a version 1 document migrates with {@link migratePlan}. It checks what
+ * the schemas do and more: every clip lies within a source the document
+ * lists, each track's clips are in time order and don't overlap, and keys
+ * are unique. Unknown fields are refused, never dropped.
  *
- * @param value - The parsed JSON.
- * @returns The plan, and its sources by id.
  * @throws `AudioError` with `UNSUPPORTED_FORMAT` for another format or a
  *   later version, and `INVALID_DOCUMENT` for anything else that's wrong,
  *   with a {@link AudioDocumentRejection} as `details.reason`.
@@ -243,19 +155,14 @@ export function readAudioPlanDocument(value: unknown): {
     throw new AudioError(
       "INVALID_DOCUMENT",
       `Invalid ${AUDIO_PLAN_FORMAT} document: ${error.message}.`,
-      {
-        details: { format: AUDIO_PLAN_FORMAT, reason },
-      },
+      { details: { format: AUDIO_PLAN_FORMAT, reason } },
     );
   }
 }
 
 /**
- * Writes a plan as an {@link AudioPlanDocument}, plain JSON-ready data.
+ * Writes a multitrack plan as a version 2 document, plain JSON-ready data.
  *
- * @param plan - The plan.
- * @param sources - The sources by id, with at least every source the plan's
- *   clips use. They're written as given.
  * @throws `TypeError` if a clip's source is missing from `sources`.
  * @public
  */
@@ -263,30 +170,41 @@ export function toAudioPlanDocument(
   plan: AudioPlan,
   sources: Readonly<Record<string, AudioPlanDocumentSource>>,
 ): AudioPlanDocument {
-  for (const clip of plan.clips) {
-    if (!Object.hasOwn(sources, clip.source)) {
-      throw new TypeError(`The sources don't include ${clip.source}, which clip ${clip.key} uses.`);
-    }
-  }
   return {
     format: AUDIO_PLAN_FORMAT,
     version: AUDIO_PLAN_VERSION,
     sampleRate: plan.sampleRate,
     channels: plan.channels,
+    gainDb: plan.gainDb,
     sources: Object.fromEntries(
       Object.entries(sources).map(([id, { frames, asset }]) => [
         id,
         asset === undefined ? { frames } : { frames, asset: { ...asset } },
       ]),
     ),
-    clips: plan.clips.map(({ key, source, start, end, gainDb, fadeIn, fadeOut }) => ({
-      key,
-      source,
-      start,
-      end,
-      gainDb,
-      fadeIn: { frames: fadeIn.frames, curve: fadeIn.curve },
-      fadeOut: { frames: fadeOut.frames, curve: fadeOut.curve },
+    tracks: plan.tracks.map((track) => ({
+      key: track.key,
+      name: track.name,
+      gainDb: track.gainDb,
+      muted: track.muted,
+      soloed: track.soloed,
+      clips: track.clips.map((clip) => {
+        if (!Object.hasOwn(sources, clip.source)) {
+          throw new TypeError(
+            `The sources don't include ${clip.source}, which clip ${clip.key} uses.`,
+          );
+        }
+        return {
+          key: clip.key,
+          at: clip.at,
+          source: clip.source,
+          start: clip.start,
+          end: clip.end,
+          gainDb: clip.gainDb,
+          fadeIn: { frames: clip.fadeIn.frames, curve: clip.fadeIn.curve },
+          fadeOut: { frames: clip.fadeOut.frames, curve: clip.fadeOut.curve },
+        };
+      }),
     })),
     metadata: { ...plan.metadata },
   };

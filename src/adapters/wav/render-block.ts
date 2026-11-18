@@ -1,61 +1,28 @@
-import { gainAt } from "../../core/model/envelope.js";
-import { channelMix } from "../../core/model/mix.js";
-import type { AudioClip } from "../../core/model/plan.js";
+import { type MixBlock, mixBlock } from "../../core/model/mix.js";
 import type { AudioSampleFormat } from "../../core/ports/audio-processor.js";
 import { encodeSamples } from "./wav-writer.js";
 
-/**
- * One clip's part of an output block: its source samples for the frames it
- * covers there, one array per source channel.
- */
-export interface BlockSegment {
-  /** The clip, for its gain and fades. */
-  readonly clip: AudioClip;
-  /** The first frame, counted from the clip's start. */
-  readonly within: number;
-  /** The frame of the block the segment starts at. */
-  readonly at: number;
-  /** The source's samples, one array per source channel, each `frames` long. */
-  readonly samples: readonly Float32Array[];
-  readonly frames: number;
-}
-
 /** One output block to render and encode. */
-export interface RenderBlockInput {
-  /** The plan's channel count. */
-  readonly channels: number;
-  /** The block's length in frames. */
-  readonly frames: number;
+export interface RenderBlockInput extends MixBlock {
   readonly sampleFormat: AudioSampleFormat;
-  readonly segments: readonly BlockSegment[];
+}
+
+/** An encoded block, and what clamping did to it. */
+export interface RenderedBlock {
+  /** The block's WAV samples, interleaved. */
+  readonly bytes: Uint8Array<ArrayBuffer>;
+  /** The largest absolute sample of the mix before clamping. */
+  readonly peak: number;
+  /** How many frames were clamped. */
+  readonly clipped: number;
 }
 
 /**
- * Renders one output block (docs/adr/0003): each segment's samples, mixed
- * to the plan's channels by Web Audio's speaker rules, times the clip's
- * `gainAt` at each frame, then clamped, quantised and interleaved as WAV
- * samples. Frames no segment covers are silent.
+ * Renders one output block (docs/adr/0006): the mix of its segments, by the
+ * core's `mixBlock`, clamped, then quantised and interleaved as WAV
+ * samples, with the mix's peak and the frames it clamped.
  */
-export function renderBlock(input: RenderBlockInput): Uint8Array<ArrayBuffer> {
-  const { channels, frames, sampleFormat, segments } = input;
-  const out = Array.from({ length: channels }, () => new Float32Array(frames));
-  const mixed = new Float64Array(channels);
-  for (const segment of segments) {
-    const matrix = channelMix(segment.samples.length, channels);
-    for (let i = 0; i < segment.frames; i += 1) {
-      const gain = gainAt(segment.clip, segment.within + i);
-      mixed.fill(0);
-      for (let input = 0; input < segment.samples.length; input += 1) {
-        const sample = (segment.samples[input] as Float32Array)[i] as number;
-        for (let output = 0; output < channels; output += 1) {
-          mixed[output] =
-            (mixed[output] as number) + ((matrix[output] as number[])[input] as number) * sample;
-        }
-      }
-      for (let output = 0; output < channels; output += 1) {
-        (out[output] as Float32Array)[segment.at + i] = (mixed[output] as number) * gain;
-      }
-    }
-  }
-  return encodeSamples(out, frames, sampleFormat);
+export function renderBlock(input: RenderBlockInput): RenderedBlock {
+  const { channels, peak, clipped } = mixBlock(input);
+  return { bytes: encodeSamples(channels, input.frames, input.sampleFormat), peak, clipped };
 }

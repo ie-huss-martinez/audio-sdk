@@ -1,11 +1,11 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { gainAt } from "../../core/model/envelope.js";
-import { type AudioClip, NO_FADE } from "../../core/model/plan.js";
+import { type AudioClipBody, NO_FADE } from "../../core/model/plan.js";
 import { type GainEvent, gainEvents, MAX_CURVE_POINTS } from "./gain-automation.js";
 
 const RATE = 1_000;
-const clip = (changes: Partial<AudioClip>): AudioClip => ({
+const clip = (changes: Partial<AudioClipBody>): AudioClipBody => ({
   key: "c",
   source: "s",
   start: 0,

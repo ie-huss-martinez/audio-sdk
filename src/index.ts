@@ -25,33 +25,41 @@ export type {
 export { audioLimitDefinitions, audioLimits } from "./core/errors/audio-limits.js";
 export type {
   AudioAssetReference,
-  AudioDocumentRejection,
-  AudioPlanDocument,
   AudioPlanDocumentSource,
-} from "./core/format/plan-document.js";
+} from "./core/format/document-parts.js";
+export { AUDIO_PLAN_FORMAT } from "./core/format/document-parts.js";
+export type { AudioDocumentRejection, AudioPlanDocument } from "./core/format/plan-document.js";
 export {
-  AUDIO_PLAN_FORMAT,
   AUDIO_PLAN_VERSION,
   readAudioPlanDocument,
   toAudioPlanDocument,
 } from "./core/format/plan-document.js";
+export type { AudioClipV1, AudioPlanV1 } from "./core/format/version-1.js";
+export { migrateAudioCommand, migratePlan } from "./core/format/version-1.js";
 export { dbToGain, gainAt } from "./core/model/envelope.js";
+export { mixLength } from "./core/model/mix.js";
 export type {
   AudioClip,
+  AudioClipBody,
   AudioClipProblem,
   AudioFade,
   AudioFadeCurve,
   AudioMetadata,
   AudioPlan,
+  AudioTrack,
 } from "./core/model/plan.js";
 export {
+  audibleTracks,
+  clipAt,
+  clipEnd,
   clipLength,
-  clipOffsets,
   EMPTY_METADATA,
   MAX_GAIN_DB,
+  MAX_TRACK_NAME_LENGTH,
   MIN_GAIN_DB,
   NO_FADE,
   planLength,
+  trackLength,
 } from "./core/model/plan.js";
 export type {
   AudioCodec,
@@ -63,24 +71,35 @@ export type {
   DecodedAudio,
 } from "./core/model/source.js";
 export { framesToSeconds, secondsToFrames } from "./core/model/time.js";
+export { MAX_METADATA_LENGTH } from "./core/operations/checks.js";
 export type {
+  AudioAddTrackCommand,
+  AudioClipsEdit,
   AudioCommand,
   AudioCommandRejection,
   AudioDeleteRangeCommand,
   AudioInsertClipsCommand,
+  AudioInsertTimeCommand,
+  AudioKeepRangeCommand,
   AudioMoveClipsCommand,
+  AudioMoveTrackCommand,
+  AudioPlaceClipsCommand,
   AudioRemoveClipsCommand,
-  AudioReorderClipsCommand,
+  AudioRemoveTracksCommand,
   AudioReplaceClipsCommand,
   AudioRestoreClipsCommand,
+  AudioRestoreTracksCommand,
+  AudioSetChannelsCommand,
   AudioSetFadeCommand,
   AudioSetGainCommand,
+  AudioSetMasterGainCommand,
   AudioSetMetadataCommand,
+  AudioSetTrackCommand,
   AudioSplitClipCommand,
   AudioTrimClipCommand,
   AudioUpdateClipsCommand,
+  AudioUserCommand,
 } from "./core/operations/commands.js";
-export { MAX_METADATA_LENGTH } from "./core/operations/commands.js";
 export type { AudioEngine } from "./core/ports/audio-engine.js";
 export type {
   AudioOutput,
@@ -91,6 +110,7 @@ export type {
   AudioExportFormat,
   AudioProcessor,
   AudioRenderJob,
+  AudioRenderResult,
   AudioSampleFormat,
 } from "./core/ports/audio-processor.js";
 export type {

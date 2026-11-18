@@ -1,5 +1,3 @@
-import { sequenceOffsets } from "@hussmartinez/sdk-core";
-
 /**
  * The shape of a fade: `linear` changes the gain at a constant rate, and
  * `equalPower` keeps the perceived loudness steadier, which suits crossfades.
@@ -19,11 +17,12 @@ export interface AudioFade {
 }
 
 /**
- * One piece of a source, played in the plan (ADR 0003).
+ * A range of a source with its gain and fades: a clip without its place on
+ * the timeline, which is what version 1 of the plan called a clip.
  *
  * @public
  */
-export interface AudioClip {
+export interface AudioClipBody {
   /** Stable across edits, so selection and waveform tiles follow a clip that moves. */
   readonly key: string;
   /** The id of the source the clip plays. */
@@ -36,6 +35,41 @@ export interface AudioClip {
   readonly gainDb: number;
   readonly fadeIn: AudioFade;
   readonly fadeOut: AudioFade;
+}
+
+/**
+ * A clip on a track (docs/adr/0006): a range of a source, starting on the
+ * timeline frame `at`. A clip's position is stored, so an edit on one track
+ * leaves every other clip where it is.
+ *
+ * @public
+ */
+export interface AudioClip extends AudioClipBody {
+  /** The timeline frame the clip starts on. */
+  readonly at: number;
+}
+
+/**
+ * One track: clips in time order that never overlap, with the track's
+ * name, gain, mute and solo (docs/adr/0006).
+ *
+ * @public
+ */
+export interface AudioTrack {
+  /** Stable across edits. Tracks and clips share one namespace of keys. */
+  readonly key: string;
+  /**
+   * The name people gave it, at most {@link MAX_TRACK_NAME_LENGTH} code
+   * points. Empty means none, and an editor shows "Track 2". It's
+   * untrusted text: render it as text, never as HTML.
+   */
+  readonly name: string;
+  /** The track's gain in decibels. */
+  readonly gainDb: number;
+  readonly muted: boolean;
+  readonly soloed: boolean;
+  /** Sorted by `at`, each ending at or before the next one starts. */
+  readonly clips: readonly AudioClip[];
 }
 
 /**
@@ -52,18 +86,22 @@ export interface AudioMetadata {
 }
 
 /**
- * The session's document: clips played back to back on one track, over
- * immutable sources, with the metadata (ADR 0003). Every position and length
- * is a whole number of frames at `sampleRate`.
+ * The session's document (docs/adr/0003, docs/adr/0006): tracks of clips
+ * positioned in time, over immutable sources, mixed on playback and export,
+ * with the metadata. Every position and length is a whole number of frames
+ * at `sampleRate`.
  *
  * @public
  */
 export interface AudioPlan {
   /** The session's sample rate, from its first source. */
   readonly sampleRate: number;
-  /** The session's channel count, from its first source. */
+  /** The session's channel count: its first source's, raised by a wider one. */
   readonly channels: number;
-  readonly clips: readonly AudioClip[];
+  /** The master gain in decibels, applied to the mix. */
+  readonly gainDb: number;
+  /** From top to bottom. A plan always has at least one. */
+  readonly tracks: readonly AudioTrack[];
   readonly metadata: AudioMetadata;
 }
 
@@ -88,43 +126,113 @@ export const EMPTY_METADATA: AudioMetadata = Object.freeze({
 export const NO_FADE: AudioFade = Object.freeze({ frames: 0, curve: "linear" });
 
 /**
+ * The longest track name, in Unicode code points, as JSON Schema's
+ * `maxLength` counts them (sdk-core ADR 0045).
+ *
+ * @public
+ */
+export const MAX_TRACK_NAME_LENGTH = 100;
+
+/**
  * A clip's length in frames.
  *
  * @public
  */
-export function clipLength(clip: AudioClip): number {
+export function clipLength(clip: AudioClipBody): number {
   return clip.end - clip.start;
 }
 
 /**
- * The plan's length in frames: the sum of its clips' lengths.
+ * The timeline frame a clip stops before.
+ *
+ * @public
+ */
+export function clipEnd(clip: AudioClip): number {
+  return clip.at + clipLength(clip);
+}
+
+/**
+ * A track's length in frames: where its last clip ends.
+ *
+ * @public
+ */
+export function trackLength(track: AudioTrack): number {
+  const last = track.clips.at(-1);
+  return last ? clipEnd(last) : 0;
+}
+
+/**
+ * The plan's length in frames: where the last clip on any track ends.
+ * Silence before the first clip is part of the plan.
  *
  * @public
  */
 export function planLength(plan: AudioPlan): number {
-  let total = 0;
-  for (const clip of plan.clips) total += clipLength(clip);
-  return total;
+  let length = 0;
+  for (const track of plan.tracks) length = Math.max(length, trackLength(track));
+  return length;
 }
 
 /**
- * Where each clip starts on the timeline, in frames. It's derived from the
- * clips before it, never stored, so it can't disagree with them (ADR 0003).
+ * The tracks that sound: those that aren't muted and, when any track is
+ * soloed, are soloed themselves. It's the one definition that playback,
+ * export and an editor's dimming all follow.
  *
  * @public
  */
-export function clipOffsets(plan: AudioPlan): readonly number[] {
-  return clipBoundaries(plan).slice(0, -1);
+export function audibleTracks(plan: AudioPlan): readonly AudioTrack[] {
+  const solo = plan.tracks.some((track) => track.soloed);
+  return plan.tracks.filter((track) => !track.muted && (!solo || track.soloed));
 }
 
 /**
- * Every clip boundary on the timeline, in frames: the clips' starts, then
- * the plan's length (sdk-core ADR 0042).
+ * What's wrong with the order of a track's clips, or `undefined`:
+ *
+ * - `clips-out-of-order`: a clip starts before the one listed before it;
+ * - `clips-overlap`: a clip starts before the one before it has ended.
  *
  * @internal
  */
-export function clipBoundaries(plan: AudioPlan): readonly number[] {
-  return sequenceOffsets(plan.clips.map(clipLength));
+export function orderProblem(
+  clips: readonly AudioClip[],
+): "clips-out-of-order" | "clips-overlap" | undefined {
+  for (let i = 1; i < clips.length; i += 1) {
+    const before = clips[i - 1] as AudioClip;
+    const clip = clips[i] as AudioClip;
+    if (clip.at < before.at) return "clips-out-of-order";
+    if (clip.at < clipEnd(before)) return "clips-overlap";
+  }
+  return undefined;
+}
+
+/**
+ * The index of the first clip that ends after `frame`: the clip that plays
+ * the frame, when it has started by then, and otherwise the next one. It's
+ * the clips' length when every clip ends at or before the frame. A binary
+ * search, because clips are sorted and never overlap.
+ *
+ * @internal
+ */
+export function clipIndexAt(clips: readonly AudioClip[], frame: number): number {
+  let low = 0;
+  let high = clips.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (clipEnd(clips[middle] as AudioClip) > frame) high = middle;
+    else low = middle + 1;
+  }
+  return low;
+}
+
+/**
+ * The clip that plays a timeline frame on a track, or `undefined` in
+ * silence.
+ *
+ * @public
+ */
+export function clipAt(track: AudioTrack, frame: number): AudioClip | undefined {
+  const clip = track.clips[clipIndexAt(track.clips, frame)];
+  return clip && clip.at <= frame ? clip : undefined;
 }
 
 /**
@@ -174,7 +282,10 @@ const isFrames = (value: unknown) => Number.isSafeInteger(value) && (value as nu
  *
  * @internal
  */
-export function clipProblem(clip: AudioClip, sourceFrames: number): AudioClipProblem | undefined {
+export function clipProblem(
+  clip: AudioClipBody,
+  sourceFrames: number,
+): AudioClipProblem | undefined {
   if (![clip.start, clip.end, clip.fadeIn.frames, clip.fadeOut.frames].every(isFrames)) {
     return "invalid-frames";
   }
@@ -196,7 +307,7 @@ export function clipProblem(clip: AudioClip, sourceFrames: number): AudioClipPro
  *
  * @internal
  */
-export function assertClip(clip: AudioClip, sourceFrames: number): void {
+export function assertClip(clip: AudioClipBody, sourceFrames: number): void {
   const problem = clipProblem(clip, sourceFrames);
   if (problem) throw new RangeError(`Clip ${clip.key} isn't valid: ${problem}.`);
 }

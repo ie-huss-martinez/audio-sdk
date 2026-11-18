@@ -11,10 +11,25 @@ import { SdkCoreErrorCode } from '@hussmartinez/sdk-core';
 import { SdkError } from '@hussmartinez/sdk-core';
 
 // @public
+export function audibleTracks(plan: AudioPlan): readonly AudioTrack[];
+
+// @public
 export const AUDIO_PLAN_FORMAT = "hm-audio-plan";
 
 // @public
-export const AUDIO_PLAN_VERSION = 1;
+export const AUDIO_PLAN_VERSION = 2;
+
+// @public
+export interface AudioAddTrackCommand {
+    // (undocumented)
+    readonly index: number;
+    // (undocumented)
+    readonly key: string;
+    // (undocumented)
+    readonly name?: string;
+    // (undocumented)
+    readonly type: "audio.addTrack";
+}
 
 // @public
 export interface AudioAssetReference {
@@ -29,7 +44,12 @@ export interface AudioCallOptions {
 }
 
 // @public
-export interface AudioClip {
+export interface AudioClip extends AudioClipBody {
+    readonly at: number;
+}
+
+// @public
+export interface AudioClipBody {
     readonly end: number;
     // (undocumented)
     readonly fadeIn: AudioFade;
@@ -45,13 +65,26 @@ export interface AudioClip {
 export type AudioClipProblem = "invalid-frames" | "clip-too-short" | "clip-outside-source" | "gain-out-of-range" | "fades-too-long";
 
 // @public
+export interface AudioClipsEdit {
+    readonly clips: readonly AudioClip[];
+    readonly count: number;
+    readonly index: number;
+    readonly shift: number;
+    // (undocumented)
+    readonly track: string;
+}
+
+// @public
+export type AudioClipV1 = AudioClipBody;
+
+// @public
 export type AudioCodec = "pcm" | "mp3" | "aac" | "alac" | "opus" | "vorbis" | "flac";
 
 // @public
-export type AudioCommand = AudioInsertClipsCommand | AudioRemoveClipsCommand | AudioRestoreClipsCommand | AudioReplaceClipsCommand | AudioUpdateClipsCommand | AudioDeleteRangeCommand | AudioTrimClipCommand | AudioSplitClipCommand | AudioMoveClipsCommand | AudioReorderClipsCommand | AudioSetGainCommand | AudioSetFadeCommand | AudioSetMetadataCommand;
+export type AudioCommand = AudioUserCommand | AudioRestoreClipsCommand | AudioUpdateClipsCommand | AudioPlaceClipsCommand | AudioReplaceClipsCommand | AudioRestoreTracksCommand;
 
 // @public
-export type AudioCommandRejection = AudioClipProblem | "malformed-command" | "unknown-command" | "unknown-source" | "invalid-fade-curve" | "no-clips" | "duplicate-key" | "key-taken" | "unknown-clip" | "frame-outside-plan" | "empty-range" | "not-inside-clip" | "new-key-required" | "invalid-index" | "empty-change" | "invalid-order" | "invalid-edge" | "unknown-metadata-field" | "metadata-too-long" | "no-recording" | "not-plain-data" | "empty-plan";
+export type AudioCommandRejection = AudioClipProblem | "malformed-command" | "unknown-command" | "unknown-source" | "invalid-fade-curve" | "no-clips" | "no-tracks" | "duplicate-key" | "key-taken" | "unknown-clip" | "unknown-track" | "frame-outside-plan" | "empty-range" | "not-inside-clip" | "new-key-required" | "invalid-index" | "empty-change" | "invalid-edge" | "unknown-metadata-field" | "metadata-too-long" | "name-too-long" | "clips-overlap" | "clips-out-of-order" | "last-track" | "no-recording" | "not-plain-data" | "empty-plan" | "nothing-audible";
 
 // @public
 export type AudioContainer = "wav" | "aiff" | "flac" | "ogg" | "mp3" | "adts" | "mp4" | "webm";
@@ -63,15 +96,21 @@ export interface AudioDecodeOptions extends AudioProgressOptions {
 
 // @public
 export interface AudioDeleteRangeCommand {
+    // (undocumented)
     readonly end: number;
-    readonly newKey?: string;
+    readonly newKeys?: Readonly<Record<string, string>>;
+    // (undocumented)
+    readonly ripple: boolean;
+    // (undocumented)
     readonly start: number;
+    // (undocumented)
+    readonly tracks: readonly string[];
     // (undocumented)
     readonly type: "audio.deleteRange";
 }
 
 // @public
-export type AudioDocumentRejection = AudioClipProblem | "unknown-format" | "unknown-format-version" | "malformed-document" | "unknown-source" | "duplicate-key" | "invalid-fade-curve" | "metadata-too-long";
+export type AudioDocumentRejection = AudioClipProblem | "unknown-format" | "unknown-format-version" | "malformed-document" | "unknown-source" | "duplicate-key" | "invalid-fade-curve" | "metadata-too-long" | "name-too-long" | "clips-overlap" | "clips-out-of-order" | "no-tracks";
 
 // @public
 export interface AudioEngine {
@@ -121,9 +160,9 @@ export type AudioFilePolicyOverrides = FilePolicyOverrides<AudioLimitDefinitions
 
 // @public
 export interface AudioInsertClipsCommand {
-    readonly at: number;
     readonly clips: readonly AudioClip[];
-    readonly splitKey?: string;
+    // (undocumented)
+    readonly track: string;
     // (undocumented)
     readonly type: "audio.insertClips";
 }
@@ -131,6 +170,30 @@ export interface AudioInsertClipsCommand {
 // @public
 export interface AudioInsertOptions extends AudioProgressOptions {
     readonly at?: number;
+    readonly track?: string;
+}
+
+// @public
+export interface AudioInsertTimeCommand {
+    // (undocumented)
+    readonly at: number;
+    // (undocumented)
+    readonly frames: number;
+    readonly newKeys?: Readonly<Record<string, string>>;
+    // (undocumented)
+    readonly tracks: readonly string[];
+    // (undocumented)
+    readonly type: "audio.insertTime";
+}
+
+// @public
+export interface AudioKeepRangeCommand {
+    // (undocumented)
+    readonly end: number;
+    // (undocumented)
+    readonly start: number;
+    // (undocumented)
+    readonly type: "audio.keepRange";
 }
 
 // @public
@@ -289,12 +352,22 @@ export interface AudioMetadata {
 
 // @public
 export interface AudioMoveClipsCommand {
+    readonly by: number;
     // (undocumented)
     readonly keys: readonly string[];
+    readonly track?: string;
+    // (undocumented)
+    readonly type: "audio.moveClips";
+}
+
+// @public
+export interface AudioMoveTrackCommand {
+    // (undocumented)
+    readonly key: string;
     // (undocumented)
     readonly to: number;
     // (undocumented)
-    readonly type: "audio.moveClips";
+    readonly type: "audio.moveTrack";
 }
 
 // @public
@@ -336,13 +409,25 @@ export interface AudioPeaks {
 }
 
 // @public
+export interface AudioPlaceClipsCommand {
+    // (undocumented)
+    readonly entries: readonly {
+        readonly key: string;
+        readonly track: string;
+        readonly at: number;
+    }[];
+    // (undocumented)
+    readonly type: "audio.placeClips";
+}
+
+// @public
 export interface AudioPlan {
     readonly channels: number;
-    // (undocumented)
-    readonly clips: readonly AudioClip[];
+    readonly gainDb: number;
     // (undocumented)
     readonly metadata: AudioMetadata;
     readonly sampleRate: number;
+    readonly tracks: readonly AudioTrack[];
 }
 
 // @public
@@ -350,15 +435,17 @@ export interface AudioPlanDocument {
     // (undocumented)
     readonly channels: number;
     // (undocumented)
-    readonly clips: readonly AudioClip[];
-    // (undocumented)
     readonly format: typeof AUDIO_PLAN_FORMAT;
+    // (undocumented)
+    readonly gainDb: number;
     // (undocumented)
     readonly metadata: AudioMetadata;
     // (undocumented)
     readonly sampleRate: number;
     // (undocumented)
     readonly sources: Readonly<Record<string, AudioPlanDocumentSource>>;
+    // (undocumented)
+    readonly tracks: readonly AudioTrack[];
     // (undocumented)
     readonly version: typeof AUDIO_PLAN_VERSION;
 }
@@ -368,6 +455,18 @@ export interface AudioPlanDocumentSource {
     // (undocumented)
     readonly asset?: AudioAssetReference;
     readonly frames: number;
+}
+
+// @public
+export interface AudioPlanV1 {
+    // (undocumented)
+    readonly channels: number;
+    // (undocumented)
+    readonly clips: readonly AudioClipV1[];
+    // (undocumented)
+    readonly metadata: AudioMetadata;
+    // (undocumented)
+    readonly sampleRate: number;
 }
 
 // @public
@@ -387,7 +486,7 @@ export interface AudioProbe {
 // @public
 export interface AudioProcessor {
     destroy(): Promise<void>;
-    render(job: AudioRenderJob, options?: AudioProgressOptions): Promise<Blob>;
+    render(job: AudioRenderJob, options?: AudioProgressOptions): Promise<AudioRenderResult>;
 }
 
 // @public
@@ -425,6 +524,14 @@ export interface AudioRemoveClipsCommand {
 }
 
 // @public
+export interface AudioRemoveTracksCommand {
+    // (undocumented)
+    readonly keys: readonly string[];
+    // (undocumented)
+    readonly type: "audio.removeTracks";
+}
+
+// @public
 export interface AudioRenderJob {
     // (undocumented)
     readonly format: AudioExportFormat;
@@ -434,33 +541,39 @@ export interface AudioRenderJob {
 }
 
 // @public
-export interface AudioReorderClipsCommand {
-    // (undocumented)
-    readonly order: readonly string[];
-    // (undocumented)
-    readonly type: "audio.reorderClips";
+export interface AudioRenderResult {
+    readonly blob: Blob;
+    readonly clippedFrames: number;
+    readonly peakDb: number;
 }
 
 // @public
 export interface AudioReplaceClipsCommand {
     // (undocumented)
-    readonly clips: readonly AudioClip[];
-    // (undocumented)
-    readonly count: number;
-    // (undocumented)
-    readonly index: number;
+    readonly edits: readonly AudioClipsEdit[];
     // (undocumented)
     readonly type: "audio.replaceClips";
 }
 
 // @public
 export interface AudioRestoreClipsCommand {
+    // (undocumented)
     readonly entries: readonly {
-        readonly index: number;
+        readonly track: string;
         readonly clip: AudioClip;
     }[];
     // (undocumented)
     readonly type: "audio.restoreClips";
+}
+
+// @public
+export interface AudioRestoreTracksCommand {
+    readonly entries: readonly {
+        readonly index: number;
+        readonly track: AudioTrack;
+    }[];
+    // (undocumented)
+    readonly type: "audio.restoreTracks";
 }
 
 // @public
@@ -473,6 +586,7 @@ export interface AudioSelection {
     readonly end: number;
     // (undocumented)
     readonly start: number;
+    readonly tracks: readonly string[];
 }
 
 // @public
@@ -480,7 +594,7 @@ export interface AudioSession {
     close(): Promise<void>;
     createKey(): string;
     execute(commands: AudioCommand | readonly AudioCommand[]): void;
-    export(options?: AudioSessionExportOptions): Promise<Blob>;
+    export(options?: AudioSessionExportOptions): Promise<AudioRenderResult>;
     getAudio(source: string): DecodedAudio | undefined;
     getPeaks(source: string): AudioPeaks | undefined;
     getSnapshot(): AudioSessionSnapshot;
@@ -489,7 +603,11 @@ export interface AudioSession {
     open(file: Blob, options?: AudioProgressOptions): Promise<void>;
     // (undocumented)
     redo(): void;
-    select(range: AudioSelection | undefined): void;
+    select(range: {
+        readonly start: number;
+        readonly end: number;
+        readonly tracks?: readonly string[];
+    } | undefined): void;
     subscribe(listener: () => void): () => void;
     // (undocumented)
     undo(): void;
@@ -555,11 +673,20 @@ export interface AudioSessionSnapshot {
 export type AudioSessionStatus = "empty" | "opening" | "ready" | "error";
 
 // @public
+export interface AudioSetChannelsCommand {
+    // (undocumented)
+    readonly channels: number;
+    // (undocumented)
+    readonly type: "audio.setChannels";
+}
+
+// @public
 export interface AudioSetFadeCommand {
     // (undocumented)
     readonly curve: AudioFadeCurve;
     // (undocumented)
     readonly edge: "in" | "out";
+    // (undocumented)
     readonly frames: number;
     // (undocumented)
     readonly key: string;
@@ -569,6 +696,7 @@ export interface AudioSetFadeCommand {
 
 // @public
 export interface AudioSetGainCommand {
+    // (undocumented)
     readonly gainDb: number;
     // (undocumented)
     readonly keys: readonly string[];
@@ -577,12 +705,37 @@ export interface AudioSetGainCommand {
 }
 
 // @public
+export interface AudioSetMasterGainCommand {
+    // (undocumented)
+    readonly gainDb: number;
+    // (undocumented)
+    readonly type: "audio.setMasterGain";
+}
+
+// @public
 export interface AudioSetMetadataCommand {
     // (undocumented)
     readonly field: keyof AudioMetadata;
     // (undocumented)
     readonly type: "audio.setMetadata";
+    // (undocumented)
     readonly value: string;
+}
+
+// @public
+export interface AudioSetTrackCommand {
+    // (undocumented)
+    readonly gainDb?: number;
+    // (undocumented)
+    readonly key: string;
+    // (undocumented)
+    readonly muted?: boolean;
+    // (undocumented)
+    readonly name?: string;
+    // (undocumented)
+    readonly soloed?: boolean;
+    // (undocumented)
+    readonly type: "audio.setTrack";
 }
 
 // @public
@@ -602,6 +755,7 @@ export interface AudioSourceInfo {
 
 // @public
 export interface AudioSplitClipCommand {
+    // (undocumented)
     readonly at: number;
     // (undocumented)
     readonly key: string;
@@ -612,10 +766,24 @@ export interface AudioSplitClipCommand {
 }
 
 // @public
+export interface AudioTrack {
+    readonly clips: readonly AudioClip[];
+    readonly gainDb: number;
+    readonly key: string;
+    // (undocumented)
+    readonly muted: boolean;
+    readonly name: string;
+    // (undocumented)
+    readonly soloed: boolean;
+}
+
+// @public
 export interface AudioTrimClipCommand {
+    // (undocumented)
     readonly end: number;
     // (undocumented)
     readonly key: string;
+    // (undocumented)
     readonly start: number;
     // (undocumented)
     readonly type: "audio.trimClip";
@@ -628,6 +796,9 @@ export interface AudioUpdateClipsCommand {
     // (undocumented)
     readonly type: "audio.updateClips";
 }
+
+// @public
+export type AudioUserCommand = AudioInsertClipsCommand | AudioRemoveClipsCommand | AudioTrimClipCommand | AudioSplitClipCommand | AudioMoveClipsCommand | AudioSetGainCommand | AudioSetFadeCommand | AudioDeleteRangeCommand | AudioKeepRangeCommand | AudioInsertTimeCommand | AudioAddTrackCommand | AudioRemoveTracksCommand | AudioMoveTrackCommand | AudioSetTrackCommand | AudioSetMasterGainCommand | AudioSetChannelsCommand | AudioSetMetadataCommand;
 
 // @public
 export type AudioWarning = {
@@ -643,10 +814,13 @@ export type AudioWarning = {
 };
 
 // @public
-export function clipLength(clip: AudioClip): number;
+export function clipAt(track: AudioTrack, frame: number): AudioClip | undefined;
 
 // @public
-export function clipOffsets(plan: AudioPlan): readonly number[];
+export function clipEnd(clip: AudioClip): number;
+
+// @public
+export function clipLength(clip: AudioClipBody): number;
 
 // @public
 export function connectOutput(session: AudioSession, output: AudioOutput): () => void;
@@ -683,7 +857,7 @@ export const EMPTY_METADATA: AudioMetadata;
 export function framesToSeconds(frames: number, sampleRate: number): number;
 
 // @public
-export function gainAt(clip: AudioClip, frame: number): number;
+export function gainAt(clip: AudioClipBody, frame: number): number;
 
 // @public
 export function isAudioError<Code extends AudioErrorCode = AudioErrorCode>(value: unknown, code?: Code): value is AudioError & {
@@ -697,7 +871,19 @@ export const MAX_GAIN_DB = 120;
 export const MAX_METADATA_LENGTH = 1000;
 
 // @public
+export const MAX_TRACK_NAME_LENGTH = 100;
+
+// @public
+export function migrateAudioCommand(command: unknown, plan: AudioPlan): AudioUserCommand[];
+
+// @public
+export function migratePlan(plan: AudioPlanV1): AudioPlan;
+
+// @public
 export const MIN_GAIN_DB = -120;
+
+// @public
+export function mixLength(plan: AudioPlan): number;
 
 // @public
 export const NO_FADE: AudioFade;
@@ -716,5 +902,8 @@ export function secondsToFrames(seconds: number, sampleRate: number): number;
 
 // @public
 export function toAudioPlanDocument(plan: AudioPlan, sources: Readonly<Record<string, AudioPlanDocumentSource>>): AudioPlanDocument;
+
+// @public
+export function trackLength(track: AudioTrack): number;
 
 ```

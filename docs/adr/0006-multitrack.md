@@ -5,6 +5,7 @@
 - **Amended:** 2026-11-18, with the review's rulings: Ripple shows the tracks it will move, the model's step is two pull requests, and `ui`'s amendment is designed with video-sdk's needs.
 - **Amended:** 2026-11-18, with resampling as built: the SDK's own windowed sinc in the worker, not an `OfflineAudioContext`.
 - **Amended:** 2026-11-18, with the model as built: `newKeys` is an object by track key, `audio.keepRange` needs no keys, a command's schema-stated rules are checked first, and how version 1's commands migrate.
+- **Amended:** 2026-11-18, with the switch as built: an export is as long as its last audible clip, version 1's reducer is kept in the tests as the reference, and the mix's definition is two pure functions in the core.
 - **Supersedes in part:** [ADR 0003](0003-clip-plan-document-model.md) (the plan's shape, derived positions, the command table and version 1 of the formats) and [ADR 0005](0005-editor-shell.md) (the timeline, the selection and the order of the work). **Extends:** [ADR 0004](0004-audio-limits.md), with two limits.
 
 ## Context
@@ -75,7 +76,7 @@ Both formats go to version 2, by sdk-core ADR 0045's rules. Version 1 has `clips
 - **Reading version 1 commands:** a version 1 command only means something on a version 1 plan, so `migrateAudioCommand(command, plan)` takes the migrated plan and returns the version 2 commands with the same effect. Version 1's commands closed gaps as they went; the mapping uses the time commands below to do the same, such as `audio.insertTime` then `audio.insertClips` for a version 1 insert, and returns the commands to run as one undo step. [The format record](../formats/hm-audio-plan.md) lists the mapping for each command, and its order is part of the format: a refusal is the first one met.
 - **Writing:** `toAudioPlanDocument` writes version 2 only.
 - **New rejection reasons:** `clips-overlap`, `clips-out-of-order`, `no-tracks`, `unknown-track`, `last-track`, `name-too-long` and `nothing-audible`, with the existing ones. Tokens never change meaning once released.
-- **Vectors:** `conformance/` gains version 2 cases for plans and commands, cases that migrate version 1 documents and commands, and a new subject, `hm-audio-mix`: a small plan over short sources given as numbers, and the expected samples with a stated `tolerance`, because gains from decibels and fade curves are computed floats (ADR 0045, section 3). The version 1 vectors stay, and now check the migration.
+- **Vectors:** `conformance/` gains version 2 cases for plans and commands, cases that migrate version 1 documents and commands, and a new subject, `hm-audio-mix`: a small plan over short sources given as numbers, and the expected samples with a stated `tolerance`, because gains from decibels and fade curves are computed floats (ADR 0045, section 3). The version 1 vectors stay as they were. They run against version 1's reducer and writer, which the package no longer ships and the tests keep, in `test/v1/`, as the reference that the migration is checked against.
 
 ### Commands
 
@@ -131,6 +132,8 @@ One definition, in the core, that playback and export both follow:
 - **Playback** is the same graph in Web Audio: each clip's source and gain node, into its track's gain node, into the master's. A change of track gain, mute, solo or master gain sets a gain node with a 5 ms ramp and doesn't reschedule the clips. Export applies such a change from the frame it's set at, with no ramp; exports render a fixed plan, so the difference is never heard.
 - **Rendering stays in the worker, block by block** ([ADR 0002](0002-workers-and-assets.md)). For each output block, the page copies the piece of each audible track's clip that falls in it; the worker mixes, clamps, measures and encodes. Tracks and clips are summed in plan order, in double precision, so every engine adds in the same order. A block's cost grows with the audible tracks, not with the plan's length, and muted tracks cost nothing.
 - **Exports that would be silent are refused:** `empty-plan` with no clips, as before, and `nothing-audible` when every track with clips is silent.
+- **An export is as long as its last audible clip** (`mixLength`), not as long as the plan: a muted scratch track never pads the file with silence. Playback's timeline is the whole plan, muted tracks included, so the playhead can reach everything an editor shows.
+- **As built,** the definition is two pure functions in the core: `gatherSegments`, which copies each audible clip's part of a block, on the page, and `mixBlock`, which sums, applies the master gain, measures and clamps, in the worker. The `hm-audio-mix` vectors run both over small sources, so a port checks its mix against them. The peak is reported in decibels relative to full scale, `-Infinity` for silence.
 
 ### Limits
 

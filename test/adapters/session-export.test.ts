@@ -43,15 +43,18 @@ it("opens a WAV file, edits it, and exports it through the real engine and proce
     (_, i) => Math.round(Math.sin(i / 7) * 20_000) / 0x8000,
   );
   await session.open(new Blob([wavFile([tone, tone.map((x) => -x)])]));
+  const [track] = session.getSnapshot().plan?.tracks ?? [];
   session.execute({
     type: "audio.deleteRange",
     start: 100,
     end: 400,
-    newKey: session.createKey(),
+    tracks: [track?.key ?? ""],
+    ripple: true,
+    newKeys: { [track?.key ?? ""]: session.createKey() },
   });
   session.execute({ type: "audio.setMetadata", field: "title", value: "Entrevista" });
 
-  const exported = await inspectWav(await session.export());
+  const exported = await inspectWav((await session.export()).blob);
   const expected = [...tone.slice(0, 100), ...tone.slice(400)];
   expect(exported).toMatchObject({ sampleFormat: "pcm16", metadata: { title: "Entrevista" } });
   expect([...(exported.channels[0] as Float32Array)]).toEqual(expected.map(Math.fround));

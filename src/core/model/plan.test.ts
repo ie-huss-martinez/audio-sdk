@@ -1,19 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_METADATA, NO_FADE } from "./plan.js";
 import {
+  type AudioClip,
+  type AudioPlan,
   type AudioTrack,
-  type AudioTrackClip,
-  type AudioTrackPlan,
   audibleTracks,
   clipAt,
   clipEnd,
   clipIndexAt,
+  EMPTY_METADATA,
+  NO_FADE,
   orderProblem,
+  planLength,
   trackLength,
-  trackPlanLength,
-} from "./tracks.js";
+} from "./plan.js";
 
-const clip = (key: string, at: number, length: number): AudioTrackClip => ({
+const clip = (key: string, at: number, length: number): AudioClip => ({
   key,
   at,
   source: "s1",
@@ -24,11 +25,7 @@ const clip = (key: string, at: number, length: number): AudioTrackClip => ({
   fadeOut: NO_FADE,
 });
 
-const track = (
-  key: string,
-  clips: AudioTrackClip[],
-  extra: Partial<AudioTrack> = {},
-): AudioTrack => ({
+const track = (key: string, clips: AudioClip[], extra: Partial<AudioTrack> = {}): AudioTrack => ({
   key,
   name: "",
   gainDb: 0,
@@ -38,7 +35,7 @@ const track = (
   ...extra,
 });
 
-const plan = (...tracks: AudioTrack[]): AudioTrackPlan => ({
+const plan = (...tracks: AudioTrack[]): AudioPlan => ({
   sampleRate: 48_000,
   channels: 2,
   gainDb: 0,
@@ -52,8 +49,8 @@ describe("lengths", () => {
     expect(clipEnd(clip("a", 10, 20))).toBe(30);
     expect(trackLength(voice)).toBe(55);
     expect(trackLength(track("empty", []))).toBe(0);
-    expect(trackPlanLength(plan(voice, track("music", [clip("m", 100, 1)])))).toBe(101);
-    expect(trackPlanLength(plan(track("empty", [])))).toBe(0);
+    expect(planLength(plan(voice, track("music", [clip("m", 100, 1)])))).toBe(101);
+    expect(planLength(plan(track("empty", [])))).toBe(0);
   });
 });
 

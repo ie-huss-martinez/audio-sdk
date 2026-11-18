@@ -13,9 +13,11 @@ import {
   type AudioLimitName,
   audioLimits,
 } from "../errors/audio-limits.js";
+import { mixLength } from "../model/mix.js";
 import {
   type AudioClip,
   type AudioPlan,
+  type AudioTrack,
   EMPTY_METADATA,
   NO_FADE,
   planLength,
@@ -27,6 +29,7 @@ import type { AudioEngine } from "../ports/audio-engine.js";
 import type {
   AudioExportFormat,
   AudioProcessor,
+  AudioRenderResult,
   AudioSampleFormat,
 } from "../ports/audio-processor.js";
 import type { AudioProgressOptions } from "../ports/options.js";
@@ -66,14 +69,17 @@ export type AudioWarning =
     };
 
 /**
- * A range of the timeline, in frames: `start` inclusive and `end`
- * exclusive, at least one frame long.
+ * A selected range of the timeline, on some tracks (docs/adr/0006): frames
+ * from `start` inclusive to `end` exclusive, and the keys of the tracks it
+ * covers, in plan order.
  *
  * @public
  */
 export interface AudioSelection {
   readonly start: number;
   readonly end: number;
+  /** The tracks the range covers, at least one. */
+  readonly tracks: readonly string[];
 }
 
 /**
@@ -202,9 +208,12 @@ export interface AudioSessionExportOptions extends AudioProgressOptions {
  */
 export interface AudioInsertOptions extends AudioProgressOptions {
   /**
-   * The timeline frame to insert at, splitting the clip there if it's inside
-   * one. Defaults to the end.
+   * The key of the track the recording goes on, where it needs free space.
+   * Without it, the recording gets a new track of its own, below the
+   * others: laying one recording under another is the common case.
    */
+  readonly track?: string;
+  /** The timeline frame the recording starts on. Defaults to 0. */
   readonly at?: number;
 }
 
@@ -230,9 +239,12 @@ export interface AudioSession {
    */
   open(file: Blob, options?: AudioProgressOptions): Promise<void>;
   /**
-   * Inserts another recording at a timeline frame, as one undoable step. A
+   * Adds another recording, as one undoable step: on a new track of its
+   * own, below the others, or on the track `options.track` names, where it
+   * needs free space. It starts at `options.at`, or at the start. A
    * recording at another sample rate is converted to the session's, and its
-   * source says so in `resampledFrom`. If the
+   * source says so in `resampledFrom`; one with more channels than the plan
+   * raises the plan's channel count to its own, in the same step. If the
    * sources held would then exceed `maxSessionSize`, the session first drops
    * history steps, in sdk-core's `dropOrder`, as far as needed to release
    * sources only they refer to, and sets `historyTrimmed`. If even that
@@ -253,17 +265,24 @@ export interface AudioSession {
    */
   group<T>(fn: () => T): T;
   /**
-   * A clip key no clip has, in the plan or the history, for commands that
-   * create clips, such as `newKey` in `audio.splitClip`.
+   * A key no track or clip has, in the plan or the history, for commands
+   * that create them, such as `newKey` in `audio.splitClip` or `key` in
+   * `audio.addTrack`.
    */
   createKey(): string;
   undo(): void;
   redo(): void;
   /**
-   * Selects a range of the timeline, clamped to the plan, or clears the
-   * selection with `undefined`. An empty range clears it too.
+   * Selects a range of the timeline on the tracks named, or on every track
+   * without `tracks`, clamped to the plan, or clears the selection with
+   * `undefined`. An empty range clears it too, as does one that names no
+   * track the plan has.
    */
-  select(range: AudioSelection | undefined): void;
+  select(
+    range:
+      | { readonly start: number; readonly end: number; readonly tracks?: readonly string[] }
+      | undefined,
+  ): void;
   /** A source's waveform overview, or `undefined` for a source the session doesn't hold. */
   getPeaks(source: string): AudioPeaks | undefined;
   /**
@@ -272,14 +291,15 @@ export interface AudioSession {
    */
   getAudio(source: string): DecodedAudio | undefined;
   /**
-   * Renders and encodes the plan as it is now, with the session's
-   * `processor`, under `maxProcessingTime`. It returns the file, and never
-   * downloads it: the host decides what to do with it. Edits made while it
-   * runs don't change it. Rejects with `INVALID_COMMAND` and the reason
-   * `no-recording` or `empty-plan` when there's nothing to export, and
+   * Mixes and encodes the plan's audible tracks as they are now, with the
+   * session's `processor`, under `maxProcessingTime`. It returns the file
+   * with the mix's peak and the frames that clipped, and never downloads
+   * it: the host decides what to do with it. Edits made while it runs don't
+   * change it. Rejects with `INVALID_COMMAND` and the reason `no-recording`,
+   * `empty-plan` or `nothing-audible` when there's nothing to export, and
    * throws `TypeError` when the session has no processor.
    */
-  export(options?: AudioSessionExportOptions): Promise<Blob>;
+  export(options?: AudioSessionExportOptions): Promise<AudioRenderResult>;
   /** Closes the recording and releases its sources. */
   close(): Promise<void>;
 }
@@ -296,11 +316,14 @@ interface Source {
 function clipsOf(command: AudioCommand): readonly AudioClip[] {
   switch (command.type) {
     case "audio.insertClips":
-    case "audio.replaceClips":
     case "audio.updateClips":
       return command.clips;
     case "audio.restoreClips":
       return command.entries.map((entry) => entry.clip);
+    case "audio.replaceClips":
+      return command.edits.flatMap((edit) => edit.clips);
+    case "audio.restoreTracks":
+      return command.entries.flatMap((entry) => entry.track.clips);
     default:
       return [];
   }
@@ -314,12 +337,35 @@ function coarseSeconds(seconds: number): number {
   return seconds > 0 ? Number(seconds.toPrecision(2)) : 0;
 }
 
-/** Every clip key a command names, created or referred to. */
+/** Every key a command creates or carries: its clips', its tracks' and its new parts'. */
 function keysOf(command: AudioCommand): string[] {
   const keys = clipsOf(command).map((clip) => clip.key);
   if ("newKey" in command && typeof command.newKey === "string") keys.push(command.newKey);
-  if ("splitKey" in command && typeof command.splitKey === "string") keys.push(command.splitKey);
+  if ("newKeys" in command && command.newKeys) keys.push(...Object.values(command.newKeys));
+  if (command.type === "audio.addTrack") keys.push(command.key);
+  if (command.type === "audio.restoreTracks") {
+    keys.push(...command.entries.map((entry) => entry.track.key));
+  }
   return keys;
+}
+
+/** Every clip of a plan, track by track. */
+function clipsIn(plan: AudioPlan | undefined): AudioClip[] {
+  return plan ? plan.tracks.flatMap((track) => track.clips) : [];
+}
+
+/** A clip that plays the whole of a source, from a timeline frame. */
+function wholeClip(key: string, source: AudioSourceInfo, at: number): AudioClip {
+  return {
+    key,
+    at,
+    source: source.id,
+    start: 0,
+    end: source.frames,
+    gainDb: 0,
+    fadeIn: NO_FADE,
+    fadeOut: NO_FADE,
+  };
 }
 
 /**
@@ -330,7 +376,7 @@ function keysOf(command: AudioCommand): string[] {
  * ```ts
  * const session = createAudioSession({ engine: createAudioEngine() });
  * await session.open(file);
- * const [clip] = session.getSnapshot().plan?.clips ?? [];
+ * const [clip] = session.getSnapshot().plan?.tracks[0]?.clips ?? [];
  * session.execute({ type: "audio.setGain", keys: [clip.key], gainDb: -3 });
  * session.undo();
  * ```
@@ -373,7 +419,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
 
   /** The sources the plan and the given history steps refer to. */
   function referenced(steps: readonly HistoryStep<AudioCommand>[]): Set<string> {
-    const ids = new Set(plan?.clips.map((clip) => clip.source));
+    const ids = new Set(clipsIn(plan).map((clip) => clip.source));
     for (const { commands, inverses } of steps) {
       for (const command of [...commands, ...inverses]) {
         for (const clip of clipsOf(command)) ids.add(clip.source);
@@ -413,7 +459,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     if (bytes > 0 && bytes >= policy.limits.maxSessionSize.warning) {
       found.push({ type: "limit", limit: "maxSessionSize", actual: bytes });
     }
-    const clips = plan?.clips.length ?? 0;
+    const clips = clipsIn(plan).length;
     if (clips > 0 && clips >= policy.limits.maxClips.warning) {
       found.push({ type: "limit", limit: "maxClips", actual: clips });
     }
@@ -439,10 +485,17 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
   const store = createStore<AudioSessionSnapshot>(makeSnapshot());
 
   function changed(): void {
-    // The selection follows the plan: it can't reach past its end.
+    // The selection follows the plan: it can't reach past its end, or
+    // cover a track that's gone.
     if (selection) {
       const end = Math.min(selection.end, plan ? planLength(plan) : 0);
-      selection = selection.start < end ? { start: selection.start, end } : undefined;
+      const tracks = (plan?.tracks ?? [])
+        .map((track) => track.key)
+        .filter((key) => selection?.tracks.includes(key));
+      if (selection.start >= end || tracks.length === 0) selection = undefined;
+      else if (end !== selection.end || tracks.length !== selection.tracks.length) {
+        selection = Object.freeze({ start: selection.start, end, tracks: Object.freeze(tracks) });
+      }
     }
     store.set(makeSnapshot());
   }
@@ -593,9 +646,8 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     commands: readonly AudioCommand[],
   ): { state: AudioPlan; inverses: AudioCommand[] } {
     const result = applyCommands(reducer, current, commands);
-    if (result.state.clips.length > current.clips.length) {
-      policy.check("maxClips", result.state.clips.length);
-    }
+    const clips = clipsIn(result.state).length;
+    if (clips > clipsIn(current).length) policy.check("maxClips", clips);
     return result;
   }
 
@@ -610,7 +662,8 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
   }
 
   function newKey(): string {
-    const used = new Set(plan?.clips.map((clip) => clip.key));
+    const used = new Set(clipsIn(plan).map((clip) => clip.key));
+    for (const track of plan?.tracks ?? []) used.add(track.key);
     for (const { commands, inverses } of history.steps) {
       for (const command of [...commands, ...inverses])
         for (const key of keysOf(command)) used.add(key);
@@ -644,20 +697,21 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
         sources.clear();
         history.clear();
         sources.set(source.info.id, source);
+        // No plan yet, so the two keys only have to differ from each other.
+        plan = undefined;
+        const first: AudioTrack = {
+          key: newKey(),
+          name: "",
+          gainDb: 0,
+          muted: false,
+          soloed: false,
+          clips: [wholeClip(newKey(), source.info, 0)],
+        };
         plan = {
           sampleRate: source.info.sampleRate,
           channels: source.info.channels,
-          clips: [
-            {
-              key: newKey(),
-              source: source.info.id,
-              start: 0,
-              end: source.info.frames,
-              gainDb: 0,
-              fadeIn: NO_FADE,
-              fadeOut: NO_FADE,
-            },
-          ],
+          gainDb: 0,
+          tracks: [first],
           metadata: EMPTY_METADATA,
         };
         selection = undefined;
@@ -698,24 +752,19 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
         // Everything that can fail happens before anything changes.
         const drop = stepsToDrop(source.bytes);
         if (drop === undefined) throw policy.error("maxSessionSize", heldBytes() + source.bytes);
-        const commands: AudioCommand[] = [
-          {
-            type: "audio.insertClips",
-            at: insertOptions.at ?? planLength(current),
-            clips: [
-              {
-                key: newKey(),
-                source: source.info.id,
-                start: 0,
-                end: source.info.frames,
-                gainDb: 0,
-                fadeIn: NO_FADE,
-                fadeOut: NO_FADE,
-              },
-            ],
-            splitKey: newKey(),
-          },
-        ];
+        const clip = wholeClip(newKey(), source.info, insertOptions.at ?? 0);
+        const commands: AudioCommand[] = [];
+        // A wider recording widens the plan, so a mono voice opened first
+        // doesn't fold stereo music to mono (docs/adr/0006). Never narrower.
+        if (source.info.channels > current.channels) {
+          commands.push({ type: "audio.setChannels", channels: source.info.channels });
+        }
+        let target = insertOptions.track;
+        if (target === undefined) {
+          target = newKey();
+          commands.push({ type: "audio.addTrack", key: target, index: current.tracks.length });
+        }
+        commands.push({ type: "audio.insertClips", track: target, clips: [clip] });
         sources.set(source.info.id, source);
         let result: ReturnType<typeof applyChecked>;
         try {
@@ -812,9 +861,19 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
         const length = plan ? planLength(plan) : 0;
         const from = Math.max(0, Math.min(start, end, length));
         const to = Math.min(length, Math.max(start, end, 0));
-        next = from < to ? { start: from, end: to } : undefined;
+        // The plan's tracks the range names, in plan order; every track by default.
+        const tracks = (plan?.tracks ?? [])
+          .map((track) => track.key)
+          .filter((key) => range.tracks === undefined || range.tracks.includes(key));
+        if (from < to && tracks.length > 0) {
+          next = Object.freeze({ start: from, end: to, tracks: Object.freeze(tracks) });
+        }
       }
-      if (next?.start === selection?.start && next?.end === selection?.end) return;
+      const same =
+        next?.start === selection?.start &&
+        next?.end === selection?.end &&
+        next?.tracks.join("\n") === selection?.tracks.join("\n");
+      if (same) return;
       selection = next;
       changed();
     },
@@ -832,9 +891,15 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
             details: { reason: "no-recording" },
           });
         }
-        if (current.clips.length === 0) {
+        const clips = clipsIn(current);
+        if (clips.length === 0) {
           throw new AudioError("INVALID_COMMAND", "The recording has no clips to export.", {
             details: { reason: "empty-plan" },
+          });
+        }
+        if (mixLength(current) === 0) {
+          throw new AudioError("INVALID_COMMAND", "No track with clips is audible.", {
+            details: { reason: "nothing-audible" },
           });
         }
         const { processor } = options;
@@ -842,7 +907,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
         // The sources as they are now: an edit or a close during the export
         // can't change what it renders.
         const used = new Map<string, DecodedAudio>();
-        for (const { source } of current.clips) {
+        for (const { source } of clips) {
           const held = sources.get(source);
           if (held) used.set(source, held.audio);
         }
@@ -863,9 +928,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
           );
           emit({
             type: "recording_exported",
-            durationSeconds: coarseSeconds(
-              framesToSeconds(planLength(current), current.sampleRate),
-            ),
+            durationSeconds: coarseSeconds(framesToSeconds(mixLength(current), current.sampleRate)),
             sampleRate: current.sampleRate,
             channels: current.channels,
             sampleFormat: format.sampleFormat ?? "pcm16",

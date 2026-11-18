@@ -43,15 +43,15 @@ export function connectOutput(session: AudioSession, output: AudioOutput): () =>
       held = ids;
       return;
     }
+    const clips = next ? next.tracks.flatMap((track) => track.clips) : [];
     const replaced =
-      next === undefined ||
-      (plan !== undefined && !next.clips.some((clip) => held.has(clip.source)));
+      next === undefined || (plan !== undefined && !clips.some((clip) => held.has(clip.source)));
     if (replaced && plan !== undefined) output.stop();
     plan = next;
     held = ids;
     if (!next) return;
     const sources = new Map<string, DecodedAudio>();
-    for (const { source } of next.clips) {
+    for (const { source } of clips) {
       const audio = session.getAudio(source);
       if (audio) sources.set(source, audio);
     }

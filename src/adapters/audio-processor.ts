@@ -1,15 +1,17 @@
 import { createWorkerClient, type WorkerClient, type WorkerLike } from "@hussmartinez/sdk-core";
 import { asAudioError, throwIfAborted } from "../core/errors/abort.js";
 import { AudioError } from "../core/errors/audio-error.js";
-import { assertClip, clipLength, clipOffsets, planLength } from "../core/model/plan.js";
+import { dbToGain } from "../core/model/envelope.js";
+import { gatherSegments, mixLength } from "../core/model/mix.js";
+import { assertClip } from "../core/model/plan.js";
 import type {
   AudioProcessor,
   AudioRenderJob,
+  AudioRenderResult,
   AudioSampleFormat,
 } from "../core/ports/audio-processor.js";
 import type { AudioWorkerContract } from "./audio-worker/contract.js";
 import { type AudioWorkerSource, audioWorkerSource } from "./audio-worker/loader.js";
-import type { BlockSegment } from "./wav/render-block.js";
 import { dataSize } from "./wav/wav-writer.js";
 
 /**
@@ -49,21 +51,24 @@ export interface ProcessorEnvironment extends AudioWorkerSource {
 }
 
 /**
- * Creates the SDK's processor (docs/adr/0003): it renders a plan's clips,
- * with their gain and fades, and encodes them as a WAV file, in its own
+ * Creates the SDK's processor (docs/adr/0003, docs/adr/0006): it mixes a
+ * plan's audible tracks, with their clips' gain and fades, the tracks' gains
+ * and the master gain, and encodes the mix as a WAV file, in its own
  * worker, block by block. The page sends each block's source samples, at
  * most 2¹⁶ frames per channel, and collects the encoded blocks into a
  * `Blob` of parts, so an export never holds the whole file in one buffer.
  *
  * Sources with another channel count mix into the plan's by Web Audio's
- * speaker rules, as playback does. Samples are clamped to full scale, and
+ * speaker rules, as playback does. Tracks sum at unity. Samples are clamped
+ * to full scale, and the result gives the mix's peak and how many frames
+ * were clamped;
  * 16-bit and 24-bit PCM round half away from zero, without dither. Files
  * whose sizes don't fit 32 bits are written as RF64.
  *
  * @example
  * ```ts
  * const processor = createAudioProcessor();
- * const wav = await processor.render(
+ * const { blob, peakDb, clippedFrames } = await processor.render(
  *   { plan, sources, format: { container: "wav", sampleFormat: "pcm24" } },
  *   { signal, onProgress },
  * );
@@ -93,10 +98,14 @@ function check(job: AudioRenderJob): AudioSampleFormat {
   if (!Number.isSafeInteger(plan.channels) || plan.channels < 1) {
     throw new RangeError("The plan's channel count must be a whole number above 0.");
   }
-  for (const clip of plan.clips) {
-    const source = sources.get(clip.source);
-    if (!source) throw new TypeError(`Clip ${clip.key}'s source ${clip.source} isn't in the job.`);
-    assertClip(clip, source.length);
+  for (const track of plan.tracks) {
+    for (const clip of track.clips) {
+      const source = sources.get(clip.source);
+      if (!source) {
+        throw new TypeError(`Clip ${clip.key}'s source ${clip.source} isn't in the job.`);
+      }
+      assertClip(clip, source.length);
+    }
   }
   return sampleFormat;
 }
@@ -133,60 +142,45 @@ export function createProcessor(environment: ProcessorEnvironment): AudioProcess
     job: AudioRenderJob,
     signal: AbortSignal | undefined,
     onProgress: ((fraction: number) => void) | undefined,
-  ): Promise<Blob> {
+  ): Promise<AudioRenderResult> {
     const { plan, sources } = job;
     const sampleFormat = check(job);
     throwIfAborted(signal);
     const worker = await ready();
     const call = signal ? { signal } : {};
-    const frames = planLength(plan);
+    // What sounds: a muted track neither plays nor pads the file.
+    const frames = mixLength(plan);
+    const gain = dbToGain(plan.gainDb);
     const spec = { sampleRate: plan.sampleRate, channels: plan.channels, frames, sampleFormat };
     const parts: Uint8Array<ArrayBuffer>[] = [
       await worker.call("wavHeader", { ...spec, metadata: { ...plan.metadata } }, call),
     ];
-    const offsets = clipOffsets(plan);
-    // The first clip that can overlap the next block, so each block looks
-    // only at its own clips.
-    let first = 0;
+    let peak = 0;
+    let clippedFrames = 0;
     for (let start = 0; start < frames; start += EXPORT_BLOCK_FRAMES) {
       throwIfAborted(signal);
       const length = Math.min(EXPORT_BLOCK_FRAMES, frames - start);
-      const end = start + length;
-      const segments: BlockSegment[] = [];
-      while (first < plan.clips.length) {
-        const clip = plan.clips[first];
-        if (!clip || (offsets[first] as number) + clipLength(clip) > start) break;
-        first += 1;
-      }
-      for (let index = first; index < plan.clips.length; index += 1) {
-        const clip = plan.clips[index];
-        const offset = offsets[index] as number;
-        if (!clip || offset >= end) break;
-        const from = Math.max(start, offset);
-        const to = Math.min(end, offset + clipLength(clip));
-        const within = from - offset;
-        const source = sources.get(clip.source);
-        if (!source) throw new TypeError(`Clip ${clip.key}'s source isn't in the job.`);
-        const samples = Array.from({ length: source.numberOfChannels }, (_, channel) =>
-          source
-            .getChannelData(channel)
-            .slice(clip.start + within, clip.start + within + (to - from)),
-        );
-        segments.push({ clip, within, at: from - start, samples, frames: to - from });
-      }
-      parts.push(
-        await worker.call(
-          "renderBlock",
-          { channels: plan.channels, frames: length, sampleFormat, segments },
-          call,
-        ),
+      // Copies of each audible clip's part of the block, which the worker
+      // then owns: the sources are never transferred away.
+      const segments = gatherSegments(plan, sources, start, length);
+      const block = await worker.call(
+        "renderBlock",
+        { channels: plan.channels, frames: length, gain, sampleFormat, segments },
+        { ...call, transfer: true },
       );
-      onProgress?.(end / frames);
+      parts.push(block.bytes);
+      peak = Math.max(peak, block.peak);
+      clippedFrames += block.clipped;
+      onProgress?.((start + length) / frames);
     }
     // Chunks are padded to an even size.
     if (dataSize(spec) % 2 === 1) parts.push(new Uint8Array(1));
     if (frames === 0) onProgress?.(1);
-    return new Blob(parts, { type: "audio/wav" });
+    return {
+      blob: new Blob(parts, { type: "audio/wav" }),
+      peakDb: 20 * Math.log10(peak),
+      clippedFrames,
+    };
   }
 
   return {
