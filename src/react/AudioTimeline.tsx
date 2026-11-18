@@ -231,14 +231,16 @@ export function EditorTimeline({
               // the focused one, however focus arrives (docs/adr/0005).
               onFocus={() => setCurrentTrack(track.key)}
             >
-              <TimelineLayer className="hm-audio-editor-wave-layer" aria-hidden="true">
-                <AudioWaveform track={track} peaksOf={peaksOf} subscribeRange={subscribeRange} />
-              </TimelineLayer>
+              {/* Under the waveform, which shows through the clips: their
+                  background is transparent in the editor's styles. */}
               {selection?.tracks.includes(track.key) ? (
                 <TimelineLayer className="hm-audio-editor-range-layer" aria-hidden="true">
                   <RangeMark selection={selection} />
                 </TimelineLayer>
               ) : null}
+              <TimelineLayer className="hm-audio-editor-wave-layer" aria-hidden="true">
+                <AudioWaveform track={track} peaksOf={peaksOf} subscribeRange={subscribeRange} />
+              </TimelineLayer>
               <TimelineClips
                 ref={(handle) => {
                   if (handle) clipTracks.current.set(track.key, handle);
@@ -285,6 +287,8 @@ export function EditorTimeline({
                 // A clip moves by its title strip: a press elsewhere on it
                 // reaches the range layer beneath (docs/adr/0006).
                 moveHandle="title"
+                // The title keeps a solid background over the waveform.
+                classNames={{ content: "hm-audio-editor-clip-title" }}
                 onMove={(keys, direction) => moveClips(tools.context(), keys, direction * nudge)}
                 onMoveLane={(keys, direction) => moveClipsToTrack(tools.context(), keys, direction)}
                 canDrop={(keys, drop) => canPlace(plan, keys, drop.by, drop.lane)}

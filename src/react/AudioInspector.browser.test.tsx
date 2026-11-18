@@ -106,6 +106,12 @@ describe("the inspector, with a clip selected", () => {
     await step(() => container.querySelector<HTMLElement>('[role="option"]')?.focus());
     await enter(control(container, "Gain, in decibels"), "-6");
     await waitFor(() => expect(plan().tracks[0]?.clips[0]?.gainDb).toBe(-6));
+    // The slider has a visible label, not only an accessible name.
+    const labels = [
+      ...(container.querySelector(".hm-audio-editor-inspector")?.querySelectorAll("label") ?? []),
+    ];
+    const label = labels.find((each) => each.textContent === "Gain");
+    expect(label?.htmlFor).toBe(control(container, "Gain").id);
     // The slider's keys are a step each.
     const slider = control(container, "Gain");
     await step(() => slider.focus());

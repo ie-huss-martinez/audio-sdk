@@ -149,6 +149,24 @@
     color: var(--hm-color-text-muted);
   }
 
+  /*
+   * A clip lets its track's waveform and selected range show through it:
+   * its outline, and the accent one when it's selected, mark where it is.
+   */
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-timeline {
+    --hm-timeline-clip-bg: transparent;
+    --hm-timeline-clip-selected-bg: transparent;
+  }
+
+  /* Its title keeps ui's clip background, so the text never sits on the waveform. */
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-clip-title {
+    background: var(--hm-color-control);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) [aria-selected="true"] > .hm-audio-editor-clip-title {
+    background: var(--hm-color-accent-subtle);
+  }
+
   .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-timeline {
     display: grid;
     gap: var(--hm-gap-tight);
