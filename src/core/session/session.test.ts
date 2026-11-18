@@ -325,7 +325,7 @@ describe("the audio session", () => {
     ] as const) {
       expect(thrown(() => session.execute(command))).toMatchObject({
         code: "DURATION_TOO_LONG",
-        details: { limit: "maxDuration", maximum: 1_000, actual: 1_001 },
+        details: { limit: "maxDuration", maximum: 1_000, actual: 1_001, reason: "plan-too-long" },
       });
     }
     expect(snapshot()).toBe(before);

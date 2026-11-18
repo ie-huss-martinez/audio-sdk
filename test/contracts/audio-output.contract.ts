@@ -51,6 +51,40 @@ export function describeAudioOutputContract(name: string, harness: AudioOutputHa
       expect(output.position()).toBe(0);
     });
 
+    it("notifies subscribers when the playhead jumps, with a new snapshot in the same state", () => {
+      const { output } = harness.create();
+      output.load(plan(clip("a", 4_000)), sources());
+      const seen: { state: string; position: number }[] = [];
+      let last = output.getSnapshot();
+      output.subscribe(() => {
+        const snapshot = output.getSnapshot();
+        expect(snapshot).not.toBe(last);
+        last = snapshot;
+        seen.push({ state: snapshot.state, position: output.position() });
+      });
+      output.seek(1_000);
+      output.seek(1_500.4);
+      output.stop();
+      // A shorter plan moves the playhead too.
+      output.seek(3_000);
+      output.load(plan(clip("a", 2_000)), sources());
+      expect(seen).toEqual([
+        { state: "stopped", position: 1_000 },
+        { state: "stopped", position: 1_500 },
+        { state: "stopped", position: 0 },
+        { state: "stopped", position: 3_000 },
+        { state: "stopped", position: 2_000 },
+      ]);
+      // What doesn't move it doesn't notify: a seek to where it is, and a
+      // stop at the start.
+      const count = seen.length;
+      output.stop();
+      output.seek(0);
+      output.stop();
+      expect(seen.length).toBe(count + 1);
+      expect(Number.isInteger(output.position())).toBe(true);
+    });
+
     it("works with its methods passed on their own, as useSyncExternalStore takes them", async () => {
       const { output, elapse } = harness.create();
       const { getSnapshot, subscribe, load, play, pause, position } = output;

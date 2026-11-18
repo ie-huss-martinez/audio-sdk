@@ -12,7 +12,9 @@ This repository publishes **[`@hussmartinez/audio-sdk`](https://www.npmjs.com/pa
 
 ```ts
 import {
+  audioErrorText,
   audioMessages,
+  audioWarningText,
   createAudioAdapters,
   createAudioSession,
 } from "@hussmartinez/audio-sdk";
@@ -67,11 +69,11 @@ try {
   if (clippedFrames > 0) warnOfClipping(peakDb); // the mix went this far over full scale
   offerDownload(blob); // the session never downloads anything itself
 } catch (error) {
-  showError(messages.error(error)); // text by code, never the error's message
+  showError(audioErrorText(messages, error)); // text by code and reason, never the error's message
 }
 ```
 
-- **The snapshot** has the `plan` (its tracks, their clips in frames, the master gain and the metadata), the `sources`, the `selection`, `canUndo` and `canRedo`, `busy`, the last `error`, and `warnings`: limits past their warning thresholds, and `truncated` for a WAV or AIFF file cut short, which opens with the audio it holds. Show their text from `warnings.<name>` in `audioMessages`.
+- **The snapshot** has the `plan` (its tracks, their clips in frames, the master gain and the metadata), the `sources`, the `selection`, `canUndo` and `canRedo`, `busy`, the last `error`, and `warnings`: limits past their warning thresholds, and `truncated` for a WAV or AIFF file cut short, which opens with the audio it holds. Show each one's text with `audioWarningText(messages, warning)`.
 - **Tracks** play together. Each has a name, a gain, mute and solo, and clips placed in time that never overlap: two sounds at once are two tracks. `audibleTracks(plan)` says which ones sound.
 - **Commands** are plain data, such as `audio.splitClip`, `audio.moveClips` or `audio.setTrack`, with an exact inverse for undo. Clip edits never move another clip: they fail with `clips-overlap` rather than push one. Time edits, `audio.deleteRange`, `audio.keepRange` and `audio.insertTime`, move what's after them on the tracks they name ([the format record](docs/formats/hm-audio-plan.md) lists every command). One that doesn't apply throws `INVALID_COMMAND` with a stable `details.reason`, such as `unknown-clip`. `session.group(fn)` makes several commands, such as a drag, one undo step.
 - **Keys you leave out, the session gives:** a split's `newKey`, a new track's `key`, and the `newKeys` of a time edit, one for every track it names. The history records them, so undo and redo bring back the same keys. Pass your own, from `session.createKey()`, when you need to know them before the command runs.
@@ -88,7 +90,13 @@ try {
 `createAudioOutput()` plays a plan through Web Audio, and `connectOutput()` keeps it in step with a session, so playback follows every edit, undo and insert, even while playing ([ADR 0002](docs/adr/0002-workers-and-assets.md), [ADR 0003](docs/adr/0003-clip-plan-document-model.md)):
 
 ```ts
-import { connectOutput, isAudioError } from "@hussmartinez/audio-sdk";
+import {
+  audioErrorText,
+  connectOutput,
+  formatTimecode,
+  isAudioError,
+  watchPlayhead,
+} from "@hussmartinez/audio-sdk";
 
 const { output } = adapters; // or createAudioOutput() on its own
 const disconnect = connectOutput(session, output);
@@ -98,28 +106,33 @@ playButton.onclick = async () => {
   try {
     await output.play(); // from the playhead, or from the start when it's at the end
   } catch (error) {
-    // The browser didn't start audio: play again from a click or a key press.
-    if (isAudioError(error, "UNSUPPORTED_ENVIRONMENT")) showAudioBlocked();
+    // An autoplay rule kept sound from starting: a press of Play starts it.
+    if (isAudioError(error, "UNSUPPORTED_ENVIRONMENT")) showNotice(audioErrorText(messages, error));
   }
 };
 output.subscribe(() => showState(output.getSnapshot().state)); // "stopped", "playing" or "paused"
 
-// The playhead isn't in the snapshot: read it when you draw.
-requestAnimationFrame(function draw() {
-  drawPlayhead(output.position()); // in frames, at the plan's sample rate
-  requestAnimationFrame(draw);
+// The playhead isn't in the snapshot: watch it, on animation frames while
+// playing and whenever it jumps. It's in whole frames, at the plan's rate.
+const rate = session.getSnapshot().plan?.sampleRate ?? 48_000;
+const unwatch = watchPlayhead(output, (frame) => {
+  drawPlayhead(frame);
+  time.textContent = formatTimecode(frame, rate); // "0:12.40"
 });
 
 output.seek(5 * 48_000); // while playing, playback carries on from there
 
-// When you're done: disconnect, close, then release the adapters.
+// When you're done: stop watching, disconnect, close, then release the adapters.
+unwatch();
 disconnect();
 await session.close();
 await adapters.destroy(); // the engine, the processor and the output
 ```
 
-- **Start playback from a user gesture.** Browsers block audio until someone interacts with the page. The first `play()` creates the one `AudioContext`; if it doesn't start within two seconds, `play()` rejects with `UNSUPPORTED_ENVIRONMENT` and `details.feature` set to `"audio-output"`, and nothing changes.
-- **The playhead** is a position in frames, read from the audio clock by `output.position()`. It isn't in the snapshot, because it changes on every audio frame, so subscribers aren't called as it moves: poll it on animation frames while playing. A seek, a changed plan and the end of playback move it too.
+- **Start playback from a user gesture.** Browsers block audio until someone interacts with the page. The first `play()` creates the one `AudioContext`; if it doesn't start within two seconds, `play()` rejects with `UNSUPPORTED_ENVIRONMENT` and `details.reason` set to `"autoplay-blocked"`, and nothing changes. `audioErrorText` gives it its own text: sound needs a press of Play.
+- **The playhead** is a whole number of frames, read from the audio clock by `output.position()`. It isn't in the snapshot, because it changes on every audio frame, so subscribers aren't called as it moves. They are called when it jumps, after a seek, a stop or a plan that moves it, with a new snapshot in the same state. `watchPlayhead(output, listener)` does the rest: it reads it on animation frames while playing, asks for none otherwise, and calls you only when it changes.
+- **`formatTimecode(frames, sampleRate)`** writes a position as an editor shows it: `0:12.40`, and `1:02:05.00` from an hour on. Hundredths are rounded down, so the time shown is never ahead of what's heard.
+- **`peakColumns(peaks, { from, to, columns })`** gives a waveform's columns from `session.getPeaks(source)`: each column's lowest and highest sample over every channel, from the overview level that fits, so drawing costs the same for an hour as for a minute.
 - **At the end,** the state becomes `stopped` and the playhead stays at the end. `stop()` goes back to the start.
 - **Playback is what export renders:** the same audible tracks, track gains and master gain; each clip's gain and fades come from the same `gainAt`, and sources mix into the plan's channels by the same rules. One difference: playback isn't clamped, so the device clips at full scale where export clamps.
 - **A mute, a solo, a track's gain and the master gain are heard at once.** A plan that differs only in those is applied to what's playing over 5 ms, without rescheduling a clip, so there's no gap and no click. Any other edit reschedules from the playhead.

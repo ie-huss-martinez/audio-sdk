@@ -60,6 +60,12 @@ export const audioMessages = /* @__PURE__ */ defineMessages({
     one: "This recording has {actual} track. Many tracks may be slow to play and export.",
     other: "This recording has {actual} tracks. Many tracks may be slow to play and export.",
   }),
+  // Texts for one reason of a code, which take its place when the error
+  // carries that reason: see audioErrorText.
+  "errors.UNSUPPORTED_ENVIRONMENT.autoplay-blocked":
+    "The browser didn't let sound start. Press Play to start it.",
+  "errors.DURATION_TOO_LONG.plan-too-long":
+    "This would make the recording {actual, duration} long, which is over the {maximum, duration} limit.",
   "warnings.truncated":
     "This recording looks incomplete, perhaps from an interrupted recording or download. It opened with the audio it holds.",
 }) satisfies Record<`errors.${AudioErrorCode}`, MessageValue> &
