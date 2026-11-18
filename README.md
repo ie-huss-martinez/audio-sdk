@@ -1,10 +1,10 @@
 # audio-sdk
 
-A client-side audio SDK: trim, split, fade, adjust gain and export audio entirely in the browser. Audio never leaves the device. Its headless core is published; a React editor (`AudioEditor`) and a `<hm-audio-editor>` custom element come later.
+A client-side audio SDK: trim, split, fade, adjust gain, play and export audio entirely in the browser. Audio never leaves the device. Its headless core is published; a React editor (`AudioEditor`) and a `<hm-audio-editor>` custom element come later.
 
 This repository publishes **[`@hussmartinez/audio-sdk`](https://www.npmjs.com/package/@hussmartinez/audio-sdk)**. It follows the family standards in [`sdk-core`'s `STANDARDS.md`](https://github.com/ie-huss-martinez/sdk-core/blob/main/STANDARDS.md), and in particular the decisions on [hostile input and no network](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0012-hostile-input-and-no-network.md), [workers and assets](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0011-worker-messaging-and-assets.md) and [ports and adapters](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0008-ports-adapters-and-session.md).
 
-> Status: pre-1.0. The headless core is published: opening, editing with undo, and exporting to WAV. Playback and the editor UI are next, and the API may change between minor versions until 1.0.
+> Status: pre-1.0. The headless core is published: opening, editing with undo, playback, and exporting to WAV. Multitrack and the editor UI are next ([ADR 0006](docs/adr/0006-multitrack.md)), and the API may change between minor versions until 1.0.
 
 ## Editing and exporting
 
@@ -57,6 +57,51 @@ try {
 - **`session.insert(file, { at })`** adds another recording at a frame, as one undo step. A recording at another sample rate is converted to the session's, in the worker, and its entry in `snapshot.sources` gives the file's own rate as `resampledFrom`.
 - **Exports** render the plan as it is when the export starts, as 16-bit (the default) or 24-bit PCM, or 32-bit float WAV, with the metadata in the file. They run under `maxProcessingTime`, and the `signal` option cancels them.
 - **Plans are portable JSON:** `toAudioPlanDocument` and `readAudioPlanDocument` write and read the `hm-audio-plan` format, whose JSON Schema ships in the package, at `@hussmartinez/audio-sdk/formats/hm-audio-plan/v1.schema.json` ([format record](docs/formats/hm-audio-plan.md)).
+
+## Playback
+
+`createAudioOutput()` plays a plan through Web Audio, and `connectOutput()` keeps it in step with a session, so playback follows every edit, undo and insert, even while playing ([ADR 0002](docs/adr/0002-workers-and-assets.md), [ADR 0003](docs/adr/0003-clip-plan-document-model.md)):
+
+```ts
+import { connectOutput, createAudioOutput, isAudioError } from "@hussmartinez/audio-sdk";
+
+const output = createAudioOutput();
+const disconnect = connectOutput(session, output);
+
+playButton.onclick = async () => {
+  if (output.getSnapshot().state === "playing") return output.pause();
+  try {
+    await output.play(); // from the playhead, or from the start when it's at the end
+  } catch (error) {
+    // The browser didn't start audio: play again from a click or a key press.
+    if (isAudioError(error, "UNSUPPORTED_ENVIRONMENT")) showAudioBlocked();
+  }
+};
+output.subscribe(() => showState(output.getSnapshot().state)); // "stopped", "playing" or "paused"
+
+// The playhead isn't in the snapshot: read it when you draw.
+requestAnimationFrame(function draw() {
+  drawPlayhead(output.position()); // in frames, at the plan's sample rate
+  requestAnimationFrame(draw);
+});
+
+output.seek(5 * 48_000); // while playing, playback carries on from there
+
+// When you're done: disconnect, then release each thing you created.
+disconnect();
+await output.destroy();
+await session.close();
+await engine.destroy();
+await processor.destroy();
+```
+
+- **Start playback from a user gesture.** Browsers block audio until someone interacts with the page. The first `play()` creates the one `AudioContext`; if it doesn't start within two seconds, `play()` rejects with `UNSUPPORTED_ENVIRONMENT` and `details.feature` set to `"audio-output"`, and nothing changes.
+- **The playhead** is a position in frames, read from the audio clock by `output.position()`. It isn't in the snapshot, because it changes on every audio frame, so subscribers aren't called as it moves: poll it on animation frames while playing. A seek, a changed plan and the end of playback move it too.
+- **At the end,** the state becomes `stopped` and the playhead stays at the end. `stop()` goes back to the start.
+- **Playback is what export renders:** each clip's gain and fades come from the same `gainAt`, and sources mix into the plan's channels by the same rules. One difference: playback isn't clamped, so the device clips at full scale where export clamps.
+- **Opening another recording, or closing,** stops the output at the start. An insert doesn't.
+- **The session doesn't own what you give it.** `session.close()` releases the recording, not the engine, the processor or the output: destroy each yourself, as above.
+- **No Content Security Policy directive** is needed for playback: it uses no worker and makes no requests.
 
 ## Using the engine directly
 
