@@ -4,6 +4,7 @@
 - **Date:** 2026-11-18
 - **Amended:** 2026-11-18, with the review's rulings: Ripple shows the tracks it will move, the model's step is two pull requests, and `ui`'s amendment is designed with video-sdk's needs.
 - **Amended:** 2026-11-18, with resampling as built: the SDK's own windowed sinc in the worker, not an `OfflineAudioContext`.
+- **Amended:** 2026-11-18, with the model as built: `newKeys` is an object by track key, `audio.keepRange` needs no keys, a command's schema-stated rules are checked first, and how version 1's commands migrate.
 - **Supersedes in part:** [ADR 0003](0003-clip-plan-document-model.md) (the plan's shape, derived positions, the command table and version 1 of the formats) and [ADR 0005](0005-editor-shell.md) (the timeline, the selection and the order of the work). **Extends:** [ADR 0004](0004-audio-limits.md), with two limits.
 
 ## Context
@@ -71,7 +72,7 @@ Both formats go to version 2, by sdk-core ADR 0045's rules. Version 1 has `clips
 
 - **Schemas:** `formats/hm-audio-plan/v2.schema.json` and `formats/hm-audio-command/v2.schema.json`, beside version 1's, which stay in the package.
 - **Reading version 1 plans:** `readAudioPlanDocument` accepts both versions and returns a version 2 plan. The migration is pure and total: one track with the key `t1`, an empty name, 0 dB, not muted or soloed; each clip's `at` is the sum of the lengths before it; the master gain is 0 dB. If a clip already has the key `t1`, the track takes the first free `t2`, `t3`, and so on.
-- **Reading version 1 commands:** a version 1 command only means something on a version 1 plan, so `migrateAudioCommand(command, plan)` takes the migrated plan and returns the version 2 commands with the same effect. Version 1's commands closed gaps as they went; the mapping uses the time commands below to do the same, such as `audio.insertTime` then `audio.insertClips` for a version 1 insert.
+- **Reading version 1 commands:** a version 1 command only means something on a version 1 plan, so `migrateAudioCommand(command, plan)` takes the migrated plan and returns the version 2 commands with the same effect. Version 1's commands closed gaps as they went; the mapping uses the time commands below to do the same, such as `audio.insertTime` then `audio.insertClips` for a version 1 insert, and returns the commands to run as one undo step. [The format record](../formats/hm-audio-plan.md) lists the mapping for each command, and its order is part of the format: a refusal is the first one met.
 - **Writing:** `toAudioPlanDocument` writes version 2 only.
 - **New rejection reasons:** `clips-overlap`, `clips-out-of-order`, `no-tracks`, `unknown-track`, `last-track`, `name-too-long` and `nothing-audible`, with the existing ones. Tokens never change meaning once released.
 - **Vectors:** `conformance/` gains version 2 cases for plans and commands, cases that migrate version 1 documents and commands, and a new subject, `hm-audio-mix`: a small plan over short sources given as numbers, and the expected samples with a stated `tolerance`, because gains from decibels and fade curves are computed floats (ADR 0045, section 3). The version 1 vectors stay, and now check the migration.
@@ -92,7 +93,7 @@ Edits come in two kinds, and the difference is the point of the design:
 | `audio.moveClips { keys, by, track? }` | Moves clips by a signed number of frames, and to another track if one is named | `audio.placeClips` |
 | `audio.setGain { keys, gainDb }`, `audio.setFade { key, edge, frames, curve }` | As in ADR 0003 | `audio.updateClips` |
 | `audio.deleteRange { start, end, tracks, ripple, newKeys? }` | Removes a range of time from the named tracks, trimming the clips at its edges. With `ripple`, later clips on those tracks move earlier by its length; without, silence stays | `audio.replaceClips` |
-| `audio.keepRange { start, end, newKeys? }` | Removes everything outside a range, on every track, and moves what's kept to the start | `audio.replaceClips` |
+| `audio.keepRange { start, end }` | Removes everything outside a range, on every track, and moves what's kept to the start | `audio.replaceClips` |
 | `audio.insertTime { at, frames, tracks, newKeys? }` | Opens silence on the named tracks, splitting a clip that lies across `at` | `audio.replaceClips` |
 | `audio.addTrack { key, index, name? }` | Adds an empty track | `audio.removeTracks` |
 | `audio.removeTracks { keys }` | Removes tracks with their clips. The last track can't be removed | `audio.restoreTracks` |
@@ -109,6 +110,10 @@ The inverses that only undo runs stay internal, outside the portable format, as 
 - **`audio.placeClips { entries: [{ key, track, at }] }`** puts clips back on their tracks and positions. It's its own inverse.
 - **`audio.replaceClips { edits: [{ track, index, count, clips, shift }] }`** replaces a run of neighbouring clips on each named track, then moves every clip after the run by `shift` frames. It's its own inverse, with the run it replaced and the opposite shift. So a ripple that moves a thousand clips is undone by one number, not a thousand positions.
 - **`audio.restoreTracks { entries: [{ index, track }] }`** puts tracks back, with their clips and settings.
+
+- **`newKeys` is an object, by track key:** the key of the part a cut leaves after it on that track. A track that doesn't need its key ignores it, so a caller can send one for every track it names. `audio.keepRange` needs none: it never leaves two parts of one clip.
+- **What a command's schema states is checked first,** such as a gain's range, then what depends on the plan. So a command the schema refuses is refused for the schema's reason, which the vectors rely on.
+- **A valid command that changes nothing is applied,** and its inverse changes nothing too. Whether it makes an undo step is the session's rule (point 4 of #54).
 
 Every inverse is exact, as ADR 0003 requires: it carries the previous state of what changed. ADR 0003's rules for commands still hold: strict shapes, stable reasons, a pure reducer, keys carried in the command, cut clips keeping the fades of the edges they keep, and sources registered rather than carried. `audio.moveClips` by index and `audio.reorderClips` are gone: with positions, order follows time.
 

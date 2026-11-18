@@ -312,9 +312,10 @@ export type AudioCommandRejection =
  * @internal
  */
 export class Invalid extends Error {
-  readonly reason: AudioCommandRejection;
+  /** A rejection token: {@link AudioCommandRejection}, or the multitrack model's. */
+  readonly reason: string;
 
-  constructor(reason: AudioCommandRejection, message: string) {
+  constructor(reason: string, message: string) {
     super(message);
     this.reason = reason;
   }
@@ -338,11 +339,13 @@ export function isKey(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
-function isIndex(value: unknown, max: number): value is number {
+/** @internal */
+export function isIndex(value: unknown, max: number): value is number {
   return Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= max;
 }
 
-function fade(value: unknown, name: string): AudioFade {
+/** @internal */
+export function fade(value: unknown, name: string): AudioFade {
   if (!isRecord<AudioFade>(value)) invalid("malformed-command", `${name} isn't a fade`);
   onlyFields(value, FADE_FIELDS, name);
   if (typeof value.curve !== "string" || !CURVES.has(value.curve)) {
@@ -459,7 +462,8 @@ function position(plan: AudioPlan, key: unknown): number {
  * Shortens fades that no longer fit their clip, in proportion, so that
  * neither reaches into the other.
  */
-function fitFades(clip: AudioClip): AudioClip {
+/** @internal */
+export function fitFades<Clip extends AudioClip>(clip: Clip): Clip {
   const length = clipLength(clip);
   const total = clip.fadeIn.frames + clip.fadeOut.frames;
   // A clip of no frames, or of invalid ones, is left for validation to
