@@ -1,6 +1,6 @@
 # 0005. The editor shell: layout, the waveform timeline, selection, shortcuts and focus
 
-- **Status:** Accepted
+- **Status:** Accepted; superseded in part by [0006](0006-multitrack.md): the timeline, the selection and the order of the work
 - **Date:** 2026-11-15
 
 ## Context

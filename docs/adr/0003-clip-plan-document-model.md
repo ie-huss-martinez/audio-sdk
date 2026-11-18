@@ -1,6 +1,6 @@
 # 0003. The clip plan: edits change a model, and audio is rendered on export
 
-- **Status:** Accepted
+- **Status:** Accepted; superseded in part by [0006](0006-multitrack.md): the plan's shape, derived positions, the command table and version 1 of the formats
 - **Date:** 2026-11-12
 - **Amended:** 2026-11-12, to match the model as built in #8: the metadata is a field of the plan, the core sees sources as `DecodedAudio`, and fades reach silence on a clip's first and last frames.
 - **Amended:** 2026-11-13, to match the commands as built: three inverse commands (`audio.replaceClips`, `audio.updateClips` and `audio.reorderClips`), the keys of split parts (`splitKey`, `newKey`), how cut clips keep their fades, the bounds on gain and metadata, and the reducer's lookup of source lengths.

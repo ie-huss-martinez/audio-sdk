@@ -10,6 +10,7 @@ Use [`template.md`](template.md) for new records. Name files `NNNN-short-title.m
 |---|---|---|
 | [0001](0001-audio-engines.md) | Audio engines: our own readers and encoders, and the browser's decoders | Accepted |
 | [0002](0002-workers-and-assets.md) | One audio worker, sources on the page, and assets without the network | Accepted |
-| [0003](0003-clip-plan-document-model.md) | The clip plan: edits change a model, and audio is rendered on export | Accepted |
+| [0003](0003-clip-plan-document-model.md) | The clip plan: edits change a model, and audio is rendered on export | Accepted; in part superseded by 0006 |
 | [0004](0004-audio-limits.md) | Audio limits and session memory | Accepted |
-| [0005](0005-editor-shell.md) | The editor shell: layout, the waveform timeline, selection, shortcuts and focus | Accepted |
+| [0005](0005-editor-shell.md) | The editor shell: layout, the waveform timeline, selection, shortcuts and focus | Accepted; in part superseded by 0006 |
+| [0006](0006-multitrack.md) | Multitrack: tracks of positioned clips, mixed on playback and export | Accepted |
