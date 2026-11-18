@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useRef } from "react";
 import type { AudioTrack } from "../core/model/plan.js";
 import type { AudioCommand } from "../core/operations/commands.js";
 import { useAudioEditorContext } from "./context.js";
-import { useDraft } from "./draft.js";
+import { useFollowing } from "./draft.js";
 import { trackName } from "./names.js";
 import { useAudioTools } from "./tools.js";
 
@@ -14,8 +14,8 @@ const GAIN = { min: -60, max: 12 } as const;
  * A track's header (docs/adr/0006): its name, which opens the editor's
  * rename dialog, Mute and Solo, and its gain. `ui`'s lane renders it as a
  * toolbar that stays in view while the timeline scrolls: one Tab stop, with
- * ← and → between the controls. A gain drag is one undo step, committed when
- * it ends; each key press is one.
+ * ← and → between the controls. A gain change is one undo step a gesture:
+ * a drag, or the keys pressed until they're let go.
  */
 export function AudioTrackHeader({
   track,
@@ -50,9 +50,7 @@ export function AudioTrackHeader({
     }
   };
 
-  const [gain, setGain, commitGain] = useDraft(track.gainDb, (gainDb) =>
-    execute({ type: "audio.setTrack", key: track.key, gainDb }),
-  );
+  const [gain, setGain] = useFollowing(track.gainDb);
 
   return (
     <>
@@ -100,9 +98,10 @@ export function AudioTrackHeader({
         value={Math.min(GAIN.max, Math.max(GAIN.min, gain))}
         onValueChange={setGain}
         formatValue={(value) => messages.t("track.gainValue", { gain: value })}
-        onPointerUp={commitGain}
-        onKeyUp={commitGain}
-        onBlur={commitGain}
+        // One undo step a gesture: a drag, or the keys pressed until let go.
+        onValueCommit={(gainDb) => {
+          if (gainDb !== track.gainDb) execute({ type: "audio.setTrack", key: track.key, gainDb });
+        }}
       />
       {rippling ? (
         // In text, not by the lane's colour alone (docs/adr/0006).

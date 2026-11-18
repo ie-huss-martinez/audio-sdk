@@ -227,16 +227,10 @@ export function EditorTimeline({
               }
               data-hm-silent={audible.has(track) ? undefined : ""}
               data-hm-ripple={rippling?.has(track.key) ? "" : undefined}
-              // The track tools act on the track focus was last in, and the
-              // clip tools on the clip: selection follows focus, by Tab too
-              // (docs/adr/0005), where ui's clip track selects on arrows and clicks.
-              onFocus={(event) => {
-                setCurrentTrack(track.key);
-                const key = (event.target as HTMLElement).dataset["hmKey"];
-                if (key !== undefined && track.clips.some((clip) => clip.key === key)) {
-                  context.setSelectedClip(key);
-                }
-              }}
+              // The track tools act on the track focus was last in. The clip
+              // tools act on the selected clip, which ui's clip track keeps on
+              // the focused one, however focus arrives (docs/adr/0005).
+              onFocus={() => setCurrentTrack(track.key)}
             >
               <TimelineLayer className="hm-audio-editor-wave-layer" aria-hidden="true">
                 <AudioWaveform track={track} peaksOf={peaksOf} subscribeRange={subscribeRange} />
