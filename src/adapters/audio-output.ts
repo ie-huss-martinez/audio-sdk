@@ -7,7 +7,7 @@ import type {
   AudioOutputSnapshot,
   AudioOutputState,
 } from "../core/ports/audio-output.js";
-import { type ScheduledPlan, schedulePlan } from "./web-audio/play-graph.js";
+import { type ScheduledPlan, sameClips, schedulePlan } from "./web-audio/play-graph.js";
 
 /**
  * How far ahead of the context's clock playback starts, in seconds, so the
@@ -45,6 +45,12 @@ export interface OutputEnvironment {
  *   `GainNode` automated from `gainAt`, so playback follows the envelope
  *   export applies. Sources mix into the plan's channels by Web Audio's
  *   speaker rules, as export does.
+ * - **Each track is a `GainNode`** its clips feed, at the track's gain, or
+ *   at silence when it's muted or left out by a solo, and the tracks feed
+ *   one at the master gain. Loading a plan that differs only in those
+ *   levels moves the nodes there over 5 ms, and reschedules nothing, so a
+ *   mute, a solo or a gain is heard at once, without a gap or a click
+ *   (docs/adr/0006).
  * - **The playhead** is read from the audio clock by `position()`, which a
  *   view polls on animation frames; it isn't in the snapshot.
  *
@@ -185,6 +191,15 @@ export function createOutput(environment: OutputEnvironment): AudioOutput {
 
     load(next, nextSources) {
       assertAlive();
+      // A plan with the same clips differs only in levels: a track's gain,
+      // mute or solo, or the master gain. Those are set on what's playing,
+      // without rescheduling a clip (docs/adr/0006).
+      if (playing && context && plan && sameClips(plan, next)) {
+        plan = next;
+        sources = nextSources;
+        playing.scheduled.setLevels(next, context.currentTime);
+        return;
+      }
       const wasPlaying = playing !== undefined;
       unschedule();
       plan = next;

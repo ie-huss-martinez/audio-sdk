@@ -27,12 +27,12 @@ const coreImport = (name, imports, limit) => ({
 export default [
   {
     disablePlugins: ["@size-limit/esbuild"],
-    // Measured at 19.29 kB with the multitrack plan (docs/adr/0006): the
+    // Measured at 19.69 kB with the multitrack plan (docs/adr/0006): the
     // session, the reducer of tracks and time edits, the readers of both
     // format versions with the migration of version 1's plans and commands,
     // the mix's gathering, the engine's and the processor's page sides,
     // playback and the text of errors and warnings. Minified, as an
-    // application ships it, it's 14.90 kB. Before tracks it was 15.06 kB,
+    // application ships it, it's 15.13 kB. Before tracks it was 15.06 kB,
     // and 11.53 kB minified.
     name: "Server-safe core (.), with the shared code it loads",
     path: ["dist/index.js", "dist/shared/*.js"],
@@ -88,7 +88,8 @@ export default [
   // Measured 2.68 kB: the processor's page side, gathering each block's
   // audible clips for the worker's mix.
   coreImport("Import: createAudioProcessor", "{ createAudioProcessor }", "3 kB"),
-  // Measured 2.59 kB: playback, its graph of tracks and its gain automation.
+  // Measured 2.88 kB: playback, its graph of tracks, their levels changed
+  // while playing, and its gain automation.
   coreImport("Import: createAudioOutput", "{ createAudioOutput }", "3 kB"),
   // Measured 0.88 kB: the English catalogue.
   coreImport("Import: audioMessages", "{ audioMessages }", "1.1 kB"),
