@@ -71,10 +71,11 @@ const isWhole = (value: number, least: number) => Number.isSafeInteger(value) &&
  * @internal
  */
 export function resampledLength(frames: number, fromRate: number, toRate: number): number {
-  const length = Math.ceil((frames * toRate) / fromRate);
-  if (!isWhole(frames, 0) || !isWhole(fromRate, 1) || !isWhole(toRate, 1) || !isWhole(length, 0)) {
+  if (!isWhole(frames, 0) || !isWhole(fromRate, 1) || !isWhole(toRate, 1)) {
     throw new RangeError("Frames and rates must be whole numbers, and rates positive.");
   }
+  const length = Math.ceil((frames * toRate) / fromRate);
+  if (!Number.isSafeInteger(length)) throw new RangeError("The resampled length is too large.");
   return length;
 }
 
@@ -86,6 +87,27 @@ export function resampledLength(frames: number, fromRate: number, toRate: number
  */
 export function resampleReach(fromRate: number, toRate: number): number {
   return Math.ceil(ZERO_CROSSINGS / (Math.min(1, toRate / fromRate) * PASS_BAND));
+}
+
+/**
+ * The input frames that the output frames `[start, start + frames)` read,
+ * as `[first, end)`, clipped to an input of `inputFrames`.
+ *
+ * @internal
+ */
+export function resampleWindow(
+  start: number,
+  frames: number,
+  fromRate: number,
+  toRate: number,
+  inputFrames: number,
+): { readonly first: number; readonly end: number } {
+  const reach = resampleReach(fromRate, toRate);
+  const clip = (frame: number) => Math.min(inputFrames, Math.max(0, frame));
+  return {
+    first: clip(Math.floor((start * fromRate) / toRate) - reach),
+    end: clip(Math.floor(((start + frames - 1) * fromRate) / toRate) + reach + 1),
+  };
 }
 
 /**
@@ -110,9 +132,9 @@ export interface ResampleBlockInput {
 /**
  * Computes a run of output frames of one channel. Each frame depends only
  * on its own index and the input around it, so the result doesn't depend on
- * how the output is cut into blocks. Pass at least the input within
- * {@link resampleReach} of the frames' positions; frames outside `input` are
- * silence, as before the recording's start and after its end.
+ * how the output is cut into blocks. Pass at least the input that
+ * {@link resampleWindow} names; frames outside it are silence, as before
+ * the recording's start and after its end.
  *
  * @internal
  */

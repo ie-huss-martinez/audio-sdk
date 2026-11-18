@@ -7,7 +7,7 @@ import type { AudioWorkerContract } from "./audio-worker/contract.js";
 import { audioWorkerSource } from "./audio-worker/loader.js";
 import type { PcmLayout } from "./pcm/layout.js";
 import { type BucketPeaks, buildPyramid, FINEST_BUCKET } from "./peaks.js";
-import { resampledLength, resampleReach } from "./resample/resample.js";
+import { resampledLength, resampleReach, resampleWindow } from "./resample/resample.js";
 import {
   decodeOnPage,
   type PlatformDecoder,
@@ -231,15 +231,12 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
     const fromRate = audio.sampleRate;
     const length = resampledLength(audio.length, fromRate, toRate);
     const buffer = bufferFor(audio.numberOfChannels, length, toRate, container);
-    const reach = resampleReach(fromRate, toRate);
-    const room = BLOCK_FRAMES - 2 * reach;
+    const room = BLOCK_FRAMES - 2 * resampleReach(fromRate, toRate);
     const blockFrames = Math.max(1, Math.min(BLOCK_FRAMES, Math.floor((room * toRate) / fromRate)));
     main ??= newClient();
     for (let start = 0; start < length; start += blockFrames) {
       const frames = Math.min(blockFrames, length - start);
-      // The input these frames read: the filter's reach on each side.
-      const first = Math.max(0, Math.floor((start * fromRate) / toRate) - reach);
-      const end = Math.floor(((start + frames) * fromRate) / toRate) + reach + 1;
+      const { first, end } = resampleWindow(start, frames, fromRate, toRate, audio.length);
       const channels = Array.from({ length: audio.numberOfChannels }, (_, c) =>
         audio.getChannelData(c).slice(first, end),
       );
@@ -332,12 +329,16 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
       return run(async () => {
         throwIfAborted(options.signal);
         const { signal, onProgress, sampleRate = probe.sampleRate } = options;
+        // A rate that isn't a positive whole number is refused before
+        // anything is decoded.
+        if (!Number.isSafeInteger(sampleRate) || sampleRate < 1) {
+          throw new RangeError("The sample rate must be a positive whole number of hertz.");
+        }
         await ready();
         if (sampleRate === probe.sampleRate) {
           return decodeAtOwnRate(file, probe, signal, onProgress);
         }
-        // Decoding, then converting, which refuses a rate that isn't a
-        // positive whole number: each is half of the progress.
+        // Decoding, then converting: each is half of the progress.
         const half = (from: number) =>
           onProgress && ((fraction: number) => onProgress(from + fraction / 2));
         const audio = await decodeAtOwnRate(file, probe, signal, half(0));

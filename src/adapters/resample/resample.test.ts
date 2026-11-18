@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { resampleBlock, resampledLength, resampleReach } from "./resample.js";
+import { resampleBlock, resampledLength, resampleReach, resampleWindow } from "./resample.js";
 
 /** A tone of `hertz` at `rate`, at half scale. */
 const tone = (hertz: number, rate: number, frames: number) =>
@@ -96,9 +96,7 @@ describe("resampleBlock", () => {
           for (let start = 0; start < whole.length; start += blockFrames) {
             const count = Math.min(blockFrames, whole.length - start);
             // Only the input each block needs, as the engine sends it.
-            const reach = resampleReach(fromRate, toRate);
-            const first = Math.max(0, Math.floor((start * fromRate) / toRate) - reach);
-            const end = Math.floor(((start + count) * fromRate) / toRate) + reach + 1;
+            const { first, end } = resampleWindow(start, count, fromRate, toRate, frames);
             const block = resampleBlock({
               input: input.slice(first, end),
               inputStart: first,
