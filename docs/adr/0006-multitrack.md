@@ -10,6 +10,7 @@
 - **Amended:** 2026-11-18, with the limits as built: each is checked when the plan grows past where it was.
 - **Amended:** 2026-11-18, with the session's points from #54 as built: the session doesn't create adapters, `createAudioAdapters` makes them with one set of options, a source's name defaults to its file's, and the keys and selection rules.
 - **Amended:** 2026-11-18, with the playhead and text points from #54 as built: the output notifies when the playhead jumps, and two text helpers stand in for sdk-core until it looks texts up by reason.
+- **Amended:** 2026-11-18, with the first editor step: a clip moves by its title strip only (`ui`'s `moveHandle="title"`), and the provider as built.
 - **Supersedes in part:** [ADR 0003](0003-clip-plan-document-model.md) (the plan's shape, derived positions, the command table and version 1 of the formats) and [ADR 0005](0005-editor-shell.md) (the timeline, the selection and the order of the work). **Extends:** [ADR 0004](0004-audio-limits.md), with two limits.
 
 ## Context
@@ -187,6 +188,8 @@ From [#54](https://github.com/ie-huss-martinez/audio-sdk/issues/54), by its numb
 
 **The playhead and text points, as built.** `watchPlayhead(output, listener)` reads `position()` on animation frames while playing and on every notification otherwise; for that, the output now notifies when the playhead jumps, after a seek, a stop or a plan that moves it, with a new snapshot in the same state, and its contract tests both outputs for it. `formatTimecode` rounds down to hundredths and uses the same digits in every locale, as a timecode does. `peakColumns` takes the coarsest level whose buckets fit a column. Texts that depend on a reason, such as a blocked `play()`'s `autoplay-blocked` and an edit's `plan-too-long`, are in the catalogue as `errors.<CODE>.<reason>`, which is the lookup proposed for sdk-core's `messages.error()`. Until sdk-core has it, `audioErrorText(messages, error)` does that lookup and falls back to `messages.error()`, and `audioWarningText(messages, warning)` gives a warning's text, which `messages.t()` can't type for a limit known only at run time. Both become thin, or go, when sdk-core has them.
 
+**The provider, as built (step 10).** `AudioEditorProvider` makes the session, and the SDK's engine, processor and output for any the host doesn't pass, in `useState`, not in an effect as ADR 0005 has it: none of them starts anything until it's used, no worker until a file is read and no `AudioContext` until the first `play()`, so a server render and StrictMode's extra render cost nothing, and the editor's parts can read the session on their first render. `connectOutput` runs in an effect. The release, closing the session and destroying only what the provider made, waits a moment after unmounting, and a remount cancels it, as in pdf-sdk, so StrictMode keeps one session. On a server, a relative `assetsUrl` is set aside, because it can't resolve without a page and the engine is never used there. Until the timeline's playhead arrives in step 11, focus goes to the Play button after a recording opens. `onChange` gets the plan whenever it changes, opening and adding included, not only after commands. The editor's own text is in `src/messages/editor-en.ts`, joined with the SDK's and `ui`'s as `audioEditorMessages` in the React entry only, as pdf-sdk does, so the server-safe entry carries no interface text.
+
 ### The editor
 
 ADR 0005's regions stay: toolbar, timeline, transport, inspector. The root also takes `ui`'s `hm-text` class. What changes is the timeline.
@@ -203,6 +206,8 @@ ADR 0005's regions stay: toolbar, timeline, transport, inspector. The root also 
   `ui` designs them together with video-sdk's needs, whose detached audio tracks are lanes too.
 
   The editor's timeline work waits for that release. Building a second timeline here, as ADR 0005 allowed when `ui` had none, is no longer an option: `ui`'s exists, and two would drift.
+
+  `ui` 0.12.0 has all three ([ui ADR 0011](https://github.com/ie-huss-martinez/ui/blob/main/docs/adr/0011-timeline.md), as amended in ui #84). Designing them showed a conflict in this record: dragging across a lane selects a range, and dragging a clip's body moves it, and both start in the same place, while lanes are mostly covered by clips. **A clip moves by its title strip only,** with `ui`'s `moveHandle="title"`: a press anywhere else on a clip passes through to the range layer beneath, so a range can be selected across clips. Moving by keys and by the toolbar's buttons is unchanged.
 
 **Keys,** besides ADR 0005's, which stay:
 

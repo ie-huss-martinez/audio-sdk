@@ -7,3 +7,115 @@
  * host's unlayered CSS beats every hm layer without !important (ADR 0005).
  */
 @layer hm.tokens, hm.base, hm.components, hm.sdk;
+
+/*
+ * The editor (docs/adr/0005). Layout rules apply unless the root has
+ * data-hm-unstyled, and every value comes from ui's tokens, so themes and
+ * densities apply. Its text takes ui's type and colour from the root's
+ * hm-text class.
+ */
+@layer hm.sdk {
+  .hm-audio-editor {
+    container-type: inline-size;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: var(--hm-gap-normal);
+    min-block-size: 0;
+    padding: var(--hm-gap-normal);
+    background: var(--hm-color-bg);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-notices ul {
+    display: grid;
+    gap: var(--hm-gap-tight);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-notices li {
+    display: flex;
+    gap: var(--hm-gap-tight);
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--hm-gap-tight) var(--hm-gap-normal);
+    border: var(--hm-border-width) solid var(--hm-color-warning);
+    border-radius: var(--hm-radius-surface);
+    background: var(--hm-color-warning-subtle);
+    color: var(--hm-color-warning-text);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-notices p {
+    margin: 0;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-stage {
+    display: grid;
+    gap: var(--hm-gap-normal);
+    align-content: start;
+    min-block-size: 0;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-stage[data-hm-empty] {
+    align-content: stretch;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-progress {
+    display: flex;
+    gap: var(--hm-gap-normal);
+    align-items: center;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-progress > :first-child {
+    flex: 1;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-error {
+    margin: 0;
+    padding: var(--hm-gap-tight) var(--hm-gap-normal);
+    border-radius: var(--hm-radius-surface);
+    background: var(--hm-color-danger-subtle);
+    color: var(--hm-color-danger-text);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-timeline {
+    padding: var(--hm-gap-normal);
+    border: var(--hm-border-width) solid var(--hm-color-border);
+    border-radius: var(--hm-radius-surface);
+    background: var(--hm-color-surface);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-timeline p {
+    margin: 0;
+    color: var(--hm-color-text-muted);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-transport {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--hm-gap-tight);
+    align-items: center;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-time {
+    margin: 0 0 0 var(--hm-gap-normal);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-transport-notice {
+    flex-basis: 100%;
+    margin: 0;
+    color: var(--hm-color-warning-text);
+  }
+
+  /* Narrow editors: the time takes its own line, under the buttons. */
+  @container (inline-size < 720px) {
+    .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-time {
+      flex-basis: 100%;
+      margin: 0;
+    }
+  }
+}

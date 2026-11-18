@@ -19,7 +19,9 @@ const coreImport = (name, imports, limit) => ({
   name,
   path: "dist/index.js",
   import: imports,
-  ignore: ["@hussmartinez/sdk-core", "./lazy/*"],
+  // The lazy worker is imported from the entry, or from a shared chunk when
+  // another entry shares the code, as ../lazy/ from there.
+  ignore: ["@hussmartinez/sdk-core", "./lazy/*", "../lazy/*"],
   brotli: true,
   limit,
 });
@@ -27,22 +29,29 @@ const coreImport = (name, imports, limit) => ({
 export default [
   {
     disablePlugins: ["@size-limit/esbuild"],
-    // Measured at 21.81 kB with the multitrack plan (docs/adr/0006): the
+    // Measured at 23.39 kB with the multitrack plan (docs/adr/0006): the
     // session, the reducer of tracks and time edits, the readers of both
     // format versions with the migration of version 1's plans and commands,
     // the mix's gathering, the engine's and the processor's page sides,
     // playback with its playhead watcher, the adapters made together, the
     // timecode and waveform columns, and the text of errors and warnings,
     // by code and reason. Minified, as an
-    // application ships it, it's 16.68 kB. Before tracks it was 15.06 kB,
+    // application ships it, it's 17.78 kB. The React entry shares most of
+    // this code, so the build splits it into the entry and a shared chunk,
+    // which costs about 1.1 kB minified without a change of code: two
+    // files compress apart, and carry their exports' names. Before the
+    // React entry it was 21.81 kB, 16.67 kB minified. Before tracks it was 15.06 kB,
     // and 11.53 kB minified.
     name: "Server-safe core (.), with the shared code it loads",
     path: ["dist/index.js", "dist/shared/*.js"],
     brotli: true,
-    limit: "22 kB",
+    limit: "24 kB",
   },
   {
     disablePlugins: ["@size-limit/esbuild"],
+    // Measured at 22.64 kB with the editor's shell (docs/adr/0006, step 10):
+    // the provider, hooks, stage, notices and transport, and the core's
+    // shared chunk they use. React and ui are the host's, so not counted.
     name: "React entry (./react), with the shared code it loads",
     path: ["dist/react.js", "dist/shared/*.js"],
     brotli: true,

@@ -72,7 +72,8 @@
     "verify:fast": "pnpm typecheck && pnpm test && pnpm lint:deps && pnpm check:single-copy && pnpm check:playwright-image && pnpm check:api"
   },
   "dependencies": {
-    "@hussmartinez/sdk-core": "catalog:"
+    "@hussmartinez/sdk-core": "catalog:",
+    "@hussmartinez/ui": "catalog:"
   },
   "peerDependencies": {
     "react": ">=18.3",
@@ -100,8 +101,9 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitest/browser-playwright": "catalog:",
-    "dependency-cruiser": "catalog:",
     "ajv": "catalog:",
+    "axe-core": "catalog:",
+    "dependency-cruiser": "catalog:",
     "fast-check": "catalog:",
     "husky": "catalog:",
     "lint-staged": "catalog:",

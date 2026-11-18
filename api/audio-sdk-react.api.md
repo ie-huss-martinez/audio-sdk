@@ -4,4 +4,267 @@
 
 ```ts
 
+import { FilePolicyOverrides } from '@hussmartinez/sdk-core';
+import { ForwardRefExoticComponent } from 'react';
+import { MessageOverrides } from '@hussmartinez/sdk-core';
+import { Messages } from '@hussmartinez/sdk-core';
+import { ReactNode } from 'react';
+import { RefAttributes } from 'react';
+import { SdkCoreErrorCode } from '@hussmartinez/sdk-core';
+import { SdkError } from '@hussmartinez/sdk-core';
+
+// @public
+export const AudioEditor: ForwardRefExoticComponent<AudioEditorProps & RefAttributes<AudioEditorHandle>>;
+
+// @public
+export interface AudioEditorHandle {
+    // Warning: (ae-forgotten-export) The symbol "AudioInsertOptions" needs to be exported by the entry point react.d.ts
+    insert(file: Blob, options?: AudioInsertOptions): Promise<void>;
+    open(file: Blob): Promise<void>;
+    // (undocumented)
+    pause(): void;
+    // (undocumented)
+    play(): Promise<void>;
+    // (undocumented)
+    redo(): void;
+    seek(frame: number): void;
+    // (undocumented)
+    undo(): void;
+}
+
+// @public
+export type AudioEditorMessageCatalogue = typeof audioEditorMessages;
+
+// @public
+export type AudioEditorMessageOverrides = MessageOverrides<AudioEditorMessageCatalogue>;
+
+// @public
+export type AudioEditorMessages = Messages<AudioEditorMessageCatalogue>;
+
+// @public
+export const audioEditorMessages: {
+    readonly "editor.label": "Audio editor";
+    readonly "editor.empty": "Drop an audio file here, or choose one. It stays on your device.";
+    readonly "editor.opening": "Opening the recording";
+    readonly "editor.inserting": "Adding the recording";
+    readonly "editor.cancel": "Cancel";
+    readonly "editor.opened": "Recording opened.";
+    readonly "editor.inserted": "Recording added.";
+    readonly "editor.notices": "Notices";
+    readonly "editor.dismiss": "Dismiss";
+    readonly "editor.historyTrimmed": "The earliest edits can no longer be undone, to make room for the recordings.";
+    readonly "timeline.label": "Timeline";
+    readonly "timeline.summary": {
+        readonly $plural: "count";
+    } & {
+        readonly one: "{count} track, {duration} long.";
+        readonly other: "{count} tracks, {duration} long.";
+    };
+    readonly "transport.label": "Playback";
+    readonly "transport.play": "Play";
+    readonly "transport.pause": "Pause";
+    readonly "transport.start": "Back to the start";
+    readonly "transport.time": "{position} / {duration}";
+    readonly "colorField.swatches": "swatches";
+    readonly "dialog.close": "Close";
+    readonly "fileDropZone.choose": "Choose a file";
+    readonly "fileDropZone.chooseMultiple": "Choose files";
+    readonly "fileDropZone.hint": "or drop it here";
+    readonly "fileDropZone.hintMultiple": "or drop them here";
+    readonly "progress.label": "Progress";
+    readonly "reorderableList.moved": "{label} moved to position {position} of {count}";
+    readonly "spinner.label": "Loading";
+    readonly "errors.INVALID_THEME_TOKEN": "The theme setting {token} has a value that can't be used.";
+    readonly "errors.INVALID_THEME_SELECTOR": "The theme can't be applied to the selector {selector}.";
+    readonly "errors.INVALID_AUDIO": "This file isn't valid audio, or it's too damaged to open.";
+    readonly "errors.UNSUPPORTED_FORMAT": "This audio format isn't supported. Try converting the file to WAV, then open it again.";
+    readonly "errors.DECODE_FAILED": "This browser can't play this kind of audio. Try another browser, or convert the file to WAV.";
+    readonly "errors.INVALID_COMMAND": "This edit couldn't be made. Please try again.";
+    readonly "errors.INVALID_DOCUMENT": "This project is damaged, or it isn't an audio project.";
+    readonly "errors.DURATION_TOO_LONG": "This recording is {actual, duration} long, which is over the {maximum, duration} limit.";
+    readonly "errors.TOO_MANY_CHANNELS": "This recording has {actual, number} channels, which is over the {maximum, number}-channel limit.";
+    readonly "errors.SAMPLE_RATE_TOO_HIGH": "This recording's sample rate is {actual, number} Hz, which is over the {maximum, number} Hz limit.";
+    readonly "errors.SESSION_TOO_LARGE": "The open recordings would use {actual, fileSize} of memory, which is over the {maximum, fileSize} limit. Remove a recording, or clear the undo history, and try again.";
+    readonly "errors.TOO_MANY_CLIPS": {
+        readonly $plural: "maximum";
+    } & {
+        readonly one: "A recording can have {maximum} clip. Join or delete clips, and try again.";
+        readonly other: "A recording can have up to {maximum} clips. Join or delete clips, and try again.";
+    };
+    readonly "errors.TOO_MANY_TRACKS": {
+        readonly $plural: "maximum";
+    } & {
+        readonly one: "A recording can have {maximum} track. Remove a track, and try again.";
+        readonly other: "A recording can have up to {maximum} tracks. Remove a track, and try again.";
+    };
+    readonly "warnings.maxDuration": "This recording is {actual, duration} long, and may be slow to open and edit.";
+    readonly "warnings.maxChannels": "This recording has {actual, number} channels, and may be slow to edit.";
+    readonly "warnings.maxSampleRate": "This recording's sample rate is {actual, number} Hz, and it may be slow to edit.";
+    readonly "warnings.maxSessionSize": "The open recordings use {actual, fileSize} of memory. Clearing the undo history frees memory.";
+    readonly "warnings.maxClips": {
+        readonly $plural: "actual";
+    } & {
+        readonly one: "This recording has {actual} clip. Many clips may be slow to play and export.";
+        readonly other: "This recording has {actual} clips. Many clips may be slow to play and export.";
+    };
+    readonly "warnings.maxTracks": {
+        readonly $plural: "actual";
+    } & {
+        readonly one: "This recording has {actual} track. Many tracks may be slow to play and export.";
+        readonly other: "This recording has {actual} tracks. Many tracks may be slow to play and export.";
+    };
+    readonly "errors.UNSUPPORTED_ENVIRONMENT.autoplay-blocked": "The browser didn't let sound start. Press Play to start it.";
+    readonly "errors.DURATION_TOO_LONG.plan-too-long": "This would make the recording {actual, duration} long, which is over the {maximum, duration} limit.";
+    readonly "warnings.truncated": "This recording looks incomplete, perhaps from an interrupted recording or download. It opened with the audio it holds.";
+    readonly "errors.UNKNOWN": "Something went wrong. Please try again.";
+    readonly "errors.ABORTED": "The operation was cancelled.";
+    readonly "errors.TIMEOUT": "The operation took too long and was stopped.";
+    readonly "errors.WORKER_START_FAILED": "The file processor couldn't start. Reload the page and try again.";
+    readonly "errors.WORKER_PROTOCOL_MISMATCH": "The file processor is out of date. Reload the page to update it.";
+    readonly "errors.WORKER_CRASHED": "The file processor stopped unexpectedly. Please try again.";
+    readonly "errors.WORKER_TERMINATED": "The operation was stopped before it finished. Please try again.";
+    readonly "errors.WORKER_METHOD_NOT_FOUND": "This operation isn't available. Reload the page and try again.";
+    readonly "errors.WORKER_DATA_NOT_CLONEABLE": "Something went wrong while processing the file. Please try again.";
+    readonly "errors.UNSUPPORTED_ENVIRONMENT": "This browser doesn't support a feature this tool needs. Update your browser, or try another one.";
+    readonly "errors.FILE_TOO_LARGE": "This file is {actual, fileSize}, which is over the {maximum, fileSize} limit.";
+    readonly "errors.TOO_MANY_FILES": {
+        readonly $plural: "maximum";
+    } & {
+        readonly one: "You can add {maximum} file at a time.";
+        readonly other: "You can add up to {maximum} files at a time.";
+    };
+    readonly "errors.DECODED_SIZE_TOO_LARGE": "This file expands to more than {maximum, fileSize} when opened, which is over the limit.";
+    readonly "errors.PROCESSING_TIME_EXCEEDED": "Processing this file took too long and was stopped.";
+    readonly "warnings.maxFileSize": "This file is {actual, fileSize}. Large files may be slow to process.";
+    readonly "warnings.maxFiles": "Adding {actual} files at once may be slow.";
+    readonly "warnings.maxDecodedSize": "This file is very large once opened and may be slow to process.";
+    readonly "warnings.maxProcessingTime": "This is taking longer than usual.";
+    readonly "keys.control": "Ctrl";
+    readonly "keys.alt": "Alt";
+    readonly "keys.shift": "Shift";
+    readonly "keys.meta": "Meta";
+    readonly "keys.apple.control": "\u2303";
+    readonly "keys.apple.alt": "\u2325";
+    readonly "keys.apple.shift": "\u21E7";
+    readonly "keys.apple.meta": "\u2318";
+    readonly "keys.space": "Space";
+    readonly "keys.enter": "Enter";
+    readonly "keys.escape": "Esc";
+    readonly "keys.tab": "Tab";
+    readonly "keys.delete": "Delete";
+    readonly "keys.backspace": "Backspace";
+    readonly "keys.arrowUp": "\u2191";
+    readonly "keys.arrowDown": "\u2193";
+    readonly "keys.arrowLeft": "\u2190";
+    readonly "keys.arrowRight": "\u2192";
+    readonly "keys.home": "Home";
+    readonly "keys.end": "End";
+    readonly "keys.pageUp": "Page Up";
+    readonly "keys.pageDown": "Page Down";
+};
+
+// @public
+export type AudioEditorPart = "root" | "notices" | "stage" | "transport";
+
+// @public
+export interface AudioEditorProps extends Omit<AudioEditorProviderProps, "children"> {
+    readonly className?: string;
+    readonly classNames?: Readonly<Partial<Record<AudioEditorPart, string>>>;
+    readonly initialFile?: Blob;
+    // Warning: (ae-forgotten-export) The symbol "AudioPlan" needs to be exported by the entry point react.d.ts
+    readonly onChange?: (plan: AudioPlan) => void;
+    readonly theme?: "light" | "dark" | "system";
+    readonly unstyled?: boolean;
+}
+
+// @public
+export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode;
+
+// @public
+export interface AudioEditorProviderProps {
+    readonly assetsUrl?: string | URL;
+    // (undocumented)
+    readonly children?: ReactNode;
+    // Warning: (ae-forgotten-export) The symbol "AudioEngine" needs to be exported by the entry point react.d.ts
+    readonly engine?: AudioEngine;
+    // Warning: (ae-forgotten-export) The symbol "AudioFilePolicyOverrides" needs to be exported by the entry point react.d.ts
+    readonly filePolicy?: AudioFilePolicyOverrides;
+    readonly locale?: string;
+    readonly messages?: AudioEditorMessageOverrides;
+    // Warning: (ae-forgotten-export) The symbol "AudioSessionEvent" needs to be exported by the entry point react.d.ts
+    readonly onEvent?: (event: AudioSessionEvent) => void;
+    // Warning: (ae-forgotten-export) The symbol "AudioOutput" needs to be exported by the entry point react.d.ts
+    readonly output?: AudioOutput;
+    // Warning: (ae-forgotten-export) The symbol "AudioProcessor" needs to be exported by the entry point react.d.ts
+    readonly processor?: AudioProcessor;
+}
+
+// @public
+export interface AudioLoad {
+    readonly fraction: number;
+    // (undocumented)
+    readonly kind: "open" | "insert";
+}
+
+// @public
+export function AudioNotices(input: AudioNoticesProps): ReactNode;
+
+// @public
+export interface AudioNoticesProps {
+    // (undocumented)
+    readonly className?: string;
+}
+
+// @public
+export function AudioStage(input: AudioStageProps): ReactNode;
+
+// @public
+export interface AudioStageProps {
+    // (undocumented)
+    readonly className?: string;
+}
+
+// @public
+export function AudioTransport(input: AudioTransportProps): ReactNode;
+
+// @public
+export interface AudioTransportProps {
+    // (undocumented)
+    readonly className?: string;
+}
+
+// @public
+export function useAudioMessages(): AudioEditorMessages;
+
+// @public
+export function useAudioOutput(): UseAudioOutputResult;
+
+// @public
+export interface UseAudioOutputResult {
+    // (undocumented)
+    readonly output: AudioOutput;
+    // Warning: (ae-forgotten-export) The symbol "AudioOutputSnapshot" needs to be exported by the entry point react.d.ts
+    //
+    // (undocumented)
+    readonly snapshot: AudioOutputSnapshot;
+}
+
+// @public
+export function useAudioPlayhead(): number;
+
+// @public
+export function useAudioSession(): UseAudioSessionResult;
+
+// @public
+export interface UseAudioSessionResult {
+    // Warning: (ae-forgotten-export) The symbol "AudioSession" needs to be exported by the entry point react.d.ts
+    //
+    // (undocumented)
+    readonly session: AudioSession;
+    // Warning: (ae-forgotten-export) The symbol "AudioSessionSnapshot" needs to be exported by the entry point react.d.ts
+    //
+    // (undocumented)
+    readonly snapshot: AudioSessionSnapshot;
+}
+
 ```
