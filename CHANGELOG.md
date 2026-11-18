@@ -1,5 +1,11 @@
 # @hussmartinez/audio-sdk
 
+## 0.7.1
+
+### Patch Changes
+
+- [#87](https://github.com/ie-huss-martinez/audio-sdk/pull/87) [`e18c514`](https://github.com/ie-huss-martinez/audio-sdk/commit/e18c5145c495c0762baf6776d04f21c99b41d902) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The README documents the React editor and the `<hm-audio-editor>` element: their props, attributes, methods and events, the export dialog, every tool and shortcut, the building blocks, server rendering in Next.js, and what a strict Content Security Policy needs. It no longer says they come later.
+
 ## 0.7.0
 
 ### Minor Changes
