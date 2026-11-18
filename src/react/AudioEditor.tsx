@@ -1,4 +1,4 @@
-import { AnnouncerProvider, UiMessagesProvider, useAnnounce } from "@hussmartinez/ui/react";
+import { AnnouncerProvider, UiMessagesProvider } from "@hussmartinez/ui/react";
 import {
   forwardRef,
   type ReactNode,
@@ -17,6 +17,7 @@ import { AudioRenameDialog } from "./AudioRenameDialog.js";
 import { Stage } from "./AudioStage.js";
 import { EditorToolbar } from "./AudioToolbar.js";
 import { Transport } from "./AudioTransport.js";
+import { useJoinedAnnounce } from "./announce.js";
 import {
   AudioEditorProvider,
   type AudioEditorProviderProps,
@@ -175,7 +176,8 @@ function Root({
   const { messages, playhead, shortcuts } = useAudioEditorContext();
   const { run } = useAudioTools();
   const { snapshot } = useAudioSession();
-  const announce = useAnnounce();
+  // Joined with the notices' warnings, which arrive with a recording.
+  const announce = useJoinedAnnounce();
   const play = useRef<HTMLButtonElement>(null);
   const { plan, sources } = snapshot;
 

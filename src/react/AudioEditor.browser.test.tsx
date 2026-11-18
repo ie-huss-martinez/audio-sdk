@@ -140,6 +140,80 @@ describe("AudioEditor", () => {
     await waitFor(() => expect(notices()).toBeNull());
   });
 
+  describe("its notices", () => {
+    /** An editor that warns of any recording over half a second, and every message it says. */
+    async function warned() {
+      const ref = createRef<AudioEditorHandle>();
+      const container = await mount(
+        <AudioEditor
+          ref={ref}
+          filePolicy={{ maxDuration: { maximum: 3_600_000, warning: 500 } }}
+        />,
+      );
+      // Every message the polite region says, as a screen reader hears it.
+      const said: string[] = [];
+      const region = document.querySelector(".hm-announcer [aria-live=polite]") as Element;
+      const observer = new MutationObserver(() => {
+        if (region.textContent) said.push(region.textContent);
+      });
+      observer.observe(region, { childList: true, characterData: true, subtree: true });
+      const notices = () => [...container.querySelectorAll(".hm-audio-editor-notices li")];
+      const warnings = () => said.filter((text) => /long, and may be slow/.test(text));
+      const dismiss = () =>
+        step(() =>
+          userEvent.click(notices()[0]?.querySelector('button[aria-label="Dismiss"]') as Element),
+        );
+      const frame = () => step(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+      return { ref, said, notices, warnings, dismiss, frame, observer };
+    }
+
+    it("shows a sentence two recordings raise once, and says it once", async () => {
+      const { ref, said, notices, warnings, dismiss, frame, observer } = await warned();
+      await step(() => ref.current?.open(recording("voice.wav")));
+      await waitFor(() => expect(warnings()).toHaveLength(1));
+      // The editor's own message for the open is said too, in the same breath.
+      expect(said.at(-1)).toContain("Recording opened.");
+
+      // A second recording of the same length: the same kind, the same sentence.
+      await step(() => ref.current?.insert(recording("music.wav")));
+      await waitFor(() => expect(said.at(-1)).toBe("Recording added."));
+      expect(notices()).toHaveLength(1);
+      expect(notices()[0]?.textContent?.match(/long, and may be slow/g)).toHaveLength(1);
+
+      // Dismissing hides the kind; undo and redo never say it again.
+      await dismiss();
+      expect(notices()).toHaveLength(0);
+      await step(() => ref.current?.undo());
+      await frame();
+      await step(() => ref.current?.redo());
+      await frame();
+      await frame();
+      expect(notices()).toHaveLength(0);
+      expect(warnings()).toHaveLength(1);
+      observer.disconnect();
+    });
+
+    it("keeps a dismissed kind away when undo takes it away and redo brings it back", async () => {
+      const { ref, notices, warnings, dismiss, frame, observer } = await warned();
+      // A short recording raises nothing; a long one inserted raises the warning.
+      await step(() => ref.current?.open(recording("short.wav", 0.25)));
+      await frame();
+      expect(notices()).toHaveLength(0);
+      await step(() => ref.current?.insert(recording("long.wav")));
+      await waitFor(() => expect(warnings()).toHaveLength(1));
+      await dismiss();
+      // Undo removes the warning's recording, so its kind leaves the list.
+      await step(() => ref.current?.undo());
+      await frame();
+      await step(() => ref.current?.redo());
+      await frame();
+      await frame();
+      expect(notices()).toHaveLength(0);
+      expect(warnings()).toHaveLength(1);
+      observer.disconnect();
+    });
+  });
+
   it("tells the host each new plan, and answers its ref", async () => {
     const plans: AudioPlan[] = [];
     const ref = createRef<AudioEditorHandle>();
