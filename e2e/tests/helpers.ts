@@ -1,9 +1,12 @@
 import type { Locator, Page } from "@playwright/test";
 import { wavFile } from "../../test/fixtures/pcm-files.js";
 
-/** A tone at 8 kHz, as WAV bytes: `seconds` long, quiet enough never to clip. */
-export function tone(seconds: number): Buffer {
-  const samples = Array.from({ length: 8_000 * seconds }, (_, i) => Math.sin(i / 9) * 0.25);
+/**
+ * A tone at 8 kHz, as WAV bytes, `seconds` long: by default quiet enough
+ * never to clip, and loud enough that two together clip at 0.9.
+ */
+export function tone(seconds: number, amplitude = 0.25): Buffer {
+  const samples = Array.from({ length: 8_000 * seconds }, (_, i) => Math.sin(i / 9) * amplitude);
   return Buffer.from(wavFile([samples]));
 }
 
