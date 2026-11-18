@@ -66,6 +66,16 @@ export const audioEditorMessages: {
     readonly "timeline.lane": "{track}";
     readonly "timeline.lane.muted": "{track}, muted";
     readonly "timeline.lane.silenced": "{track}, silenced by solo";
+    readonly "timeline.lane.ripple": "{lane}, later clips move when the selection is deleted";
+    readonly "timeline.selection": "Selected {start} to {end} on {tracks}";
+    readonly "track.ripple": "Ripple";
+    readonly "tracks.every": "every track";
+    readonly "tracks.count": {
+        readonly $plural: "count";
+    } & {
+        readonly one: "{count} track";
+        readonly other: "{count} tracks";
+    };
     readonly "timeline.clips": "Clips on {track}";
     readonly "timeline.clip": "Clip {index} of {count} on {track}, {start} to {end}";
     readonly "timeline.clip.named": "{name}, clip {index} of {count} on {track}, {start} to {end}";
@@ -76,6 +86,7 @@ export const audioEditorMessages: {
     readonly "toolbar.history": "History";
     readonly "toolbar.tracks": "Tracks";
     readonly "toolbar.clips": "Clip";
+    readonly "toolbar.range": "Selection";
     readonly "toolbar.view": "Zoom";
     readonly "toolbar.withKeys": "{label} ({keys})";
     readonly "tools.open": "Open";
@@ -95,6 +106,10 @@ export const audioEditorMessages: {
     readonly "tools.moveLater": "Move the clip later";
     readonly "tools.moveToTrackAbove": "Move the clip to the track above";
     readonly "tools.moveToTrackBelow": "Move the clip to the track below";
+    readonly "tools.setStart": "Start the selection at the playhead";
+    readonly "tools.setEnd": "End the selection at the playhead";
+    readonly "tools.clearSelection": "Clear the selection";
+    readonly "tools.ripple": "Ripple";
     readonly "tools.zoomIn": "Zoom in";
     readonly "tools.zoomOut": "Zoom out";
     readonly "tools.zoomFit": "Fit to width";
@@ -126,6 +141,12 @@ export const audioEditorMessages: {
     readonly "announce.trimmed": "The clip is now {time} to {end}.";
     readonly "announce.noRoom": "There's no room for the clip there.";
     readonly "announce.refused": "That edit isn't possible.";
+    readonly "announce.selected": "Selected {time} to {end} on {tracks}.";
+    readonly "announce.selectionCleared": "Selection cleared.";
+    readonly "announce.rangeDeleted": "Deleted {time} to {end} from {tracks}.";
+    readonly "announce.rangeDeleted.ripple": "Deleted {time} to {end} from {tracks}. Later clips there moved earlier.";
+    readonly "announce.rippleOn": "Ripple on: deleting a range closes the gap.";
+    readonly "announce.rippleOff": "Ripple off: deleting a range leaves silence.";
     readonly "transport.label": "Playback";
     readonly "transport.play": "Play";
     readonly "transport.pause": "Pause";

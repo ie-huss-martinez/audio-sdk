@@ -1,6 +1,7 @@
 import { defineTool } from "@hussmartinez/sdk-core";
 import { planLength } from "../../core/model/plan.js";
 import { clipTools } from "../clips/clips.js";
+import { rangeTools } from "../range/range.js";
 import type { AudioTool, AudioToolContext, AudioToolState } from "./types.js";
 
 export type {
@@ -177,6 +178,7 @@ export const audioTools: readonly AudioTool[] = [
     run: (context: AudioToolContext) => context.setZoom(1),
   }),
   ...clipTools,
+  ...rangeTools,
   // The transport's, with keys: not in the toolbar.
   defineTool({
     id: "audio.play-pause",
@@ -209,7 +211,7 @@ export const audioTools: readonly AudioTool[] = [
 
 /**
  * The toolbar's groups by default, by tool id: files, history, tracks,
- * clips and zoom. The transport has playback, and track headers have Mute.
+ * clips, the selection and zoom. The transport has playback, and track headers have Mute.
  *
  * @internal
  */
@@ -227,5 +229,6 @@ export const defaultAudioToolbar: readonly (readonly string[])[] = [
     "audio.move-to-track-above",
     "audio.move-to-track-below",
   ],
+  ["audio.set-start", "audio.set-end", "audio.clear-selection", "audio.ripple"],
   ["audio.zoom-out", "audio.zoom-in", "audio.zoom-fit"],
 ];

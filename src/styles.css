@@ -140,6 +140,55 @@
     }
   }
 
+  /*
+   * The selected range: a band on each of its lanes, under the clips. A
+   * press passes through it to the track, which selects and seeks.
+   */
+  .hm-audio-editor-range-layer {
+    position: relative;
+    pointer-events: none;
+  }
+
+  .hm-audio-editor-range {
+    position: absolute;
+    inset-block: 0;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-range {
+    border-inline: var(--hm-border-width) solid var(--hm-color-accent);
+    background: var(--hm-color-accent-subtle);
+  }
+
+  /* The lanes Ripple would move, when it leaves others behind; the header says so in text. */
+  .hm-audio-editor:not([data-hm-unstyled]) [data-hm-ripple] {
+    box-shadow: inset var(--hm-border-width-2) 0 0 var(--hm-color-warning);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-track-ripple {
+    padding-inline: var(--hm-space-1);
+    border-radius: var(--hm-radius-sm);
+    background: var(--hm-color-warning-subtle);
+    color: var(--hm-color-warning-text);
+    font-size: var(--hm-font-size-small);
+    white-space: nowrap;
+  }
+
+  @media (forced-colors: active) {
+    .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-range {
+      border-color: Highlight;
+      background: transparent;
+    }
+
+    .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-track-ripple {
+      border: var(--hm-border-width) solid CanvasText;
+    }
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-selection {
+    margin: 0 0 0 var(--hm-gap-normal);
+    font-variant-numeric: tabular-nums;
+  }
+
   .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-transport {
     display: flex;
     flex-wrap: wrap;

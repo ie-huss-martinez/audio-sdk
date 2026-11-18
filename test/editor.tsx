@@ -34,6 +34,10 @@ export async function editor(...files: File[]) {
   const [first, ...rest] = files;
   if (first) await step(() => ref.current?.open(first));
   for (const file of rest) await step(() => ref.current?.insert(file));
+  // ui's announcer says "Recording opened." in the next animation frame:
+  // let that frame run inside act(), so it never updates React outside one.
+  // Frames run in the order they were asked for, so this one comes after it.
+  await step(() => new Promise((resolve) => requestAnimationFrame(resolve)));
   const plan = () => latest.plan as AudioPlan;
   const button = (label: string) =>
     container.querySelector<HTMLButtonElement>(

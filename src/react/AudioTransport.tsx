@@ -9,6 +9,7 @@ import {
   useAudioPlayhead,
   useAudioSession,
 } from "./context.js";
+import { tracksText } from "./names.js";
 import { classes, type PartClassNames } from "./parts.js";
 
 /**
@@ -83,6 +84,19 @@ export const Transport = forwardRef<
           duration: formatTimecode(length, rate),
         })}
       </p>
+      {snapshot.selection && plan ? (
+        <p className="hm-audio-editor-selection">
+          {messages.t("timeline.selection", {
+            start: formatTimecode(snapshot.selection.start, rate),
+            end: formatTimecode(snapshot.selection.end, rate),
+            tracks: tracksText(
+              messages,
+              plan,
+              plan.tracks.filter((track) => snapshot.selection?.tracks.includes(track.key)),
+            ),
+          })}
+        </p>
+      ) : null}
       {notice ? (
         <p className="hm-audio-editor-transport-notice" role="status">
           {notice}

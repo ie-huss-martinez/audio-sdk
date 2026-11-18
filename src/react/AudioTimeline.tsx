@@ -24,6 +24,8 @@ import {
   trimClipToPlayhead,
   trimLimits,
 } from "../features/clips/clips.js";
+import { selectRange } from "../features/range/range.js";
+import { RangeGestures, RangeMark } from "./AudioRange.js";
 import { AudioTrackHeader } from "./AudioTrackHeader.js";
 import { AudioWaveform } from "./AudioWaveform.js";
 import {
@@ -36,6 +38,18 @@ import type { AudioEditorMessages } from "./editor-messages.js";
 import { trackName } from "./names.js";
 import { classes, type PartClassNames } from "./parts.js";
 import { useAudioTools } from "./tools.js";
+
+/** The playhead's keys that Shift turns into extending the selection. */
+const EXTEND_KEYS: ReadonlySet<string> = new Set([
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "PageUp",
+  "PageDown",
+  "Home",
+  "End",
+]);
 
 /** A lane's accessible name: the track's, and whether it's heard. */
 function laneLabel(
@@ -105,6 +119,33 @@ export function EditorTimeline({
     }
   });
 
+  // Shift with the playhead's keys selects from where it was to where it
+  // goes, or moves the edge of the selection it's on (docs/adr/0005).
+  const { selection } = snapshot;
+  const extending = useRef<number | undefined>(undefined);
+  const anchor = useRef({ selection, position: 0 });
+  anchor.current = { selection, position: output.position() };
+  useEffect(() => {
+    const slider = playhead.current;
+    if (!slider) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!event.shiftKey || !EXTEND_KEYS.has(event.key)) {
+        extending.current = undefined;
+        return;
+      }
+      const { selection: current, position: at } = anchor.current;
+      extending.current =
+        current && at === current.start
+          ? current.end
+          : current && at === current.end
+            ? current.start
+            : at;
+    };
+    slider.addEventListener("keydown", onKeyDown, true);
+    return () => slider.removeEventListener("keydown", onKeyDown, true);
+  });
+  const timeline = useRef<HTMLElement>(null);
+
   // Scrolling and zooming redraw the waveforms, without rendering anything.
   const listeners = useRef(new Set<() => void>());
   const subscribeRange = useCallback((listener: () => void) => {
@@ -125,10 +166,17 @@ export function EditorTimeline({
   const frames = new Map(sources.map((source) => [source.id, source.frames]));
   const sourceFrames = (source: string) => frames.get(source) ?? 0;
   const nudge = nudgeFrames(plan);
+  // Ripple closes the gap on the range's tracks only: when that leaves
+  // others behind, its tracks say so (docs/adr/0006).
+  const rippling =
+    context.ripple && selection && selection.tracks.length < plan.tracks.length
+      ? new Set(selection.tracks)
+      : undefined;
 
   return (
     <div className={classes("hm-audio-editor-timeline", classNames?.timeline, className)}>
       <Timeline
+        ref={timeline}
         label={messages.t("timeline.label")}
         length={length}
         zoom={zoom}
@@ -141,21 +189,44 @@ export function EditorTimeline({
           ref={playhead}
           label={messages.t("timeline.playhead")}
           position={Math.min(position, length)}
-          onPositionChange={(frame) => output.seek(frame)}
+          onPositionChange={(frame) => {
+            const from = extending.current;
+            extending.current = undefined;
+            output.seek(frame);
+            if (from !== undefined && from !== frame) {
+              selectRange(tools.context(), Math.min(from, frame), Math.max(from, frame));
+            }
+          }}
+          // A press on the track is the range layer's: a click seeks, a drag selects.
+          seekOnPress={false}
           step={Math.max(1, Math.round(rate / 100))}
           largeStep={rate}
           formatValue={time}
           following={playback.state === "playing"}
         />
+        <RangeGestures timeline={timeline} />
         {plan.tracks.map((track, index) => {
           const name = trackName(messages, track, index);
           return (
             <TimelineLane
               key={track.key}
               id={track.key}
-              label={laneLabel(messages, plan, track, name, audible)}
-              header={<AudioTrackHeader track={track} index={index} />}
+              label={
+                rippling?.has(track.key)
+                  ? messages.t("timeline.lane.ripple", {
+                      lane: laneLabel(messages, plan, track, name, audible),
+                    })
+                  : laneLabel(messages, plan, track, name, audible)
+              }
+              header={
+                <AudioTrackHeader
+                  track={track}
+                  index={index}
+                  rippling={rippling?.has(track.key) ?? false}
+                />
+              }
               data-hm-silent={audible.has(track) ? undefined : ""}
+              data-hm-ripple={rippling?.has(track.key) ? "" : undefined}
               // The track tools act on the track focus was last in, and the
               // clip tools on the clip: selection follows focus, by Tab too
               // (docs/adr/0005), where ui's clip track selects on arrows and clicks.
@@ -170,6 +241,11 @@ export function EditorTimeline({
               <TimelineLayer className="hm-audio-editor-wave-layer" aria-hidden="true">
                 <AudioWaveform track={track} peaksOf={peaksOf} subscribeRange={subscribeRange} />
               </TimelineLayer>
+              {selection?.tracks.includes(track.key) ? (
+                <TimelineLayer className="hm-audio-editor-range-layer" aria-hidden="true">
+                  <RangeMark selection={selection} />
+                </TimelineLayer>
+              ) : null}
               <TimelineClips
                 ref={(handle) => {
                   if (handle) clipTracks.current.set(track.key, handle);

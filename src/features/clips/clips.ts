@@ -1,5 +1,6 @@
 import { defineTool } from "@hussmartinez/sdk-core";
 import { type AudioPlan, clipAt, clipEnd } from "../../core/model/plan.js";
+import { deleteRange } from "../range/range.js";
 import type { AudioTool, AudioToolContext, AudioToolState, PlacedClip } from "../tools/types.js";
 
 /**
@@ -224,8 +225,14 @@ export const clipTools: readonly AudioTool[] = [
     icon: "delete",
     group: "clips",
     shortcuts: "delete",
-    isEnabled: withClip,
+    // The range, or else the selected clip (docs/adr/0005).
+    isEnabled: (state: AudioToolState) =>
+      withClip(state) || (editable(state) && state.selection !== undefined),
     run: (context: AudioToolContext) => {
+      if (context.state.selection) {
+        deleteRange(context);
+        return;
+      }
       const placed = context.state.clip;
       if (!placed) return;
       if (context.execute({ type: "audio.removeClips", keys: [placed.clip.key] })) {

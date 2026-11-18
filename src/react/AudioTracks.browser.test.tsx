@@ -17,7 +17,7 @@ describe("the toolbar", () => {
       [...toolbar.querySelectorAll('[role="group"]')].map((group) =>
         group.getAttribute("aria-label"),
       ),
-    ).toEqual(["File", "History", "Tracks", "Clip", "Zoom"]);
+    ).toEqual(["File", "History", "Tracks", "Clip", "Selection", "Zoom"]);
     expect(tool("audio.undo").getAttribute("aria-keyshortcuts")).toMatch(/Z/);
     expect(tool("audio.zoom-in").getAttribute("title")).toBe("Zoom in (+)");
     // Nothing to undo yet, and one track can't be removed.
