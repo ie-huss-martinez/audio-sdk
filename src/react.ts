@@ -16,6 +16,8 @@
 
 export type { AudioEditorHandle, AudioEditorProps } from "./react/AudioEditor.js";
 export { AudioEditor } from "./react/AudioEditor.js";
+export type { AudioInspectorProps } from "./react/AudioInspector.js";
+export { AudioInspector } from "./react/AudioInspector.js";
 export type { AudioNoticesProps } from "./react/AudioNotices.js";
 export { AudioNotices } from "./react/AudioNotices.js";
 export type { AudioStageProps } from "./react/AudioStage.js";

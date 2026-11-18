@@ -36,9 +36,10 @@ async function drag(
 ) {
   const clips = [...container.querySelectorAll<HTMLElement>('[role="option"]')];
   const box = (clips[0] as HTMLElement).getBoundingClientRect();
-  const lanes = [...container.querySelectorAll<HTMLElement>("[data-hm-lane]")];
+  // A lane's clip row: its header may sit beside it or above it.
+  const rows = [...container.querySelectorAll<HTMLElement>("[data-hm-lane] .hm-timeline-clips")];
   const point = ({ frame, lane }: { frame: number; lane: number }) => {
-    const row = (lanes[lane] as HTMLElement).getBoundingClientRect();
+    const row = (rows[lane] as HTMLElement).getBoundingClientRect();
     return { clientX: box.left + (frame / length) * box.width, clientY: row.top + row.height / 2 };
   };
   const start = point(from);
