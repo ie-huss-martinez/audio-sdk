@@ -80,8 +80,9 @@ export default [
     brotli: true,
     limit: "15 kB",
   },
-  // Measured 8.96 kB: the session, the reducer of tracks, clip edits and
-  // time edits, history and limits. It was 6.42 kB with one track.
+  // Measured 9.42 kB: the session, the reducer of tracks, clip edits and
+  // time edits, the keys it fills, history and limits. It was 6.42 kB
+  // with one track.
   coreImport("Import: createAudioSession", "{ createAudioSession }", "9.5 kB"),
   // Measured 3.60 kB: the engine's page side, decoding on the page, peaks,
   // and sending blocks to the worker's resampler, with the limits'
