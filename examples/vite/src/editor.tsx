@@ -23,8 +23,7 @@ const mounted = new Promise<AudioEditorHandle>((resolve) => {
 
 /**
  * Text much longer than English, as a translation can be, for the visual
- * tests' long-text states (sdk-core ADR 0048): `?long-text`. `?dir=rtl` lays
- * the page out right to left.
+ * tests' long-text states (sdk-core ADR 0048): `?long-text`.
  */
 const LONG_TEXT: AudioEditorMessageOverrides = {
   "editor.empty":
@@ -56,9 +55,50 @@ const LONG_TEXT: AudioEditorMessageOverrides = {
   "export.cancel": "Abbrechen",
   "export.confirm": "Jetzt exportieren",
 };
+/**
+ * A right-to-left host, as a Hebrew page is: `?lang=he` sets the page's
+ * `lang` and `dir` and passes these overrides. The rest stays English. The
+ * Hebrew is illustrative, for layout, not a reviewed translation.
+ */
+const HEBREW: AudioEditorMessageOverrides = {
+  "timeline.summary": {
+    $plural: "count",
+    one: "רצועה אחת, באורך {duration}.",
+    two: "שתי רצועות, באורך {duration}.",
+    other: "{count} רצועות, באורך {duration}.",
+  },
+  "timeline.track": "רצועה {index}",
+  "timeline.lane.muted": "{track}, מושתקת",
+  "timeline.selection": "בחירה מ-{start} עד {end}, {tracks}",
+  "track.mute": "השתקה",
+  "track.solo": "סולו",
+  "track.gain": "עוצמה",
+  "inspector.clip": "קטע ב{track}",
+  "inspector.recording": "הקלטה",
+  "inspector.selection": "בחירה",
+  "inspector.selectionGain": "עוצמת הבחירה, בדציבלים",
+  "inspector.start": "התחלה",
+  "inspector.gain": "עוצמה",
+  "inspector.gainExact": "עוצמה, בדציבלים",
+  "inspector.fadeIn": "הגברה הדרגתית, בשניות",
+  "inspector.fadeOut": "החלשה הדרגתית, בשניות",
+  "inspector.curve.linear": "ליניארי",
+  "inspector.curve.equalPower": "הספק שווה",
+};
+
+/**
+ * `?dir=rtl` lays the page out right to left with only `dir`, and English
+ * text, so nothing that keys on a right-to-left `lang` can stand in for it.
+ */
 const params = new URLSearchParams(location.search);
-if (params.get("dir") === "rtl") document.documentElement.dir = "rtl";
-const messages = params.has("long-text") ? LONG_TEXT : undefined;
+const hebrew = params.get("lang") === "he";
+if (hebrew) document.documentElement.lang = "he";
+if (hebrew || params.get("dir") === "rtl") document.documentElement.dir = "rtl";
+const translation = params.has("long-text")
+  ? { messages: LONG_TEXT, locale: "de" }
+  : hebrew
+    ? { messages: HEBREW, locale: "he" }
+    : undefined;
 
 declare global {
   interface Window {
@@ -85,7 +125,7 @@ if (element) {
   createRoot(element).render(
     <div style={{ height: "80vh" }}>
       <AudioEditor
-        {...(messages ? { messages, locale: "de" } : {})}
+        {...translation}
         ref={(editor) => {
           if (editor) mount(editor);
         }}
