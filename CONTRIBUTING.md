@@ -20,7 +20,16 @@ pnpm verify        # everything CI runs
 pnpm verify:fast   # the subset the pre-push hook runs
 ```
 
-Browser tests need Playwright's browsers once: `pnpm exec playwright install chromium`. Add `firefox webkit` to run all three engines, as CI does, with `CI=1 pnpm verify` or `pnpm test:browser:all`.
+Browser and end-to-end tests run in the browser test image that CI uses, through `hm-in-image` ([sdk-core ADR 0049](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0049-local-browser-tests-in-the-pinned-image.md)), so they need Docker. `pnpm test:browser` runs Chromium, and `pnpm test:browser:all` runs all three engines, as CI does. To run some files, pass them on: `pnpm test:browser src/react/AudioRange.browser.test.tsx`. Don't run Vitest's browser project directly on your machine: there, Chromium aborts requests whenever Docker changes a network interface, and tests fail at random with a worker that "failed to load" or an iframe that "did not become ready" (#73).
+
+When a browser test fails without saying why, have Chromium write a net log of every request, then list the ones that failed, with Chromium's reason:
+
+```sh
+pnpm exec hm-in-image env HM_BROWSER_DIAGNOSTICS=.hm-diagnostics vitest run --project browser <file>
+pnpm exec hm-netlog-errors .hm-diagnostics/*.netlog.json
+```
+
+The variable is set inside the image, because `hm-in-image` passes only `CI` and `DEBUG` in, and the folder is in the checkout, the only one the image shares with your machine.
 
 The repository root is the published package, laid out as in the family's [standard layout](https://github.com/ie-huss-martinez/sdk-core/blob/main/STANDARDS.md#repository-layout): the source is in `src/`, and the examples and end-to-end tests will join the workspace as `examples/` and `e2e/`.
 

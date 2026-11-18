@@ -20,3 +20,6 @@ release-assets/
 .next/
 next-env.d.ts
 dist-server/
+
+# Browser diagnostics: Chromium net logs (CONTRIBUTING.md)
+.hm-diagnostics/
