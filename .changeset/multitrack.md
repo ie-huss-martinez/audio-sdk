@@ -20,9 +20,10 @@
 
 **The session**
 
-- `session.insert(file, { track, at })` adds the recording on a new track of its own, starting at `at`, which defaults to 0. It used to append to the single track. Pass `track` to put it on an existing one. A recording with more channels than the plan widens the plan.
+- **`session.insert()` no longer appends.** It adds the recording on a new track of its own, starting at `at`, which defaults to 0, so it plays together with what's there. To append as before, name the track and its end: `session.insert(file, { track: track.key, at: trackLength(track) })`, with `track` being `plan.tracks[0]`. A recording with more channels than the plan widens the plan.
 - `snapshot.selection` is `{ start, end, tracks }`, and `session.select()` takes optional `tracks`.
 - `session.export()` resolves `{ blob, peakDb, clippedFrames }` instead of a `Blob`: use `.blob`. A mix of tracks can go over full scale; it's clamped, and `peakDb` and `clippedFrames` say how far and how often. An export with every track silent is refused with the reason `nothing-audible`.
+- An export ends where the last audible clip ends. Silence after it isn't exported, and a muted track doesn't lengthen the file: for a pause at the end, put a clip there.
 
 **Documents**
 
