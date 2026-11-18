@@ -264,6 +264,84 @@ describe("the audio session", () => {
     expect(snapshot()).toBe(before);
   });
 
+  it("refuses commands and inserts that would exceed maxTracks, and warns at its threshold", async () => {
+    const { session, snapshot } = setup({ maxTracks: { maximum: 3, warning: 2 } });
+    await session.open(recording(100));
+    expect(snapshot().warnings).toEqual([]);
+    session.execute({ type: "audio.addTrack", key: "second", index: 1 });
+    expect(snapshot().warnings).toEqual([{ type: "limit", limit: "maxTracks", actual: 2 }]);
+    // An insert adds a track too.
+    await session.insert(recording(10));
+    const before = snapshot();
+    const error = thrown(() =>
+      session.execute({ type: "audio.addTrack", key: "fourth", index: 0 }),
+    );
+    expect(error).toMatchObject({
+      code: "TOO_MANY_TRACKS",
+      details: { limit: "maxTracks", maximum: 3, actual: 4 },
+    });
+    expect(snapshot()).toBe(before);
+    const failed = await rejection(session.insert(recording(10)));
+    expect(isAudioError(failed, "TOO_MANY_TRACKS")).toBe(true);
+    // Nothing of the refused insert is kept.
+    expect(snapshot().sources).toHaveLength(2);
+    expect(snapshot().plan?.tracks).toHaveLength(3);
+    // On a track that's there, it's fine.
+    await session.insert(recording(10), { track: "second" });
+    // Removing one makes room again.
+    session.execute({ type: "audio.removeTracks", keys: ["second"] });
+    session.execute({ type: "audio.addTrack", key: "fourth", index: 0 });
+    expect(snapshot().plan?.tracks).toHaveLength(3);
+  });
+
+  it("allows sixteen tracks by default", async () => {
+    const { session, snapshot } = setup();
+    await session.open(recording(10));
+    for (let index = 1; index < 16; index += 1) {
+      session.execute({ type: "audio.addTrack", key: `t${index}`, index });
+    }
+    expect(snapshot().plan?.tracks).toHaveLength(16);
+    expect(
+      isAudioError(
+        thrown(() => session.execute({ type: "audio.addTrack", key: "t16", index: 16 })),
+        "TOO_MANY_TRACKS",
+      ),
+    ).toBe(true);
+  });
+
+  it("refuses an edit that would make the plan longer than maxDuration", async () => {
+    // One second at 8 kHz.
+    const { session, snapshot, keys, trackKeys } = setup({ maxDuration: 1_000 });
+    await session.open(recording(4_000));
+    const [key] = keys() as [string];
+    const [track] = trackKeys() as [string];
+    // Up to the limit, to the frame.
+    session.execute({ type: "audio.moveClips", keys: [key], by: 4_000 });
+    expect(planLength(snapshot().plan as never)).toBe(8_000);
+    const before = snapshot();
+    for (const command of [
+      { type: "audio.moveClips", keys: [key], by: 1 },
+      { type: "audio.insertTime", at: 0, frames: 1, tracks: [track] },
+    ] as const) {
+      expect(thrown(() => session.execute(command))).toMatchObject({
+        code: "DURATION_TOO_LONG",
+        details: { limit: "maxDuration", maximum: 1_000, actual: 1_001 },
+      });
+    }
+    expect(snapshot()).toBe(before);
+    // An insert that would reach past it, on a new track or on this one.
+    for (const options of [{ at: 7_999 }, { track, at: 8_000 }, { at: 90_000_000 }]) {
+      const failed = await rejection(session.insert(recording(10), options));
+      expect(isAudioError(failed, "DURATION_TOO_LONG")).toBe(true);
+    }
+    expect(snapshot().sources).toHaveLength(1);
+    // Edits that don't lengthen it are fine at the limit, and shortening is.
+    session.execute({ type: "audio.setGain", keys: [key], gainDb: -3 });
+    session.execute({ type: "audio.moveClips", keys: [key], by: -1 });
+    await session.insert(recording(10), { at: 7_000 });
+    expect(snapshot().sources).toHaveLength(2);
+  });
+
   it("records the commands of a group as one step", async () => {
     const { session, keys } = setup();
     await session.open(recording(100));

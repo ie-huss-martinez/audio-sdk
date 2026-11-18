@@ -132,7 +132,7 @@ export class AudioError extends SdkError<AudioErrorCode> {
 }
 
 // @public
-export type AudioErrorCode = SdkCoreErrorCode | "INVALID_AUDIO" | "UNSUPPORTED_FORMAT" | "DECODE_FAILED" | "INVALID_COMMAND" | "INVALID_DOCUMENT" | "DURATION_TOO_LONG" | "TOO_MANY_CHANNELS" | "SAMPLE_RATE_TOO_HIGH" | "SESSION_TOO_LARGE" | "TOO_MANY_CLIPS";
+export type AudioErrorCode = SdkCoreErrorCode | "INVALID_AUDIO" | "UNSUPPORTED_FORMAT" | "DECODE_FAILED" | "INVALID_COMMAND" | "INVALID_DOCUMENT" | "DURATION_TOO_LONG" | "TOO_MANY_CHANNELS" | "SAMPLE_RATE_TOO_HIGH" | "SESSION_TOO_LARGE" | "TOO_MANY_CLIPS" | "TOO_MANY_TRACKS";
 
 // @public
 export interface AudioExportFormat {
@@ -240,6 +240,11 @@ export const audioLimitDefinitions: {
         readonly unit: "count";
         readonly default: 2000;
     };
+    readonly maxTracks: {
+        readonly code: "TOO_MANY_TRACKS";
+        readonly unit: "count";
+        readonly default: 16;
+    };
     readonly maxFiles: {
         readonly code: "TOO_MANY_FILES";
         readonly unit: "count";
@@ -278,6 +283,12 @@ export const audioMessages: {
         readonly one: "A recording can have {maximum} clip. Join or delete clips, and try again.";
         readonly other: "A recording can have up to {maximum} clips. Join or delete clips, and try again.";
     };
+    readonly "errors.TOO_MANY_TRACKS": {
+        readonly $plural: "maximum";
+    } & {
+        readonly one: "A recording can have {maximum} track. Remove a track, and try again.";
+        readonly other: "A recording can have up to {maximum} tracks. Remove a track, and try again.";
+    };
     readonly "warnings.maxDuration": "This recording is {actual, duration} long, and may be slow to open and edit.";
     readonly "warnings.maxChannels": "This recording has {actual, number} channels, and may be slow to edit.";
     readonly "warnings.maxSampleRate": "This recording's sample rate is {actual, number} Hz, and it may be slow to edit.";
@@ -287,6 +298,12 @@ export const audioMessages: {
     } & {
         readonly one: "This recording has {actual} clip. Many clips may be slow to play and export.";
         readonly other: "This recording has {actual} clips. Many clips may be slow to play and export.";
+    };
+    readonly "warnings.maxTracks": {
+        readonly $plural: "actual";
+    } & {
+        readonly one: "This recording has {actual} track. Many tracks may be slow to play and export.";
+        readonly other: "This recording has {actual} tracks. Many tracks may be slow to play and export.";
     };
     readonly "warnings.truncated": "This recording looks incomplete, perhaps from an interrupted recording or download. It opened with the audio it holds.";
     readonly "errors.UNKNOWN": "Something went wrong. Please try again.";

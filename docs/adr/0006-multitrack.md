@@ -7,6 +7,7 @@
 - **Amended:** 2026-11-18, with the model as built: `newKeys` is an object by track key, `audio.keepRange` needs no keys, a command's schema-stated rules are checked first, and how version 1's commands migrate.
 - **Amended:** 2026-11-18, with the switch as built: an export is as long as its last audible clip, version 1's reducer is kept in the tests as the reference, and the mix's definition is two pure functions in the core.
 - **Amended:** 2026-11-18, with playback's levels as built: every track with clips is scheduled, muted or not, and a plan with the same clips changes only levels.
+- **Amended:** 2026-11-18, with the limits as built: each is checked when the plan grows past where it was.
 - **Supersedes in part:** [ADR 0003](0003-clip-plan-document-model.md) (the plan's shape, derived positions, the command table and version 1 of the formats) and [ADR 0005](0005-editor-shell.md) (the timeline, the selection and the order of the work). **Extends:** [ADR 0004](0004-audio-limits.md), with two limits.
 
 ## Context
@@ -150,6 +151,7 @@ Two additions to [ADR 0004](0004-audio-limits.md)'s table, and two clarification
 - **`maxClips` counts the whole plan,** across tracks. It stays at 2,000, the number `ui` measured its clip track with.
 - **Total decoded size is `maxSessionSize`, unchanged at 1.5 GB,** counting every source at the session's rate after resampling. It isn't raised for multitrack: what a tab can hold didn't change. It fits about an hour of stereo at 48 kHz across all tracks together, so an hour of mono voice with music fits and two hour-long stereo tracks don't. Hosts with larger needs raise it with `maxDecodedSize`, as ADR 0004 says.
 - **Readers check shapes, sessions check limits.** A document with 40 tracks is a valid document that this session's policy refuses.
+- **As built,** the session checks each of `maxClips`, `maxTracks` and the plan's length after applying a step's commands, and only when that count or length grew: a plan already over a limit the host lowered can still be edited and shrunk. A refused step changes nothing, and a refused insert keeps no source. The plan's length is compared in milliseconds, rounded up, so the limit holds to the frame. A host can give `maxTracks` a warning threshold, which the snapshot then reports, as for `maxClips`; by default it has none. Undo and redo aren't checked: they only return to plans that passed.
 
 ### The session
 

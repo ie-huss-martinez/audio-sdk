@@ -41,6 +41,10 @@ export const audioMessages = /* @__PURE__ */ defineMessages({
     one: "A recording can have {maximum} clip. Join or delete clips, and try again.",
     other: "A recording can have up to {maximum} clips. Join or delete clips, and try again.",
   }),
+  "errors.TOO_MANY_TRACKS": /* @__PURE__ */ plural("maximum", {
+    one: "A recording can have {maximum} track. Remove a track, and try again.",
+    other: "A recording can have up to {maximum} tracks. Remove a track, and try again.",
+  }),
   "warnings.maxDuration":
     "This recording is {actual, duration} long, and may be slow to open and edit.",
   "warnings.maxChannels": "This recording has {actual, number} channels, and may be slow to edit.",
@@ -51,6 +55,10 @@ export const audioMessages = /* @__PURE__ */ defineMessages({
   "warnings.maxClips": /* @__PURE__ */ plural("actual", {
     one: "This recording has {actual} clip. Many clips may be slow to play and export.",
     other: "This recording has {actual} clips. Many clips may be slow to play and export.",
+  }),
+  "warnings.maxTracks": /* @__PURE__ */ plural("actual", {
+    one: "This recording has {actual} track. Many tracks may be slow to play and export.",
+    other: "This recording has {actual} tracks. Many tracks may be slow to play and export.",
   }),
   "warnings.truncated":
     "This recording looks incomplete, perhaps from an interrupted recording or download. It opened with the audio it holds.",

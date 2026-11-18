@@ -9,7 +9,7 @@ import { AudioError } from "./audio-error.js";
 
 /**
  * The audio SDK's limit definitions: sdk-core's core limits with audio
- * defaults, plus five for audio (ADR 0004).
+ * defaults, plus six for audio (ADR 0004, docs/adr/0006).
  *
  * | Limit | Code | Default maximum | Default warning |
  * |---|---|---|---|
@@ -22,10 +22,13 @@ import { AudioError } from "./audio-error.js";
  * | `maxSampleRate` | `SAMPLE_RATE_TOO_HIGH` | 192 kHz | none |
  * | `maxSessionSize` | `SESSION_TOO_LARGE` | 1.5 GB | 750 MB |
  * | `maxClips` | `TOO_MANY_CLIPS` | 2,000 | none |
+ * | `maxTracks` | `TOO_MANY_TRACKS` | 16 | none |
  *
  * Sizes are decimal: 1 MB is 1,000,000 bytes. Decoded sizes count 32-bit
  * floats: frames × channels × 4 bytes. `maxDuration` is in milliseconds, and
- * `maxSampleRate` is in hertz.
+ * `maxSampleRate` is in hertz. `maxDuration` bounds each file, and the plan's
+ * length too: positions are free, so no file's limit keeps a clip from being
+ * placed hours in. `maxClips` counts the clips of every track together.
  *
  * @public
  */
@@ -48,6 +51,7 @@ export const audioLimitDefinitions = {
     warning: 750_000_000,
   },
   maxClips: { code: "TOO_MANY_CLIPS", unit: "count", default: 2_000 },
+  maxTracks: { code: "TOO_MANY_TRACKS", unit: "count", default: 16 },
 } as const;
 
 /**

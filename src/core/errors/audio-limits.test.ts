@@ -22,7 +22,7 @@ describe("audioLimits", () => {
     }
   });
 
-  it("has the audio defaults of ADR 0004", () => {
+  it("has the audio defaults of ADR 0004 and ADR 0006", () => {
     const infinity = Number.POSITIVE_INFINITY;
     expect(audioLimits.resolve().limits).toEqual({
       maxFileSize: { maximum: 1_000_000_000, warning: 250_000_000 },
@@ -34,6 +34,7 @@ describe("audioLimits", () => {
       maxSampleRate: { maximum: 192_000, warning: infinity },
       maxSessionSize: { maximum: 1_500_000_000, warning: 750_000_000 },
       maxClips: { maximum: 2_000, warning: infinity },
+      maxTracks: { maximum: 16, warning: infinity },
     });
   });
 

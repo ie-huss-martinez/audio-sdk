@@ -16,12 +16,15 @@ import { isSdkError, type SdkCoreErrorCode, SdkError } from "@hussmartinez/sdk-c
  *   as a range outside its source or an unknown clip key.
  * - `INVALID_DOCUMENT`: a plan document, such as a saved project, isn't
  *   valid in its format.
- * - `DURATION_TOO_LONG`: a file exceeds the `maxDuration` limit.
+ * - `DURATION_TOO_LONG`: a file, or the plan an edit would give, exceeds the
+ *   `maxDuration` limit.
  * - `TOO_MANY_CHANNELS`: a file exceeds the `maxChannels` limit.
  * - `SAMPLE_RATE_TOO_HIGH`: a file exceeds the `maxSampleRate` limit.
  * - `SESSION_TOO_LARGE`: the decoded audio the session holds exceeds the
  *   `maxSessionSize` limit.
- * - `TOO_MANY_CLIPS`: the clip plan exceeds the `maxClips` limit.
+ * - `TOO_MANY_CLIPS`: the plan exceeds the `maxClips` limit, over all its
+ *   tracks.
+ * - `TOO_MANY_TRACKS`: the plan exceeds the `maxTracks` limit.
  *
  * Limit codes carry `details` with the `limit`, its `maximum`, the `actual`
  * value and the `unit`. Other codes' `details` name the container, codec or
@@ -40,7 +43,8 @@ export type AudioErrorCode =
   | "TOO_MANY_CHANNELS"
   | "SAMPLE_RATE_TOO_HIGH"
   | "SESSION_TOO_LARGE"
-  | "TOO_MANY_CLIPS";
+  | "TOO_MANY_CLIPS"
+  | "TOO_MANY_TRACKS";
 
 /**
  * The error `@hussmartinez/audio-sdk` throws and rejects with, with a stable
