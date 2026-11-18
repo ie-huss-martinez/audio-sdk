@@ -19,8 +19,11 @@ import { tone } from "../tests/helpers.js";
  * | `export-done` | The export dialog's result for a mix that clipped, with the clipping report and Download focused |
  * | `error` | A file that isn't audio, and the catalogue's text for it |
  * | `element-empty`, `element-open` | `<hm-audio-editor>`, whose styles arrive through the host's imports |
+ * | `long-text`, `long-text-rename`, `long-text-export` | A host's longer text, as a translation can be: two tracks with a clip selected, the rename dialog and the export dialog wrap it |
  *
- * Right-to-left and long text join once the editor supports them (ADR 0048).
+ * Right-to-left joins once ui mirrors the icons that point along time
+ * (ui backlog item 22), so no baseline records them pointing the wrong way;
+ * the example's `?dir=rtl` is ready for it.
  * No state is masked: every one renders generated tones at a fixed time,
  * the waveform is drawn from their peaks, and the editor shows no time or
  * random value that varies between runs.
@@ -122,8 +125,31 @@ const ELEMENT: Readonly<Record<string, State>> = {
   },
 };
 
+/** The same states, with the example's `?long-text` overrides, as a translation's text. */
+const LONG_TEXT: Readonly<Record<string, State>> = {
+  "long-text": async (page) => {
+    await twoTracks(page);
+    await page.getByRole("option").first().focus();
+    await expect(page.getByText("Clip on Tonspur Nummer 1")).toBeVisible();
+  },
+  "long-text-rename": async (page) => {
+    await open(page, tone(2));
+    await clipsShown(page, 1);
+    await page.getByRole("button", { name: "Tonspur Nummer 1, rename" }).click();
+    await expect(page.getByRole("dialog").getByRole("textbox")).toBeFocused();
+  },
+  "long-text-export": async (page) => {
+    await twoTracks(page);
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    await expect(
+      page.getByRole("dialog", { name: "Aufnahme als Datei exportieren" }),
+    ).toBeVisible();
+  },
+};
+
 for (const [path, states] of [
   ["/editor.html", EDITOR],
+  ["/editor.html?long-text", LONG_TEXT],
   ["/element.html", ELEMENT],
 ] as const) {
   for (const [state, reach] of Object.entries(states)) {
