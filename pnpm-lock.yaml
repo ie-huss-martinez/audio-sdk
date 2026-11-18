@@ -185,6 +185,9 @@ catalogs:
     '@hussmartinez/sdk-core':
       specifier: ^0.4.1
       version: 0.4.1
+    '@hussmartinez/ui':
+      specifier: ^0.12.0
+      version: 0.12.0
     '@microsoft/api-extractor':
       specifier: ^7.60.1
       version: 7.60.1
@@ -212,6 +215,9 @@ catalogs:
     ajv:
       specifier: ^8.20.0
       version: 8.20.0
+    axe-core:
+      specifier: ^4.11.0
+      version: 4.14.1
     dependency-cruiser:
       specifier: ^18.7.2
       version: 18.7.2
@@ -262,6 +268,9 @@ importers:
       '@hussmartinez/sdk-core':
         specifier: 'catalog:'
         version: 0.4.1
+      '@hussmartinez/ui':
+        specifier: 'catalog:'
+        version: 0.12.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -305,6 +314,9 @@ importers:
       ajv:
         specifier: 'catalog:'
         version: 8.20.0
+      axe-core:
+        specifier: 'catalog:'
+        version: 4.14.1
       dependency-cruiser:
         specifier: 'catalog:'
         version: 18.7.2
@@ -906,6 +918,17 @@ packages:
   '@hussmartinez/sdk-core@0.4.1':
     resolution: {integrity: sha512-v0xWD3CRCIvuoFn5mtHuDumalU6rwx+cuBgUqAtOyY+d3DacA7MIqjl1QjXZT7IuwTk6VZIjMc4tCsv01J6nRA==}
 
+  '@hussmartinez/ui@0.12.0':
+    resolution: {integrity: sha512-D8Ag4/7u35Icu2XrI4Eh5h2sKTIt8UICycVM/l4C2OtbaJTbhyItWhVa1Opt2w0So/KV7HipEAm596u8Ri9/GQ==}
+    peerDependencies:
+      react: '>=18.3'
+      react-dom: '>=18.3'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+
   '@jridgewell/resolve-uri@3.1.2':
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
     engines: {node: '>=6.0.0'}
@@ -1343,6 +1366,10 @@ packages:
   astral-regex@2.0.0:
     resolution: {integrity: sha512-Z7tMw1ytTXt5jqMcOP+OQteU1VuNK9Y02uuJtKQ1Sv69jXQKKg5cibLwGJow8yzZP+eAc18EmLGPal0bp36rvQ==}
     engines: {node: '>=8'}
+
+  axe-core@4.14.1:
+    resolution: {integrity: sha512-FHfa+lmNjQZfJz1q8wKqIDwC6DExcHt/pkjNQb09a3NPjCKg2rhu5qb2S4r76ASyFNNtuFooJpZe37OgudVGtQ==}
+    engines: {node: '>=4'}
 
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
@@ -2900,6 +2927,13 @@ snapshots:
 
   '@hussmartinez/sdk-core@0.4.1': {}
 
+  '@hussmartinez/ui@0.12.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+    dependencies:
+      '@hussmartinez/sdk-core': 0.4.1
+    optionalDependencies:
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
+
   '@jridgewell/resolve-uri@3.1.2': {}
 
   '@jridgewell/sourcemap-codec@1.6.0': {}
@@ -3351,6 +3385,8 @@ snapshots:
   assertion-error@2.0.1: {}
 
   astral-regex@2.0.0: {}
+
+  axe-core@4.14.1: {}
 
   balanced-match@4.0.4: {}
 

@@ -29,6 +29,28 @@ function chunk(fileName: string): Rolldown.OutputChunk {
   return found;
 }
 
+/**
+ * An entry and every chunk it loads statically: what a page gets from
+ * importing it. Code that several entries share is in a shared chunk.
+ */
+function loaded(entry: string): Rolldown.OutputChunk[] {
+  const seen = new Map<string, Rolldown.OutputChunk>();
+  const visit = (fileName: string) => {
+    if (seen.has(fileName)) return;
+    const found = chunk(fileName);
+    seen.set(fileName, found);
+    for (const name of found.imports)
+      if (
+        !name.startsWith("lazy/") &&
+        name.endsWith(".js") &&
+        files.some((file) => file.fileName === name)
+      )
+        visit(name);
+  };
+  visit(entry);
+  return [...seen.values()];
+}
+
 describe("the built package", () => {
   it('starts the React entry with "use client" (ADR 0007)', () => {
     expect(chunk("react.js").code).toMatch(/^"use client";\n/);
@@ -48,7 +70,11 @@ describe("the built package", () => {
     expect(externalPackages).toEqual(
       expect.arrayContaining(["@hussmartinez/sdk-core", "react", "react-dom"]),
     );
-    expect(chunk("index.js").code).toContain('from "@hussmartinez/sdk-core"');
+    expect(
+      loaded("index.js")
+        .map((each) => each.code)
+        .join("\n"),
+    ).toContain('from "@hussmartinez/sdk-core"');
     for (const file of files) {
       if (file.type === "chunk") {
         // Bundled React or sdk-core would bring their own copies of these, and
@@ -139,7 +165,8 @@ describe("the audio worker (docs/adr/0002)", () => {
         entry,
       ).toEqual([]);
     }
-    expect(chunk("index.js").dynamicImports).toEqual([worker().fileName]);
+    // The core's code may sit in a chunk it shares with the React entry.
+    expect(loaded("index.js").flatMap((each) => each.dynamicImports)).toEqual([worker().fileName]);
   });
 
   it("generates no code from strings, in any chunk, including the inlined worker", () => {

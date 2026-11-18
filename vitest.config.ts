@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
             // build.test.ts checks the built package, so it sits next to the
             // Vite config rather than in src/. test/ holds the repository's
             // own checks, such as the CI image.
-            include: ["src/**/*.test.{ts,tsx}", "*.test.ts", "test/**/*.test.ts"],
+            include: ["src/**/*.test.{ts,tsx}", "*.test.ts", "test/**/*.test.{ts,tsx}"],
             exclude: ["**/*.browser.test.{ts,tsx}"],
             environment: "node",
           },
@@ -31,11 +31,19 @@ export default defineConfig(({ mode }) => {
           // Bundled before the run: discovered mid-run, Vite reloads the page,
           // and a test file can fail to load.
           optimizeDeps: {
-            include: ["@hussmartinez/sdk-config/testing/audio-output", "@hussmartinez/sdk-core"],
+            include: [
+              "@hussmartinez/sdk-config/testing/audio-output",
+              "@hussmartinez/sdk-core",
+              "@hussmartinez/ui",
+              "@hussmartinez/ui/react",
+              "axe-core",
+              "react",
+              "react-dom/client",
+            ],
           },
           test: {
             name: "browser",
-            include: ["src/**/*.browser.test.{ts,tsx}", "test/**/*.browser.test.ts"],
+            include: ["src/**/*.browser.test.{ts,tsx}", "test/**/*.browser.test.{ts,tsx}"],
             browser: {
               enabled: true,
               headless: true,
