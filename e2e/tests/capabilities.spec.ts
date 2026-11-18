@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { expect, type Page, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import {
   type Browser,
   cell,
@@ -8,6 +8,7 @@ import {
   RESULTS,
   readTable,
 } from "../capabilities.js";
+import { expect, test } from "../fixtures.js";
 
 const table = readTable();
 const update = Boolean(process.env["UPDATE_CAPABILITIES"]);
