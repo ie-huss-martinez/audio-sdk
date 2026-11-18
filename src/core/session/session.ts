@@ -33,6 +33,7 @@ import type {
   AudioSampleFormat,
 } from "../ports/audio-processor.js";
 import type { AudioProgressOptions } from "../ports/options.js";
+import { cleanFileName } from "./source-name.js";
 
 /** Bytes per decoded sample: sources are held as 32-bit floats (docs/adr/0004). */
 const BYTES_PER_SAMPLE = 4;
@@ -206,7 +207,22 @@ export interface AudioSessionExportOptions extends AudioProgressOptions {
  *
  * @public
  */
-export interface AudioInsertOptions extends AudioProgressOptions {
+export interface AudioOpenOptions extends AudioProgressOptions {
+  /**
+   * A name for the recording, to show people, such as its file's. It wins
+   * over a `File`'s own name, which is used without it. It's cleaned as
+   * pdf-sdk ADR 0009 decides, and kept on the source in `snapshot.sources`,
+   * never in events, the plan or a document.
+   */
+  readonly name?: string;
+}
+
+/**
+ * Options for {@link AudioSession.insert}.
+ *
+ * @public
+ */
+export interface AudioInsertOptions extends AudioOpenOptions {
   /**
    * The key of the track the recording goes on, where it needs free space.
    * Without it, the recording gets a new track of its own, below the
@@ -237,7 +253,7 @@ export interface AudioSession {
    * which the snapshot also holds; the current recording, if any, stays
    * open.
    */
-  open(file: Blob, options?: AudioProgressOptions): Promise<void>;
+  open(file: Blob, options?: AudioOpenOptions): Promise<void>;
   /**
    * Adds another recording, as one undoable step: on a new track of its
    * own, below the others, or on the track `options.track` names, where it
@@ -344,11 +360,32 @@ function keysOf(command: AudioCommand): string[] {
   const keys = clipsOf(command).map((clip) => clip.key);
   if ("newKey" in command && typeof command.newKey === "string") keys.push(command.newKey);
   if ("newKeys" in command && command.newKeys) keys.push(...Object.values(command.newKeys));
-  if (command.type === "audio.addTrack") keys.push(command.key);
+  if (command.type === "audio.addTrack" && typeof command.key === "string") keys.push(command.key);
   if (command.type === "audio.restoreTracks") {
     keys.push(...command.entries.map((entry) => entry.track.key));
   }
   return keys;
+}
+
+/** The edits that add or remove time, and so move what's after them. */
+const TIME_EDITS: ReadonlySet<AudioCommand["type"]> = new Set([
+  "audio.deleteRange",
+  "audio.keepRange",
+  "audio.insertTime",
+]);
+
+/** Whether two values of plain data are equal: the same fields, holding equal values. */
+function equalData(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every(
+    (key) =>
+      Object.hasOwn(b, key) &&
+      equalData((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]),
+  );
 }
 
 /** Every clip of a plan, track by track. */
@@ -536,9 +573,14 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     signal: AbortSignal,
     onProgress: ((fraction: number) => void) | undefined,
     /** The session's rate, for an insert: a file at another rate is converted to it. */
-    rate?: number,
+    rate: number | undefined,
+    /** The host's name for it, or the file's. */
+    givenName: string | undefined,
   ): Promise<Source> {
     if (!(file instanceof Blob)) throw new TypeError("A recording must be a Blob or a File.");
+    const name = cleanFileName(
+      givenName ?? (typeof File === "function" && file instanceof File ? file.name : undefined),
+    );
     nextSource += 1;
     const id = `s${nextSource}`;
     const warnings: AudioWarning[] = [];
@@ -617,6 +659,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
         container: probe.container,
         codec: probe.codec,
         ...(converts ? { resampledFrom: probe.sampleRate } : {}),
+        ...(name === undefined ? {} : { name }),
       }),
       audio,
       peaks,
@@ -682,8 +725,9 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     collect();
   }
 
-  function newKey(): string {
+  function newKey(also: ReadonlySet<string> = new Set()): string {
     const used = new Set(clipsIn(plan).map((clip) => clip.key));
+    for (const key of also) used.add(key);
     for (const track of plan?.tracks ?? []) used.add(track.key);
     for (const { commands, inverses } of history.steps) {
       for (const command of [...commands, ...inverses])
@@ -697,6 +741,49 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     return key;
   }
 
+  /**
+   * Gives commands the keys they need and don't have (docs/adr/0006, point 2
+   * of #54): a split's new part, a new track, and the parts a time edit
+   * leaves after a cut, one for every track it names, which the reducer
+   * ignores where a track doesn't need it. The history then records the
+   * keys, so undo and redo stay exact, and the reducer stays pure.
+   */
+  function fillKeys(commands: AudioCommand[]): void {
+    const taken = new Set(commands.flatMap(keysOf));
+    const fresh = () => {
+      const key = newKey(taken);
+      taken.add(key);
+      return key;
+    };
+    commands.forEach((command, index) => {
+      if (command.type === "audio.splitClip" && command.newKey === undefined) {
+        commands[index] = { ...command, newKey: fresh() };
+      } else if (command.type === "audio.addTrack" && command.key === undefined) {
+        commands[index] = { ...command, key: fresh() };
+      } else if (
+        (command.type === "audio.deleteRange" || command.type === "audio.insertTime") &&
+        Array.isArray(command.tracks)
+      ) {
+        const given = command.newKeys ?? {};
+        const missing = command.tracks.filter(
+          (track) => typeof track === "string" && !Object.hasOwn(given, track),
+        );
+        if (missing.length === 0) return;
+        const newKeys: Record<string, string> = { ...given };
+        for (const track of missing) {
+          // An own field, even for a track keyed `__proto__`.
+          Object.defineProperty(newKeys, track, {
+            value: fresh(),
+            enumerable: true,
+            writable: true,
+            configurable: true,
+          });
+        }
+        commands[index] = { ...command, newKeys };
+      }
+    });
+  }
+
   return {
     getSnapshot: store.getSnapshot,
     subscribe: store.subscribe,
@@ -708,7 +795,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
       error = undefined;
       try {
         const source = await track(callOptions.signal, true, (signal) =>
-          load(file, signal, callOptions.onProgress),
+          load(file, signal, callOptions.onProgress, undefined, callOptions.name),
         );
         const replaced = superseded(started);
         if (replaced) throw replaced;
@@ -765,7 +852,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
       try {
         const source = await track(insertOptions.signal, false, (signal) => {
           policy.check("maxFiles", sources.size + 1);
-          return load(file, signal, insertOptions.onProgress, plan?.sampleRate);
+          return load(file, signal, insertOptions.onProgress, plan?.sampleRate, insertOptions.name);
         });
         const replaced = superseded(started);
         if (replaced) throw replaced;
@@ -830,7 +917,15 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
             details: { reason: "not-plain-data" },
           });
         }
-        commit(applyChecked(plan, copies), copies);
+        fillKeys(copies);
+        const result = applyChecked(plan, copies);
+        // A command that changes nothing, such as a gain that's already set,
+        // succeeds without an undo step (point 4 of #54).
+        if (equalData(result.state, plan)) return;
+        commit(result, copies);
+        // A time edit moves what's after it, so a selected range no longer
+        // covers what was selected. Other edits keep it (point 5 of #54).
+        if (copies.some((command) => TIME_EDITS.has(command.type))) selection = undefined;
       } catch (reason) {
         const failure = asAudioError(reason);
         emit({ type: "failed", operation: "command", code: failure.code });

@@ -27,17 +27,18 @@ const coreImport = (name, imports, limit) => ({
 export default [
   {
     disablePlugins: ["@size-limit/esbuild"],
-    // Measured at 19.81 kB with the multitrack plan (docs/adr/0006): the
+    // Measured at 20.64 kB with the multitrack plan (docs/adr/0006): the
     // session, the reducer of tracks and time edits, the readers of both
     // format versions with the migration of version 1's plans and commands,
     // the mix's gathering, the engine's and the processor's page sides,
-    // playback and the text of errors and warnings. Minified, as an
-    // application ships it, it's 15.24 kB. Before tracks it was 15.06 kB,
+    // playback, the adapters made together, and the text of errors and
+    // warnings. Minified, as an
+    // application ships it, it's 15.83 kB. Before tracks it was 15.06 kB,
     // and 11.53 kB minified.
     name: "Server-safe core (.), with the shared code it loads",
     path: ["dist/index.js", "dist/shared/*.js"],
     brotli: true,
-    limit: "20 kB",
+    limit: "21 kB",
   },
   {
     disablePlugins: ["@size-limit/esbuild"],
@@ -79,9 +80,10 @@ export default [
     brotli: true,
     limit: "15 kB",
   },
-  // Measured 8.96 kB: the session, the reducer of tracks, clip edits and
-  // time edits, history and limits. It was 6.42 kB with one track.
-  coreImport("Import: createAudioSession", "{ createAudioSession }", "9.5 kB"),
+  // Measured 9.51 kB: the session, the reducer of tracks, clip edits and
+  // time edits, the keys it fills, the cleaning of file names it shares
+  // with pdf-sdk, history and limits. It was 6.42 kB with one track.
+  coreImport("Import: createAudioSession", "{ createAudioSession }", "10 kB"),
   // Measured 3.60 kB: the engine's page side, decoding on the page, peaks,
   // and sending blocks to the worker's resampler, with the limits'
   // definitions, which the track limit added to. It was 3.55 kB.
@@ -92,6 +94,9 @@ export default [
   // Measured 2.88 kB: playback, its graph of tracks, their levels changed
   // while playing, and its gain automation.
   coreImport("Import: createAudioOutput", "{ createAudioOutput }", "3 kB"),
+  // Measured 6.45 kB: the engine's, the processor's and the output's page
+  // sides together, with destroying them together (docs/adr/0006).
+  coreImport("Import: createAudioAdapters", "{ createAudioAdapters }", "7 kB"),
   // Measured 0.88 kB: the English catalogue.
   coreImport("Import: audioMessages", "{ audioMessages }", "1.1 kB"),
   // Measured 3.40 kB: reading hm-audio-plan documents of versions 1 and 2,

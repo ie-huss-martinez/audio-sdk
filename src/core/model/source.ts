@@ -116,4 +116,22 @@ export interface AudioSourceInfo {
    * `frames` describe the converted audio.
    */
   readonly resampledFrom?: number;
+  /**
+   * The name the host gave the recording, or its file's name, to show
+   * people, cleaned as pdf-sdk ADR 0009 decides: its last path segment, with
+   * no control or bidirectional formatting characters, none that Windows
+   * refuses, no leading dots or surrounding space, in NFC, and at most
+   * {@link MAX_SOURCE_NAME_LENGTH} code points. It's never in events, the
+   * plan or a document. Show it as text, never as HTML.
+   */
+  readonly name?: string;
 }
+
+/**
+ * The longest source name, in Unicode code points. A longer one is cut,
+ * never in the middle of a character. The same as pdf-sdk's (its ADR 0009),
+ * since a name may become a download's.
+ *
+ * @public
+ */
+export const MAX_SOURCE_NAME_LENGTH = 128;
