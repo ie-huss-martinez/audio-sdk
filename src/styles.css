@@ -15,6 +15,11 @@
  * hm-text class.
  */
 @layer hm.sdk {
+  /* The element is a block the host sizes; the editor fills it. */
+  hm-audio-editor {
+    display: block;
+  }
+
   .hm-audio-editor {
     container-type: inline-size;
   }

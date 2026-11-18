@@ -73,8 +73,10 @@ export default [
   },
   {
     disablePlugins: ["@size-limit/esbuild"],
-    // Measured at 38.29 kB with the export dialog (docs/adr/0006, step 15),
-    // 29.87 kB minified (it was 35.63 kB, 27.76 kB minified):
+    // Measured at 38.64 kB with the element beside it (docs/adr/0006, step
+    // 16), 30.08 kB minified: the element shares its code, so it loads one
+    // chunk more. It was 38.29 kB, 29.87 kB minified, with the export dialog
+    // (step 15), and 35.63 kB, 27.76 kB minified, before that:
     // the provider, hooks, stage, notices, transport, toolbar, track
     // headers, rename dialog, the timeline and its waveforms, the clip,
     // range and fade tools, the inspector, the export dialog with the WAV
@@ -90,13 +92,13 @@ export default [
   },
   {
     disablePlugins: ["@size-limit/esbuild"],
-    // Empty until the element arrives (docs/adr/0006, step 16), which sets
-    // its budget from what it measures. Counted with every shared chunk, as
-    // before this measured only what it loads, it read 19.13 kB.
+    // The element and the React editor it mounts (docs/adr/0006, step 16):
+    // measured at 39.53 kB, 30.71 kB minified. The limit is the next 0.5 kB.
+    // Empty before the element, it was 1 kB.
     name: "Element entry (./element), with the shared code it loads",
     path: loadedFiles("element.js"),
     brotli: true,
-    limit: "1 kB",
+    limit: "40 kB",
   },
   {
     disablePlugins: ["@size-limit/esbuild"],

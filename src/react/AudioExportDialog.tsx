@@ -1,5 +1,5 @@
 import { Button, Dialog, ProgressBar, SegmentedControl, useAnnounce } from "@hussmartinez/ui/react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { wavFileSize } from "../adapters/wav/wav-layout.js";
 import { isAudioError } from "../core/errors/audio-error.js";
 import {
@@ -14,6 +14,7 @@ import { exportFileName } from "../features/export-name/export-name.js";
 import { audioErrorText } from "../messages/text.js";
 import { useAudioEditorContext, useAudioSession } from "./context.js";
 import type { AudioEditorMessages } from "./editor-messages.js";
+import { ElementListenersContext } from "./element/listeners.js";
 import { trackName } from "./names.js";
 import { classes } from "./parts.js";
 import { useAudioTools } from "./tools.js";
@@ -95,6 +96,7 @@ export function AudioExportDialog(props: AudioExportDialogProps): ReactNode {
   const { session, snapshot } = useAudioSession();
   const tools = useAudioTools();
   const announce = useAnnounce();
+  const listeners = useContext(ElementListenersContext);
   const [format, setFormat] = useState<AudioSampleFormat>("pcm16");
   const [phase, setPhase] = useState<Phase>({ kind: "choose" });
   const [error, setError] = useState<unknown>(null);
@@ -158,6 +160,12 @@ export function AudioExportDialog(props: AudioExportDialogProps): ReactNode {
       if (controller.current !== running) return;
       controller.current = null;
       announce(messages.t("export.ready", { size: result.blob.size }));
+      listeners.onExport?.({
+        sampleFormat: format,
+        size: result.blob.size,
+        peakDb: result.peakDb,
+        clippedFrames: result.clippedFrames,
+      });
       if (onExport) {
         onExport(result.blob, result);
         close();

@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
             include: [
               "@hussmartinez/sdk-config/testing/audio-output",
               "@hussmartinez/sdk-core",
+              "@hussmartinez/sdk-core/element",
               "@hussmartinez/ui",
               "@hussmartinez/ui/react",
               "axe-core",

@@ -4,4 +4,60 @@
 
 ```ts
 
+import { EditorElementDefine } from '@hussmartinez/sdk-core/element';
+import { FilePolicyOverrides } from '@hussmartinez/sdk-core';
+import { MessageOverrides } from '@hussmartinez/sdk-core';
+
+// @public
+export type AudioEditorElementEvent = "change" | "event" | "export" | "error";
+
+// Warning: (ae-forgotten-export) The symbol "AudioEditorHandle" needs to be exported by the entry point element.d.ts
+//
+// @public
+export type AudioEditorElementMethods = Pick<AudioEditorHandle, "open" | "insert" | "export" | "undo" | "redo" | "play" | "pause" | "seek">;
+
+// @public
+export interface AudioEditorElementProps {
+    assetsUrl?: string | URL;
+    // Warning: (ae-forgotten-export) The symbol "AudioEngine" needs to be exported by the entry point element.d.ts
+    //
+    // (undocumented)
+    engine?: AudioEngine;
+    file?: Blob;
+    fileName?: string;
+    // Warning: (ae-forgotten-export) The symbol "AudioFilePolicyOverrides" needs to be exported by the entry point element.d.ts
+    //
+    // (undocumented)
+    filePolicy?: AudioFilePolicyOverrides;
+    // Warning: (ae-forgotten-export) The symbol "AudioHeadingLevel" needs to be exported by the entry point element.d.ts
+    headingLevel?: AudioHeadingLevel;
+    locale?: string;
+    // Warning: (ae-forgotten-export) The symbol "AudioEditorMessageOverrides" needs to be exported by the entry point element.d.ts
+    messages?: AudioEditorMessageOverrides;
+    // Warning: (ae-forgotten-export) The symbol "AudioOutput" needs to be exported by the entry point element.d.ts
+    //
+    // (undocumented)
+    output?: AudioOutput;
+    // Warning: (ae-forgotten-export) The symbol "AudioProcessor" needs to be exported by the entry point element.d.ts
+    //
+    // (undocumented)
+    processor?: AudioProcessor;
+    theme?: string;
+    tools?: readonly string[];
+}
+
+// @public
+export interface AudioExportReport {
+    readonly clippedFrames: number;
+    readonly peakDb: number;
+    // Warning: (ae-forgotten-export) The symbol "AudioSampleFormat_2" needs to be exported by the entry point element.d.ts
+    //
+    // (undocumented)
+    readonly sampleFormat: AudioSampleFormat_2;
+    readonly size: number;
+}
+
+// @public
+export const defineAudioEditorElement: EditorElementDefine<Partial<AudioEditorElementProps>, AudioEditorElementMethods>;
+
 ```
