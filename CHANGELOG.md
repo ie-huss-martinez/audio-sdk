@@ -1,5 +1,88 @@
 # @hussmartinez/audio-sdk
 
+## 0.7.0
+
+### Minor Changes
+
+- [#72](https://github.com/ie-huss-martinez/audio-sdk/pull/72) [`1c63a0f`](https://github.com/ie-huss-martinez/audio-sdk/commit/1c63a0f22ce9fe6250f3b8a94a5abf587dd8ba81) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The editor's clip tools, in a new Clip group of the toolbar:
+  
+  - **Split** at the playhead, with `S`. Focus moves to the part after the playhead.
+  - **Delete** the selected clip, with Delete or Backspace. Its track stays, with silence where the clip was.
+  - **Trim start** and **Trim end** set the clip's edge to the playhead, with `[` and `]`. On a clip, Alt+`[` and Alt+`]` shorten an edge by 10 ms, and with Shift they lengthen it. Dragging an edge trims too.
+  - **Move earlier** and **Move later** nudge the clip by 10 ms, as Alt+← and Alt+→ do on a clip. **Move to the track above** and **below** keep its time, as Alt+↑ and Alt+↓ do. A clip also moves by dragging its title strip, along time or to another track.
+  
+  A move or trim that would overlap another clip, or reach past the start or the recording, is refused and announced. Nothing is pushed aside.
+
+- [#82](https://github.com/ie-huss-martinez/audio-sdk/pull/82) [`1dfa331`](https://github.com/ie-huss-martinez/audio-sdk/commit/1dfa331a3f423a2cb386c12d301488239dc624b6) Thanks [@hussmartinez](https://github.com/hussmartinez)! - **`<hm-audio-editor>`**, the editor as a custom element, from `@hussmartinez/audio-sdk/element`. Importing the entry registers nothing: call `defineAudioEditorElement()`, once, for the tag or one you name. It renders `AudioEditor` into the element's light DOM, so React and React DOM are needed, and you load `@hussmartinez/ui/styles.css` and then this package's `styles.css`.
+  
+  - **Attributes:** `theme` (`light`, `dark` or `system`), `locale`, and `tools`, space-separated.
+  - **Properties:** `file`, which opens a recording when you set it, `fileName`, `headingLevel`, `filePolicy`, `assetsUrl`, `messages`, `engine`, `processor` and `output`.
+  - **Methods:** `open`, `insert`, `export`, `undo`, `redo`, `play`, `pause` and `seek`.
+  - **Events:** `hm-audio-editor-change` with the plan, `hm-audio-editor-event` with the usage event, `hm-audio-editor-export` with an `AudioExportReport` after the export dialog finishes (format, size, peak and clamped frames, no file), and `hm-audio-editor-error` with a failure's `code` and `details`. None carries a file name or contents.
+
+- [#81](https://github.com/ie-huss-martinez/audio-sdk/pull/81) [`922312a`](https://github.com/ie-huss-martinez/audio-sdk/commit/922312a2e1200d4dd818253186edadd897975899) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The editor exports, through **`AudioExportDialog`**, which the toolbar's new Export button opens:
+  
+  - **A summary first:** the length, sample rate and channels, any track a mute or a solo leaves out, and the metadata that will be written. Then the format, 16-bit (the default), 24-bit or 32-bit float WAV, each with the file's exact size.
+  - **While it runs,** a progress bar and Stop. **When it's done,** Download, which saves `<fileName>.wav`. The name comes from the new `fileName` prop, or else the recording's title, or else `recording`.
+  - **When the mix clipped,** the dialog says by how much, and one button lowers the master gain by that and exports again.
+  - **`onExport(blob, result)`** on `AudioEditor` and `AudioExportDialog` takes the file instead of the download, and the dialog closes. `result` has the mix's `peakDb` and its `clippedFrames`.
+  - **The editor's handle** gains `export(options)`, which exports without the dialog.
+
+- [#77](https://github.com/ie-huss-martinez/audio-sdk/pull/77) [`18762bc`](https://github.com/ie-huss-martinez/audio-sdk/commit/18762bcb74b643c873d704a21b64f0f8a779f407) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The editor has an inspector, `AudioInspector`, after the transport:
+  
+  - **With a clip selected:** its Start, as a timecode such as `0:04.20` (plain seconds work too), its gain, and each fade's length in seconds with its curve, Linear or Equal power. A start that would overlap another clip is refused and announced.
+  - **Otherwise:** the recording's length, sample rate and tracks, its master gain, its channels, and its metadata: title, artist, album, year and comment.
+  
+  Fields apply when you press Enter or leave them, and sliders when you let go, each as one undo step. Where the editor is at least 1080 px wide, the inspector sits beside the timeline; otherwise it's below the transport. `classNames` gains an `inspector` part.
+
+- [#80](https://github.com/ie-huss-martinez/audio-sdk/pull/80) [`01fec9f`](https://github.com/ie-huss-martinez/audio-sdk/commit/01fec9ff42c7907713e652d25658b79b29cdc8ed) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The editor edits what a range covers, and fades clips from the toolbar:
+  
+  - **Fade in** and **Fade out** join the toolbar's Clip group. With a range selected, the range's clips are split at its edges, then Fade in fades each track's first piece inside the range in, over that piece, and Fade out fades its last piece out, as one undo step. A fade belongs to a clip, so where the range spans several clips, only the first or last one fades. With a clip selected and no range, the clip gets a half-second fade, which the inspector then sets exactly.
+  - **The inspector's Selection section**, shown while a range is selected, sets the gain of everything in the range, splitting its clips at its edges, as one undo step.
+  - **`headingLevel`** on `AudioEditor` and `AudioInspector`, from 2 to 6, sets the level of the inspector's heading, which is now a heading rather than a paragraph, so it fits your page's outline. It defaults to 2. The new `AudioHeadingLevel` type names the levels.
+
+- [#74](https://github.com/ie-huss-martinez/audio-sdk/pull/74) [`1d4b9c6`](https://github.com/ie-huss-martinez/audio-sdk/commit/1d4b9c6e454f82c2a8717f9e5f5f5a4248df77c3) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The editor selects ranges of time, and deletes them:
+  
+  - **Select by dragging** across the timeline. The range covers the tracks the drag crosses, and snaps unless you hold Alt. A click without a drag moves the playhead and clears the selection.
+  - **Select with the keyboard:** `I` and `O` set the selection's start and end at the playhead, and Shift with the playhead's arrow, Page and Home/End keys extends it. Escape clears it. The toolbar's new Selection group has a button for each.
+  - **Delete** deletes the selected range before a selected clip, and puts the playhead and focus at the range's start.
+  - **Ripple**, a toggle in the Selection group, is on by default. With it on, deleting a range closes the gap on the range's tracks; with it off, silence stays. When the range covers only some tracks, their lanes and headers show that their later clips will move.
+  - The transport shows the selection as text, such as "Selected 0:04.00 to 0:09.20 on every track".
+
+- [#67](https://github.com/ie-huss-martinez/audio-sdk/pull/67) [`124ee96`](https://github.com/ie-huss-martinez/audio-sdk/commit/124ee96c2635a497776fadefae42a65664ff214c) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The React editor's first parts, in `@hussmartinez/audio-sdk/react`:
+  
+  - **`<AudioEditor>`** with the empty state (a drop zone with a button to choose a file), an open or insert in progress with Cancel, a failed one by its error's text, the session's warnings in one dismissible notice, and the transport: play and pause, back to the start, and the time as `0:12.40 / 1:05.00`. Its props are the provider's, and `initialFile`, `onChange`, `theme`, `className`, `classNames` and `unstyled`. Its ref has `open`, `insert`, `undo`, `redo`, `play`, `pause` and `seek`.
+  - **`AudioEditorProvider`**, which makes the SDK's engine, processor and output for any you don't pass, and releases only those; ones you pass stay yours.
+  - **Hooks:** `useAudioSession`, `useAudioOutput`, `useAudioPlayhead` and `useAudioMessages`.
+  - **Building blocks:** `AudioStage`, `AudioNotices` and `AudioTransport`.
+  - **`audioEditorMessages`,** the editor's catalogue, with `ui`'s, for the `messages` prop's overrides.
+  
+  `@hussmartinez/ui` 0.12 is now a dependency. Load its stylesheet before this package's:
+  
+  ```ts
+  import "@hussmartinez/ui/styles.css";
+  import "@hussmartinez/audio-sdk/styles.css";
+  ```
+  
+  The timeline, the tools, the inspector and the export dialog follow before 0.7.0.
+
+- [#70](https://github.com/ie-huss-martinez/audio-sdk/pull/70) [`d6e33a5`](https://github.com/ie-huss-martinez/audio-sdk/commit/d6e33a58ca4eb017d5064a8b20aa8416dee575e5) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The editor's timeline, `AudioTimeline`, on `ui`'s `Timeline`: a lane for each track, with its name, its waveform drawn from the recording's overview and its clips where they sit in time, the playhead as a slider over all of them (10 ms with the arrow keys, a second with Page Up and Page Down), and zoom with Zoom in, Zoom out and Fit to width. `AudioEditor` shows it once a recording is open, and puts focus on the playhead after opening. `classNames` gains a `timeline` part.
+
+- [#71](https://github.com/ie-huss-martinez/audio-sdk/pull/71) [`f5e976c`](https://github.com/ie-huss-martinez/audio-sdk/commit/f5e976c8f7dd05b3c4282a4818f2310c601c2304) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The editor's tracks and tools:
+  
+  - **`AudioToolbar`**, at the top of `AudioEditor`: Open and Add recording, Undo and Redo, Add, Remove and Move track up or down, and the zoom buttons. The `tools` and `toolbar` props choose the tools and their groups by id, such as `tools={["audio.undo", "audio.redo"]}`.
+  - **Each track's header:** its name, which opens a dialog to rename it, Mute, Solo, and its gain. A gain drag is one undo step.
+  - **Keys** while focus is in the editor: Ctrl+Z and Ctrl+Shift+Z (⌘ on Apple) to undo and redo, `+`, `-` and `0` to zoom, `M` to mute the current track, Space to play and pause, and Home and End to go to the start and the end.
+  - `classNames` gains a `toolbar` part.
+  
+  `@hussmartinez/sdk-core` is now `^0.4.4`.
+
+### Patch Changes
+
+- [#78](https://github.com/ie-huss-martinez/audio-sdk/pull/78) [`41d5413`](https://github.com/ie-huss-martinez/audio-sdk/commit/41d54139a84ece5942f465edd7d44f1432b158a5) Thanks [@hussmartinez](https://github.com/hussmartinez)! - `@hussmartinez/ui` is now `^0.14.0`. Nothing changes in how the editor behaves: a gain slider's change, in a track's header or in the inspector, is still one undo step a gesture, now through `ui`'s `onValueCommit`, and selecting the clip that takes focus is now `ui`'s work rather than the editor's.
+
+- [#84](https://github.com/ie-huss-martinez/audio-sdk/pull/84) [`a2912b1`](https://github.com/ie-huss-martinez/audio-sdk/commit/a2912b1fe98e3d29288e78755f2f03ee7624185a) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The timeline shows each track's waveform and the selected range again: a clip's opaque background covered both. Clips are now see-through, marked by their outline, which is wider and in the accent colour when selected, and each clip's title keeps a solid background so it stays legible over the waveform. The inspector's gain sliders now have a visible label, not only an accessible name.
+
 ## 0.6.0
 
 ### Minor Changes
