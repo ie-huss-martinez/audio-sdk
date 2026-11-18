@@ -3,7 +3,7 @@
  *
  * @public
  */
-export type AudioEditorPart = "root" | "notices" | "stage" | "transport";
+export type AudioEditorPart = "root" | "notices" | "stage" | "timeline" | "transport";
 
 /** Extra classes for the editor's parts. */
 export type PartClassNames = Readonly<Partial<Record<AudioEditorPart, string>>>;

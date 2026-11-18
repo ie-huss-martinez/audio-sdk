@@ -73,9 +73,10 @@ export default [
   },
   {
     disablePlugins: ["@size-limit/esbuild"],
-    // Measured at 22.64 kB with the editor's shell (docs/adr/0006, step 10):
-    // the provider, hooks, stage, notices and transport, and the core's
-    // shared chunk they use. React and ui are the host's, so not counted.
+    // Measured at 25.22 kB with the timeline (docs/adr/0006, step 11): the
+    // provider, hooks, stage, notices, transport, the timeline and its
+    // waveforms, and the core's shared chunk they use. It was 22.64 kB with
+    // the shell alone. React and ui are the host's, so not counted.
     name: "React entry (./react), with the shared code it loads",
     path: loadedFiles("react.js"),
     brotli: true,

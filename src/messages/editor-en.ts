@@ -25,6 +25,25 @@ export const audioEditorText = {
     one: "{count} track, {duration} long.",
     other: "{count} tracks, {duration} long.",
   }),
+  "timeline.playhead": "Playhead",
+  "timeline.zoom": "Zoom",
+  "timeline.zoomIn": "Zoom in",
+  "timeline.zoomOut": "Zoom out",
+  "timeline.zoomFit": "Fit to width",
+  // A track's name as people see it, then as a lane's accessible name.
+  "timeline.track": "Track {index}",
+  "timeline.track.named": "Track {index}, {name}",
+  "timeline.lane": "{track}",
+  "timeline.lane.muted": "{track}, muted",
+  "timeline.lane.silenced": "{track}, silenced by solo",
+  "timeline.clips": "Clips on {track}",
+  // A clip's accessible name starts with what it shows, its recording's
+  // name, when it has one (WCAG 2.5.3).
+  "timeline.clip": "Clip {index} of {count} on {track}, {start} to {end}",
+  "timeline.clip.named": "{name}, clip {index} of {count} on {track}, {start} to {end}",
+  "timeline.clip.gain": "Clip {index} of {count} on {track}, {start} to {end}, {gain, number} dB",
+  "timeline.clip.named.gain":
+    "{name}, clip {index} of {count} on {track}, {start} to {end}, {gain, number} dB",
   "transport.label": "Playback",
   "transport.play": "Play",
   "transport.pause": "Pause",

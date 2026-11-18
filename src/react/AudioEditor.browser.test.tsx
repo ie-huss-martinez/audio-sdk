@@ -62,12 +62,12 @@ describe("AudioEditor", () => {
     expect(await violations(root)).toEqual([]);
   });
 
-  it("opens a chosen file: shows it, puts focus on Play, and announces it", async () => {
+  it("opens a chosen file: shows it, puts focus on the playhead, and announces it", async () => {
     const container = await mount(<AudioEditor />);
     await choose(container, recording());
     await waitFor(() => expect(text(container)).toContain("1 track, 0:01.00 long."));
     expect(text(container)).toContain("0:00.00 / 0:01.00");
-    expect(document.activeElement?.getAttribute("aria-label")).toBe("Play");
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Playhead");
     await waitFor(() => expect(text(document.body)).toContain("Recording opened."));
     expect(container.querySelector("[data-hm-empty]")).toBeNull();
     expect(await violations(container.querySelector(".hm-audio-editor") as Element)).toEqual([]);

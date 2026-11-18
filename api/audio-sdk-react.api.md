@@ -60,6 +60,21 @@ export const audioEditorMessages: {
         readonly one: "{count} track, {duration} long.";
         readonly other: "{count} tracks, {duration} long.";
     };
+    readonly "timeline.playhead": "Playhead";
+    readonly "timeline.zoom": "Zoom";
+    readonly "timeline.zoomIn": "Zoom in";
+    readonly "timeline.zoomOut": "Zoom out";
+    readonly "timeline.zoomFit": "Fit to width";
+    readonly "timeline.track": "Track {index}";
+    readonly "timeline.track.named": "Track {index}, {name}";
+    readonly "timeline.lane": "{track}";
+    readonly "timeline.lane.muted": "{track}, muted";
+    readonly "timeline.lane.silenced": "{track}, silenced by solo";
+    readonly "timeline.clips": "Clips on {track}";
+    readonly "timeline.clip": "Clip {index} of {count} on {track}, {start} to {end}";
+    readonly "timeline.clip.named": "{name}, clip {index} of {count} on {track}, {start} to {end}";
+    readonly "timeline.clip.gain": "Clip {index} of {count} on {track}, {start} to {end}, {gain, number} dB";
+    readonly "timeline.clip.named.gain": "{name}, clip {index} of {count} on {track}, {start} to {end}, {gain, number} dB";
     readonly "transport.label": "Playback";
     readonly "transport.play": "Play";
     readonly "transport.pause": "Pause";
@@ -164,7 +179,7 @@ export const audioEditorMessages: {
 };
 
 // @public
-export type AudioEditorPart = "root" | "notices" | "stage" | "transport";
+export type AudioEditorPart = "root" | "notices" | "stage" | "timeline" | "transport";
 
 // @public
 export interface AudioEditorProps extends Omit<AudioEditorProviderProps, "children"> {
@@ -220,6 +235,15 @@ export function AudioStage(input: AudioStageProps): ReactNode;
 
 // @public
 export interface AudioStageProps {
+    // (undocumented)
+    readonly className?: string;
+}
+
+// @public
+export function AudioTimeline(input: AudioTimelineProps): ReactNode;
+
+// @public
+export interface AudioTimelineProps {
     // (undocumented)
     readonly className?: string;
 }

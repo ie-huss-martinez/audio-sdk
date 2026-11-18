@@ -107,7 +107,7 @@ const Shell = forwardRef<AudioEditorHandle, ShellProps>(function Shell(props, re
 
 /** The editor's root, its regions in tab order, and what it says and where focus goes. */
 function Root({ onChange, theme, className, classNames, unstyled }: ShellProps): ReactNode {
-  const { messages } = useAudioEditorContext();
+  const { messages, playhead } = useAudioEditorContext();
   const { snapshot } = useAudioSession();
   const announce = useAnnounce();
   const play = useRef<HTMLButtonElement>(null);
@@ -121,9 +121,8 @@ function Root({ onChange, theme, className, classNames, unstyled }: ShellProps):
   }, [plan]);
 
   // A recording that opens, or one that's added, is announced; after an
-  // open, focus goes to the playhead's control, so it never falls back to
-  // the page (docs/adr/0005). Until the timeline's playhead arrives, that's
-  // the play button.
+  // open, focus goes to the timeline's playhead, so it never falls back to
+  // the page (docs/adr/0005).
   const first = sources[0]?.id;
   const count = sources.length;
   const seen = useRef({ first, count });
@@ -132,11 +131,11 @@ function Root({ onChange, theme, className, classNames, unstyled }: ShellProps):
     seen.current = { first, count };
     if (first !== undefined && first !== before.first) {
       announce(messages.t("editor.opened"));
-      play.current?.focus();
+      (playhead.current ?? play.current)?.focus();
     } else if (first !== undefined && count > before.count) {
       announce(messages.t("editor.inserted"));
     }
-  }, [first, count, announce, messages]);
+  }, [first, count, announce, messages, playhead]);
 
   return (
     <section
