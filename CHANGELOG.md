@@ -1,5 +1,11 @@
 # @hussmartinez/audio-sdk
 
+## 0.7.3
+
+### Patch Changes
+
+- [#93](https://github.com/ie-huss-martinez/audio-sdk/pull/93) [`bb82a78`](https://github.com/ie-huss-martinez/audio-sdk/commit/bb82a78b456424b84c936428e0e649300565eb65) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The editor now depends on `@hussmartinez/ui` ^0.14.1. Keyboard users see the whole focus ring around the timeline's playhead and around the text field in the rename dialog; before, part of each ring was cut off. To make room for the playhead's ring, the timeline's ruler row is a few pixels taller and its lanes are a few pixels narrower at each end. Nothing changes in the API.
+
 ## 0.7.2
 
 ### Patch Changes
