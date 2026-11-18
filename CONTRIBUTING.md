@@ -22,6 +22,8 @@ pnpm verify:fast   # the subset the pre-push hook runs
 
 Browser and end-to-end tests run in the browser test image that CI uses, through `hm-in-image` ([sdk-core ADR 0049](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0049-local-browser-tests-in-the-pinned-image.md)), so they need Docker. `pnpm test:browser` runs Chromium, and `pnpm test:browser:all` runs all three engines, as CI does. To run some files, pass them on: `pnpm test:browser src/react/AudioRange.browser.test.tsx`. Don't run Vitest's browser project directly on your machine: there, Chromium aborts requests whenever Docker changes a network interface, and tests fail at random with a worker that "failed to load" or an iframe that "did not become ready" (#73).
 
+Screenshot tests of the editor's designed states run in the same image, on Chromium, after `pnpm build:examples` ([sdk-core ADR 0048](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0048-visual-regression-for-sdk-editors.md)). `pnpm test:visual` compares them with the baselines in `e2e/visual/__screenshots__/`. When a change is meant to change how the editor looks, rewrite them with `pnpm test:visual:update`, look at every changed image, and say in the pull request what changed and why.
+
 When a browser test fails without saying why, have Chromium write a net log of every request, then list the ones that failed, with Chromium's reason:
 
 ```sh

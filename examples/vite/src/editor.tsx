@@ -23,6 +23,8 @@ declare global {
     audioEditor: {
       /** Opens a recording, waiting for the editor to mount first. */
       open(bytes: ArrayBuffer): Promise<void>;
+      /** Adds a recording on a track of its own. */
+      insert(bytes: ArrayBuffer): Promise<void>;
       /** The latest plan, from `onChange`, or `null` before one opens. */
       plan(): AudioPlan | null;
     };
@@ -31,6 +33,7 @@ declare global {
 
 window.audioEditor = {
   open: async (bytes) => (await mounted).open(new Blob([bytes], { type: "audio/wav" })),
+  insert: async (bytes) => (await mounted).insert(new Blob([bytes], { type: "audio/wav" })),
   plan: () => latest,
 };
 

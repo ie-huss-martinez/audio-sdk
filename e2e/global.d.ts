@@ -17,6 +17,7 @@ interface Window {
   /** The editor page's hooks (examples/vite/src/editor.tsx). */
   audioEditor: {
     open(bytes: ArrayBuffer): Promise<void>;
+    insert(bytes: ArrayBuffer): Promise<void>;
     plan(): unknown;
   };
   /** The element page's events (examples/vite/src/element.ts). */

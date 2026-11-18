@@ -7,5 +7,5 @@
     // Callbacks passed to page.evaluate() run in the browser.
     "lib": ["es2022", "dom"]
   },
-  "include": ["*.ts", "tests"]
+  "include": ["*.ts", "tests", "visual"]
 }

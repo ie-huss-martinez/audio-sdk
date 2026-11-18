@@ -64,11 +64,13 @@
     "test:browser:all": "hm-in-image vitest run --project browser --mode all-browsers",
     "build:examples": "pnpm --filter \"./examples/*\" build",
     "test:e2e": "pnpm --filter @hussmartinez/audio-sdk-e2e test:e2e",
+    "test:visual": "hm-test-visual",
+    "test:visual:update": "hm-test-visual --update",
     "check:size": "size-limit",
     "check:api": "tsc -p tsconfig.build.json && api-extractor run && api-extractor run -c api-extractor.react.json && api-extractor run -c api-extractor.element.json",
     "check:package": "publint run --pack pnpm --strict && attw --pack . --profile esm-only --exclude-entrypoints ./styles.css",
     "api:update": "tsc -p tsconfig.build.json && api-extractor run --local && api-extractor run -c api-extractor.react.json --local && api-extractor run -c api-extractor.element.json --local",
-    "verify": "pnpm lint && pnpm lint:css && pnpm typecheck && pnpm lint:deps && pnpm check:single-copy && pnpm check:playwright-image && pnpm build && pnpm test && pnpm test:browser && pnpm build:examples && pnpm test:e2e && pnpm check:size && pnpm check:api && pnpm check:package",
+    "verify": "pnpm lint && pnpm lint:css && pnpm typecheck && pnpm lint:deps && pnpm check:single-copy && pnpm check:playwright-image && pnpm build && pnpm test && pnpm test:browser && pnpm build:examples && pnpm test:e2e && pnpm test:visual && pnpm check:size && pnpm check:api && pnpm check:package",
     "verify:fast": "pnpm typecheck && pnpm test && pnpm lint:deps && pnpm check:single-copy && pnpm check:playwright-image && pnpm check:api"
   },
   "dependencies": {
