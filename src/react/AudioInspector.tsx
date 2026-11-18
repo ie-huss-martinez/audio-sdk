@@ -14,7 +14,7 @@ import { MAX_METADATA_LENGTH } from "../core/operations/checks.js";
 import type { AudioCommand } from "../core/operations/commands.js";
 import { findClip, moveClips, nudgeFrames } from "../features/clips/clips.js";
 import { useAudioEditorContext, useAudioSession } from "./context.js";
-import { useDraft } from "./draft.js";
+import { useDraft, useFollowing } from "./draft.js";
 import type { AudioEditorMessages } from "./editor-messages.js";
 import { trackName } from "./names.js";
 import { classes, type PartClassNames } from "./parts.js";
@@ -131,7 +131,7 @@ function Gain({
   readonly messages: AudioEditorMessages;
   readonly onCommit: (gainDb: number) => void;
 }): ReactNode {
-  const [draft, setDraft, commit] = useDraft(value, onCommit);
+  const [live, setLive] = useFollowing(value);
   return (
     <div className="hm-audio-editor-inspector-gain">
       <Slider
@@ -139,12 +139,13 @@ function Gain({
         min={SLIDER_GAIN.min}
         max={SLIDER_GAIN.max}
         step={1}
-        value={Math.min(SLIDER_GAIN.max, Math.max(SLIDER_GAIN.min, draft))}
-        onValueChange={setDraft}
+        value={Math.min(SLIDER_GAIN.max, Math.max(SLIDER_GAIN.min, live))}
+        onValueChange={setLive}
         formatValue={(gain) => messages.t("track.gainValue", { gain })}
-        onPointerUp={commit}
-        onKeyUp={commit}
-        onBlur={commit}
+        // One undo step a gesture: a drag, or the keys pressed until let go.
+        onValueCommit={(gainDb) => {
+          if (gainDb !== value) onCommit(gainDb);
+        }}
       />
       <Field label={exactLabel}>
         <NumberField

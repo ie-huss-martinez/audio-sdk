@@ -120,6 +120,21 @@ describe("a track's header", () => {
   });
 });
 
+describe("a track's gain", () => {
+  it("makes a click on the slider's track one undo step", async () => {
+    const { container, plan, ref } = await editor(recording());
+    const gain = container.querySelector<HTMLInputElement>(
+      'input[aria-label="Gain"]',
+    ) as HTMLInputElement;
+    const box = gain.getBoundingClientRect();
+    // Near the start of the track: well below 0 dB.
+    await step(() => userEvent.click(gain, { position: { x: 4, y: box.height / 2 } }));
+    await waitFor(() => expect(plan().tracks[0]?.gainDb).toBeLessThan(-40));
+    await step(() => ref.current?.undo());
+    await waitFor(() => expect(plan().tracks[0]?.gainDb).toBe(0));
+  });
+});
+
 describe("the editor's keys", () => {
   it("mutes the current track with M, zooms with +, and undoes with the family's keys", async () => {
     const { container, plan, tool } = await editor(
