@@ -19,9 +19,12 @@ const GAIN = { min: -60, max: 12 } as const;
 export function AudioTrackHeader({
   track,
   index,
+  rippling = false,
 }: {
   readonly track: AudioTrack;
   readonly index: number;
+  /** Whether deleting the selection would move this track's later clips, and not others'. */
+  readonly rippling?: boolean;
 }): ReactNode {
   const { session, messages, pendingFocus, setRenaming } = useAudioEditorContext();
   const { ariaKeyShortcuts } = useAudioTools();
@@ -102,6 +105,10 @@ export function AudioTrackHeader({
         onKeyUp={commitGain}
         onBlur={commitGain}
       />
+      {rippling ? (
+        // In text, not by the lane's colour alone (docs/adr/0006).
+        <span className="hm-audio-editor-track-ripple">{messages.t("track.ripple")}</span>
+      ) : null}
     </>
   );
 }

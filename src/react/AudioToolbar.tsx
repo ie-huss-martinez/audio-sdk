@@ -2,6 +2,7 @@ import {
   AddIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  CloseIcon,
   DeleteIcon,
   FitIcon,
   IconButton,
@@ -10,6 +11,7 @@ import {
   MoveUpIcon,
   MutedIcon,
   OpenIcon,
+  PanIcon,
   PlayIcon,
   RedoIcon,
   RemoveIcon,
@@ -55,6 +57,8 @@ const ICONS: Readonly<Record<string, IconComponent>> = {
   "trim-end": TrimEndIcon,
   "chevron-left": ChevronLeftIcon,
   "chevron-right": ChevronRightIcon,
+  close: CloseIcon,
+  pan: PanIcon,
 };
 
 /** The message key that names each default toolbar group. */
@@ -63,6 +67,7 @@ const GROUP_LABELS = {
   history: "toolbar.history",
   tracks: "toolbar.tracks",
   clips: "toolbar.clips",
+  range: "toolbar.range",
   view: "toolbar.view",
 } as const;
 

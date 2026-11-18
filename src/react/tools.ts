@@ -10,7 +10,7 @@ import type {
   AudioToolState,
 } from "../features/tools/types.js";
 import { useAudioEditorContext, useAudioOutput, useAudioSession } from "./context.js";
-import { trackName } from "./names.js";
+import { trackName, tracksText } from "./names.js";
 
 /** Whether a tool can run now, and whether a toggle is on. */
 export interface ToolFlags {
@@ -41,7 +41,8 @@ export interface AudioTools {
  */
 export function useAudioTools(): AudioTools {
   const editor = useAudioEditorContext();
-  const { messages, tools, shortcuts, zoom, maxZoom, setZoom, currentTrack, selectedClip } = editor;
+  const { messages, tools, shortcuts, zoom, maxZoom, setZoom, currentTrack, selectedClip, ripple } =
+    editor;
   const { session, snapshot } = useAudioSession();
   const { output, snapshot: playback } = useAudioOutput();
   const announce = useAnnounce();
@@ -53,6 +54,8 @@ export function useAudioTools(): AudioTools {
       plan,
       track: plan?.tracks.find((track) => track.key === currentTrack) ?? plan?.tracks[0],
       clip: plan && selectedClip !== undefined ? findClip(plan, selectedClip) : undefined,
+      selection: snapshot.selection,
+      ripple,
       playing: playback.state === "playing",
       canUndo: snapshot.canUndo,
       canRedo: snapshot.canRedo,
@@ -60,7 +63,7 @@ export function useAudioTools(): AudioTools {
       zoom,
       maxZoom,
     }),
-    [plan, currentTrack, selectedClip, playback, snapshot, zoom, maxZoom],
+    [plan, currentTrack, selectedClip, ripple, playback, snapshot, zoom, maxZoom],
   );
   const flags = useMemo(
     () =>
@@ -86,7 +89,8 @@ export function useAudioTools(): AudioTools {
             track: message.track ? trackName(messages, message.track, index) : "",
             time: message.frame === undefined ? "" : formatTimecode(message.frame, rate),
             end: message.end === undefined ? "" : formatTimecode(message.end, rate),
-          } as { time: string; end: string },
+            tracks: message.tracks ? tracksText(messages, plan, message.tracks) : "",
+          } as { time: string; end: string; tracks: string },
         ),
       );
     };
@@ -113,6 +117,9 @@ export function useAudioTools(): AudioTools {
       pause: () => output.pause(),
       seek: (frame) => output.seek(frame),
       playhead: () => output.position(),
+      select: (range) => session.select(range),
+      setRipple: editor.setRipple,
+      focusPlayhead: () => editor.playhead.current?.focus(),
       sourceFrames: (source) => frames.get(source) ?? 0,
       setZoom,
       chooseFile: (purpose) => editor.fileChooser.current?.(purpose),

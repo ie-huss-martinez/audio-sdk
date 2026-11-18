@@ -73,11 +73,12 @@ export default [
   },
   {
     disablePlugins: ["@size-limit/esbuild"],
-    // Measured at 30.91 kB with the clip tools (docs/adr/0006, step 13a):
+    // Measured at 32.95 kB with range selection (docs/adr/0006, step 13b):
     // the provider, hooks, stage, notices, transport, toolbar, track
-    // headers, rename dialog, the timeline and its waveforms, the clip
-    // edits, and the core's shared chunk they use. It was 28.70 kB with the
-    // track tools, 25.22 kB with the timeline, and 22.64 kB with the shell. React and ui are the host's, so not counted.
+    // headers, rename dialog, the timeline and its waveforms, the clip and
+    // range tools, and the core's shared chunk they use. It was 30.91 kB
+    // with the clip tools, 28.70 kB with the track tools, 25.22 kB with the
+    // timeline, and 22.64 kB with the shell. React and ui are the host's, so not counted.
     name: "React entry (./react), with the shared code it loads",
     path: loadedFiles("react.js"),
     brotli: true,

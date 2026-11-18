@@ -1,6 +1,7 @@
 import type { Tool } from "@hussmartinez/sdk-core";
 import type { AudioClip, AudioPlan, AudioTrack } from "../../core/model/plan.js";
 import type { AudioCommand, AudioCommandRejection } from "../../core/operations/commands.js";
+import type { AudioSelection } from "../../core/session/session.js";
 
 /**
  * A clip, with the track it's on.
@@ -27,6 +28,10 @@ export interface AudioToolState {
   readonly track: AudioTrack | undefined;
   /** The selected clip, which the clip tools act on. */
   readonly clip: PlacedClip | undefined;
+  /** The selected range of time, on some tracks, which Delete acts on first. */
+  readonly selection: AudioSelection | undefined;
+  /** Whether deleting a range closes the gap on its tracks (docs/adr/0006). */
+  readonly ripple: boolean;
   readonly playing: boolean;
   readonly canUndo: boolean;
   readonly canRedo: boolean;
@@ -59,8 +64,16 @@ export interface AudioToolAnnouncement {
     | "announce.clipMovedTo"
     | "announce.trimmed"
     | "announce.noRoom"
-    | "announce.refused";
+    | "announce.refused"
+    | "announce.selected"
+    | "announce.selectionCleared"
+    | "announce.rangeDeleted"
+    | "announce.rangeDeleted.ripple"
+    | "announce.rippleOn"
+    | "announce.rippleOff";
   readonly track?: AudioTrack;
+  /** Tracks, said by name, or as every track. */
+  readonly tracks?: readonly AudioTrack[];
   /** A frame of the timeline, said as a time. */
   readonly frame?: number;
   /** A second frame, for a range. */
@@ -89,6 +102,15 @@ export interface AudioToolContext {
   seek(frame: number): void;
   /** Where the playhead is now, in frames. */
   playhead(): number;
+  /** Selects a range on tracks, every track without them, or clears the selection. */
+  select(
+    range:
+      | { readonly start: number; readonly end: number; readonly tracks?: readonly string[] }
+      | undefined,
+  ): void;
+  setRipple(on: boolean): void;
+  /** Moves focus to the playhead, as after deleting a range. */
+  focusPlayhead(): void;
   /** A source's length in frames, or 0 for one the session doesn't hold. */
   sourceFrames(source: string): number;
   setZoom(zoom: number): void;

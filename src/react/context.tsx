@@ -113,6 +113,9 @@ interface EditorContext {
   /** The selected clip's key: the one the clip tools and the inspector act on. */
   readonly selectedClip: string | undefined;
   readonly setSelectedClip: (key: string | undefined) => void;
+  /** Whether deleting a range closes the gap on its tracks: on until it's turned off. */
+  readonly ripple: boolean;
+  readonly setRipple: (on: boolean) => void;
   /** The timeline's playhead slider, where focus goes after a recording opens. */
   readonly playhead: RefObject<HTMLInputElement | null>;
   /** The track the track tools act on, by key: the one focus was last in. */
@@ -273,6 +276,7 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
   const [zoom, setZoom] = useState(1);
   const [maxZoom, setMaxZoom] = useState(1);
   const [selectedClip, setSelectedClip] = useState<string>();
+  const [ripple, setRipple] = useState(true);
   const playhead = useRef<HTMLInputElement>(null);
   const [currentTrack, setCurrentTrack] = useState<string>();
   const [renaming, setRenaming] = useState<string>();
@@ -315,6 +319,8 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
       setMaxZoom,
       selectedClip,
       setSelectedClip,
+      ripple,
+      setRipple,
       playhead,
       currentTrack,
       setCurrentTrack,
@@ -337,6 +343,7 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
       zoom,
       maxZoom,
       selectedClip,
+      ripple,
       currentTrack,
       tools,
       shortcuts,
