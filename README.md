@@ -54,7 +54,7 @@ try {
 
 - **The snapshot** has the `plan` (clips in frames, and the metadata), the `sources`, `canUndo` and `canRedo`, `busy`, the last `error`, and `warnings`: limits past their warning thresholds, and `truncated` for a WAV or AIFF file cut short, which opens with the audio it holds. Show their text from `warnings.<name>` in `audioMessages`.
 - **Commands** are plain data, such as `audio.splitClip` or `audio.setGain`, with an exact inverse for undo. One that doesn't apply throws `INVALID_COMMAND` with a stable `details.reason`, such as `unknown-clip`. `session.group(fn)` makes several commands, such as a drag, one undo step.
-- **`session.insert(file, { at })`** adds another recording at a frame, as one undo step. It must have the session's sample rate, for now.
+- **`session.insert(file, { at })`** adds another recording at a frame, as one undo step. A recording at another sample rate is converted to the session's, in the worker, and its entry in `snapshot.sources` gives the file's own rate as `resampledFrom`.
 - **Exports** render the plan as it is when the export starts, as 16-bit (the default) or 24-bit PCM, or 32-bit float WAV, with the metadata in the file. They run under `maxProcessingTime`, and the `signal` option cancels them.
 - **Plans are portable JSON:** `toAudioPlanDocument` and `readAudioPlanDocument` write and read the `hm-audio-plan` format, whose JSON Schema ships in the package, at `@hussmartinez/audio-sdk/formats/hm-audio-plan/v1.schema.json` ([format record](docs/formats/hm-audio-plan.md)).
 

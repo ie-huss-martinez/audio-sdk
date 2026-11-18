@@ -80,6 +80,46 @@ export function describeAudioEngineContract(name: string, harness: AudioEngineHa
       await engine.destroy();
     });
 
+    it("converts to another sample rate when asked, keeping the time and the sound", async () => {
+      const engine = harness.createEngine();
+      const file = await harness.file(RATE, [LEFT, RIGHT]);
+      const probe = await engine.probe(file);
+      const progress: number[] = [];
+      for (const rate of [12_000, 6_000]) {
+        const audio = await engine.decode(file, probe, {
+          sampleRate: rate,
+          onProgress: (fraction) => progress.push(fraction),
+        });
+        expect(audio).toMatchObject({
+          sampleRate: rate,
+          numberOfChannels: 2,
+          length: Math.ceil((LEFT.length * rate) / RATE),
+        });
+        expect(progress.at(-1)).toBe(1);
+        // The same tone, sampled at the new rate. The ends are left out:
+        // they fade into the silence around the recording.
+        const tolerance = harness.sampleTolerance + 5e-3;
+        for (const [channel, sign] of [1, -1].entries()) {
+          const data = audio.getChannelData(channel);
+          for (let n = 100; n < audio.length - 100; n += 1) {
+            const expected = sign * Math.sin((n * RATE) / rate / 10) * 0.5;
+            expect(Math.abs((data[n] ?? Number.NaN) - expected)).toBeLessThanOrEqual(tolerance);
+          }
+        }
+      }
+      await engine.destroy();
+    });
+
+    it("refuses a sample rate that isn't a positive whole number", async () => {
+      const engine = harness.createEngine();
+      const file = await harness.file(RATE, [LEFT]);
+      const probe = await engine.probe(file);
+      for (const sampleRate of [0, -8_000, 44_100.5, Number.NaN]) {
+        await expect(engine.decode(file, probe, { sampleRate })).rejects.toBeInstanceOf(RangeError);
+      }
+      await engine.destroy();
+    });
+
     it("reports progress that ends at 1", async () => {
       const engine = harness.createEngine();
       const file = await harness.file(RATE, [LEFT]);

@@ -7,6 +7,7 @@ import type { AudioWorkerContract } from "./audio-worker/contract.js";
 import { audioWorkerSource } from "./audio-worker/loader.js";
 import type { PcmLayout } from "./pcm/layout.js";
 import { type BucketPeaks, buildPyramid, FINEST_BUCKET } from "./peaks.js";
+import { resampledLength, resampleReach } from "./resample/resample.js";
 import {
   decodeOnPage,
   type PlatformDecoder,
@@ -76,6 +77,10 @@ export interface EngineEnvironment {
  * sdk-core ADR 0031's rules: only probed files, a fresh buffer, the output
  * checked against the probe's bound, errors by code, and the time limit of
  * the caller's signal. Other containers fail with `UNSUPPORTED_FORMAT`.
+ *
+ * Asked for another sample rate than a file's, it converts the decoded
+ * audio in its worker, block by block, with a windowed sinc, so every
+ * browser gives the same samples (docs/adr/0006).
  *
  * Nothing starts until the first call. By default the worker is inlined,
  * which needs `worker-src blob:` in a Content Security Policy; with
@@ -194,6 +199,118 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
     return fresh.layout;
   }
 
+  /** A buffer for decoded audio, or `UNSUPPORTED_FORMAT` for a rate the browser can't hold. */
+  function bufferFor(
+    numberOfChannels: number,
+    length: number,
+    sampleRate: number,
+    container: AudioProbe["container"],
+  ): WritableAudio {
+    try {
+      return environment.createBuffer({ numberOfChannels, length, sampleRate });
+    } catch (error) {
+      throw new AudioError("UNSUPPORTED_FORMAT", "This browser can't hold audio at this rate.", {
+        details: { container, sampleRate },
+        cause: error,
+      });
+    }
+  }
+
+  /**
+   * Converts decoded audio to another sample rate, in the worker
+   * (docs/adr/0006). Each block carries the input its output frames read,
+   * at most a block's worth, copied so the source is never transferred away.
+   */
+  async function resample(
+    audio: DecodedAudio,
+    toRate: number,
+    container: AudioProbe["container"],
+    signal: AbortSignal | undefined,
+    onProgress: ((fraction: number) => void) | undefined,
+  ): Promise<DecodedAudio> {
+    const fromRate = audio.sampleRate;
+    const length = resampledLength(audio.length, fromRate, toRate);
+    const buffer = bufferFor(audio.numberOfChannels, length, toRate, container);
+    const reach = resampleReach(fromRate, toRate);
+    const room = BLOCK_FRAMES - 2 * reach;
+    const blockFrames = Math.max(1, Math.min(BLOCK_FRAMES, Math.floor((room * toRate) / fromRate)));
+    main ??= newClient();
+    for (let start = 0; start < length; start += blockFrames) {
+      const frames = Math.min(blockFrames, length - start);
+      // The input these frames read: the filter's reach on each side.
+      const first = Math.max(0, Math.floor((start * fromRate) / toRate) - reach);
+      const end = Math.floor(((start + frames) * fromRate) / toRate) + reach + 1;
+      const channels = Array.from({ length: audio.numberOfChannels }, (_, c) =>
+        audio.getChannelData(c).slice(first, end),
+      );
+      const block = await main.call(
+        "resample",
+        { channels, inputStart: first, fromRate, toRate, start, frames },
+        { transfer: true, ...(signal ? { signal } : {}) },
+      );
+      for (let c = 0; c < audio.numberOfChannels; c += 1) {
+        buffer.copyToChannel(block[c] as Float32Array, c, start);
+      }
+      onProgress?.((start + frames) / length);
+    }
+    if (length === 0) onProgress?.(1);
+    return buffer;
+  }
+
+  /** Decodes a probed file at its own rate. */
+  async function decodeAtOwnRate(
+    file: Blob,
+    probe: AudioProbe,
+    signal: AbortSignal | undefined,
+    onProgress: ((fraction: number) => void) | undefined,
+  ): Promise<DecodedAudio> {
+    if (probe.codec !== "pcm") {
+      const trusted = compressedProbes.has(probe) ? probe : await reprobe(file, probe, signal);
+      const audio = await decodeOnPage(
+        file,
+        trusted,
+        environment.decodePlatform,
+        environment.createBuffer,
+        signal,
+      );
+      onProgress?.(1);
+      return audio;
+    }
+    const layout = await layoutOf(file, probe, signal);
+    const { frames, channels, sampleRate } = layout;
+    const buffer = bufferFor(channels, frames, sampleRate, layout.container);
+
+    const buckets = Math.ceil(frames / FINEST_BUCKET);
+    const peaks: BucketPeaks = {
+      min: Array.from({ length: channels }, () => new Float32Array(buckets)),
+      max: Array.from({ length: channels }, () => new Float32Array(buckets)),
+    };
+    main ??= newClient();
+    for (let start = 0; start < frames; start += BLOCK_FRAMES) {
+      const block = await main.call(
+        "readBlock",
+        {
+          file,
+          layout,
+          start,
+          frames: Math.min(BLOCK_FRAMES, frames - start),
+          bucket: FINEST_BUCKET,
+        },
+        signal ? { signal } : {},
+      );
+      const at = start / FINEST_BUCKET;
+      for (let c = 0; c < channels; c += 1) {
+        buffer.copyToChannel(block.channels[c] as Float32Array, c, start);
+        peaks.min[c]?.set(block.min[c] as Float32Array, at);
+        peaks.max[c]?.set(block.max[c] as Float32Array, at);
+      }
+      onProgress?.(Math.min(start + BLOCK_FRAMES, frames) / frames);
+    }
+    if (frames === 0) onProgress?.(1);
+    finestPeaks.set(buffer, peaks);
+    return buffer;
+  }
+
   return {
     probe(file, options = {}) {
       return run(async () => {
@@ -214,70 +331,17 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
     decode(file, probe, options = {}) {
       return run(async () => {
         throwIfAborted(options.signal);
+        const { signal, onProgress, sampleRate = probe.sampleRate } = options;
         await ready();
-        if (probe.codec !== "pcm") {
-          const trusted = compressedProbes.has(probe)
-            ? probe
-            : await reprobe(file, probe, options.signal);
-          const audio = await decodeOnPage(
-            file,
-            trusted,
-            environment.decodePlatform,
-            environment.createBuffer,
-            options.signal,
-          );
-          options.onProgress?.(1);
-          return audio;
+        if (sampleRate === probe.sampleRate) {
+          return decodeAtOwnRate(file, probe, signal, onProgress);
         }
-        const layout = await layoutOf(file, probe, options.signal);
-        const { frames, channels, sampleRate } = layout;
-        let buffer: WritableAudio;
-        try {
-          buffer = environment.createBuffer({
-            numberOfChannels: channels,
-            length: frames,
-            sampleRate,
-          });
-        } catch (error) {
-          throw new AudioError(
-            "UNSUPPORTED_FORMAT",
-            "This browser can't hold audio at this rate.",
-            {
-              details: { container: layout.container, sampleRate },
-              cause: error,
-            },
-          );
-        }
-
-        const buckets = Math.ceil(frames / FINEST_BUCKET);
-        const peaks: BucketPeaks = {
-          min: Array.from({ length: channels }, () => new Float32Array(buckets)),
-          max: Array.from({ length: channels }, () => new Float32Array(buckets)),
-        };
-        main ??= newClient();
-        for (let start = 0; start < frames; start += BLOCK_FRAMES) {
-          const block = await main.call(
-            "readBlock",
-            {
-              file,
-              layout,
-              start,
-              frames: Math.min(BLOCK_FRAMES, frames - start),
-              bucket: FINEST_BUCKET,
-            },
-            options.signal ? { signal: options.signal } : {},
-          );
-          const at = start / FINEST_BUCKET;
-          for (let c = 0; c < channels; c += 1) {
-            buffer.copyToChannel(block.channels[c] as Float32Array, c, start);
-            peaks.min[c]?.set(block.min[c] as Float32Array, at);
-            peaks.max[c]?.set(block.max[c] as Float32Array, at);
-          }
-          options.onProgress?.(Math.min(start + BLOCK_FRAMES, frames) / frames);
-        }
-        if (frames === 0) options.onProgress?.(1);
-        finestPeaks.set(buffer, peaks);
-        return buffer;
+        // Decoding, then converting, which refuses a rate that isn't a
+        // positive whole number: each is half of the progress.
+        const half = (from: number) =>
+          onProgress && ((fraction: number) => onProgress(from + fraction / 2));
+        const audio = await decodeAtOwnRate(file, probe, signal, half(0));
+        return resample(audio, sampleRate, probe.container, signal, half(0.5));
       });
     },
 

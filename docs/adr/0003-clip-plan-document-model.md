@@ -10,6 +10,7 @@
 - **Amended:** 2026-11-13, with the session's export as built: the plan as it is when the export starts, the `empty-plan` refusal, and event durations rounded to two significant figures.
 - **Amended:** 2026-11-13: the metadata length limit counts Unicode code points, not UTF-16 code units (sdk-core ADR 0045, section 8).
 - **Amended:** 2026-11-15: `connectOutput` and `session.getAudio` keep an output in step with the session.
+- **Amended:** 2026-11-18: inserts at another sample rate are resampled, by the SDK's own resampler in the worker ([ADR 0006](0006-multitrack.md)).
 
 ## Context
 
@@ -37,7 +38,7 @@ The session's document is a **clip plan** over immutable sources, plus metadata:
 
 - **Every position and length in the model is a whole number of frames,** at the session's sample rate. Seconds appear only at the edges: in the UI, through `Intl` formatting, and in events.
 - **A clip's place on the timeline is derived,** as the sum of the lengths of the clips before it. It's never stored, so it can't disagree with the clips.
-- **The session's sample rate and channel count come from its first source,** as decoded: a probe's channel count is only a maximum, and mono AAC probes as two channels. A source inserted later at another rate is resampled to the session's rate when it's inserted, with an `OfflineAudioContext`, and the session reports it. Until the engine can resample, such an insert fails with `UNSUPPORTED_FORMAT` before decoding. Other channel counts are mixed with Web Audio's speaker rules for mono, stereo, quad and 5.1, and discretely otherwise. Export uses the same rules, so playback and export agree.
+- **The session's sample rate and channel count come from its first source,** as decoded: a probe's channel count is only a maximum, and mono AAC probes as two channels. A source inserted later at another rate is resampled to the session's rate when it's inserted, in the worker ([ADR 0006](0006-multitrack.md)), and the session reports it in the source's `resampledFrom`. Other channel counts are mixed with Web Audio's speaker rules for mono, stereo, quad and 5.1, and discretely otherwise. Export uses the same rules, so playback and export agree.
 
 ### Commands
 

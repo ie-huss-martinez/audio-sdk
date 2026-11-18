@@ -279,16 +279,49 @@ describe("the audio session", () => {
     expect(events.filter((event) => event.type === "recording_inserted")).toHaveLength(2);
   });
 
-  it("refuses to insert a recording at another sample rate, before decoding", async () => {
+  it("converts a recording at another sample rate to the session's as it's inserted", async () => {
     const { session, snapshot, decode } = setup();
     await session.open(recording(100));
     decode.mockClear();
-    const other = encodeFakeAudio({ sampleRate: 16_000, samples: [[0, 0.1]] });
-    const error = await rejection(session.insert(other));
-    expect(isAudioError(error, "UNSUPPORTED_FORMAT")).toBe(true);
+    const samples = [Array.from({ length: 30 }, (_, i) => i / 100)];
+    await session.insert(encodeFakeAudio({ sampleRate: 12_000, samples }));
+    // The engine is asked for the session's rate, and only when it differs.
+    expect(decode.mock.calls[0]?.[2]).toMatchObject({ sampleRate: RATE });
+    const [first, inserted] = snapshot().sources;
+    expect(first).not.toHaveProperty("resampledFrom");
+    // 30 frames at 12 kHz are 20 at 8 kHz: the same time.
+    expect(inserted).toMatchObject({ sampleRate: RATE, frames: 20, resampledFrom: 12_000 });
+    expect(planLength(snapshot().plan as never)).toBe(120);
+    expect(snapshot().plan?.sampleRate).toBe(RATE);
+    expect(snapshot().sessionBytes).toBe(bytes(120));
+    expect(session.getAudio(inserted?.id ?? "")).toMatchObject({ sampleRate: RATE, length: 20 });
+
+    await session.insert(recording(10));
+    expect(decode.mock.calls[1]?.[2]).not.toHaveProperty("sampleRate");
+  });
+
+  it("checks a converted recording's size before decoding it", async () => {
+    // 40 frames at 2 kHz fit maxDecodedSize; the 160 they become at 8 kHz don't.
+    const { session, snapshot, decode } = setup({ maxDecodedSize: bytes(100) });
+    await session.open(recording(100));
+    decode.mockClear();
+    const slow = encodeFakeAudio({ sampleRate: 2_000, samples: [new Array(40).fill(0.1)] });
+    const error = await rejection(session.insert(slow));
+    expect(isAudioError(error, "DECODED_SIZE_TOO_LARGE")).toBe(true);
     expect(decode).not.toHaveBeenCalled();
     expect(snapshot().sources).toHaveLength(1);
     expect(snapshot().error).toBe(error);
+  });
+
+  it("refuses an engine's audio that isn't at the rate it was asked for", async () => {
+    const { session, decode } = setup();
+    await session.open(recording(100));
+    const deaf = createFakeEngine();
+    decode.mockImplementation((file, probe, options) =>
+      deaf.decode(file, probe, { ...options, sampleRate: probe.sampleRate }),
+    );
+    const other = encodeFakeAudio({ sampleRate: 16_000, samples: [[0, 0.1]] });
+    expect(isAudioError(await rejection(session.insert(other)), "INVALID_AUDIO")).toBe(true);
   });
 
   it("refuses an insert past maxFiles", async () => {

@@ -3,6 +3,7 @@
 - **Status:** Accepted. The editor's timeline depends on an amendment to [ui ADR 0011](https://github.com/ie-huss-martinez/ui/blob/main/docs/adr/0011-timeline.md), below; the headless core doesn't
 - **Date:** 2026-11-18
 - **Amended:** 2026-11-18, with the review's rulings: Ripple shows the tracks it will move, the model's step is two pull requests, and `ui`'s amendment is designed with video-sdk's needs.
+- **Amended:** 2026-11-18, with resampling as built: the SDK's own windowed sinc in the worker, not an `OfflineAudioContext`.
 - **Supersedes in part:** [ADR 0003](0003-clip-plan-document-model.md) (the plan's shape, derived positions, the command table and version 1 of the formats) and [ADR 0005](0005-editor-shell.md) (the timeline, the selection and the order of the work). **Extends:** [ADR 0004](0004-audio-limits.md), with two limits.
 
 ## Context
@@ -58,7 +59,10 @@ interface AudioClip {
 - **Mute and solo are part of the plan,** changed by commands and undone like any edit, because they change what's exported. A track is **audible** when it isn't muted and either no track is soloed or it is: `audibleTracks(plan)` is the one definition, used by playback, export and the editor's dimming of silent tracks.
 - **Gains** are in decibels, from −120 to +120, at three levels: clip, track and master. All three are copied floats, never computed, so documents compare exactly.
 - **Track names are untrusted text.** They come from users and from stored documents. The editor renders them as text inside `<bdi>`, never as HTML. An empty name shows the catalogue's "Track 2". The session never copies a file's name into the plan, because documents carry names only by opt-in ([sdk-core ADR 0045](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0045-portable-formats-and-conformance-vectors.md), section 2).
-- **Sample rate:** still the first source's. A source at another rate is resampled to it when it's inserted, as ADR 0003 planned, with an `OfflineAudioContext`. Limits are checked against the resampled size before decoding.
+- **Sample rate:** still the first source's. A source at another rate is resampled to it when it's inserted, as ADR 0003 planned. Limits are checked against the resampled size before decoding.
+  - **The resampler is the SDK's own:** a windowed sinc, in the worker, block by block. ADR 0003 planned an `OfflineAudioContext`. But the browsers' resamplers differ from each other, an offline render can't report progress or be stopped, and it runs on the page. Ours gives the same samples in every engine and however the blocks are cut, so tests can assert samples, and a port can match them within a tolerance.
+  - **The engine does it, when asked:** `AudioEngine.decode` takes the rate to return, and the session asks for its own. A source converted this way says so in `resampledFrom`.
+  - **Its quality is fixed:** 16 zero crossings a side under a Kaiser window, about 90 dB down in the stop band, passing 94.5% of the band below the lower Nyquist frequency. It takes about 4 ms for each second of each channel on a desktop.
 - **Channels:** still set from the first source, but an insert with more channels than the plan raises the plan's count to the source's, in the same undo step, up to `maxChannels`. It never lowers it. Otherwise a mono voice opened first would fold stereo music to mono. Raising is transparent: mono plays equally on both channels, by the speaker rules ADR 0003 chose.
 
 ### The formats: version 2
@@ -265,7 +269,7 @@ Then the app deletes its temporary editor and renders `AudioEditor`.
 - **Version 0.6.0 breaks the plan's shape, several commands and `export`'s result.** Version 1 documents and commands stay readable through the migrations, which the vectors check.
 - **Positions can now be wrong in ways they couldn't be,** so the reducer and the reader check order and overlap on every plan, with property tests and vectors for both.
 - **The editor depends on a `ui` release** for lanes and positioned clips, and can't start its timeline before it.
-- **Resampling quality is the browser's,** and differs a little between engines. Tests assert lengths and rates, never samples.
+- **Resampling is ours to maintain,** about 150 lines with their tests, in exchange for the same samples in every browser. It runs in JavaScript, so an hour of stereo takes about half a minute, under `maxProcessingTime`, with progress and Cancel.
 - **Playback and export can differ by a 5 ms ramp** when a gain changes during playback, and by nothing in a fixed plan.
 - **`sdk-core`'s `sequenceOffsets` and `locate` no longer describe a track,** which has silence in it. Locating a clip is a binary search over `at`, kept here. If video-sdk adds audio tracks in this shape, as its ADR 0003 anticipates, it moves to `sdk-core` by the rule of two consumers.
 - **Sessions hold more sources at once,** so `maxSessionSize` is reached sooner, and the warning and the history trimming of ADR 0004 matter more.
