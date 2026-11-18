@@ -81,7 +81,7 @@ export default [
     brotli: true,
     limit: "15 kB",
   },
-  // Measured 9.51 kB: the session, the reducer of tracks, clip edits and
+  // Measured 9.66 kB: the session, the reducer of tracks, clip edits and
   // time edits, the keys it fills, the cleaning of file names it shares
   // with pdf-sdk, history and limits. It was 6.42 kB with one track.
   coreImport("Import: createAudioSession", "{ createAudioSession }", "10 kB"),
@@ -96,7 +96,7 @@ export default [
   // while playing, telling subscribers when the playhead jumps, and its gain
   // automation. It was 2.88 kB.
   coreImport("Import: createAudioOutput", "{ createAudioOutput }", "3.5 kB"),
-  // Measured 6.45 kB: the engine's, the processor's and the output's page
+  // Measured 6.56 kB: the engine's, the processor's and the output's page
   // sides together, with destroying them together (docs/adr/0006).
   coreImport("Import: createAudioAdapters", "{ createAudioAdapters }", "7 kB"),
   // Measured 0.88 kB: the English catalogue.
@@ -104,7 +104,7 @@ export default [
   // Measured 3.40 kB: reading hm-audio-plan documents of versions 1 and 2,
   // migrating the first, and writing version 2. It was 2.61 kB.
   coreImport("Import: plan documents", "{ readAudioPlanDocument, toAudioPlanDocument }", "4 kB"),
-  // Measured 13.37 kB: what an editor imports, shared code counted once.
+  // Measured 14.48 kB: what an editor imports, shared code counted once.
   // It was 10.97 kB with one track.
   coreImport(
     "Import: an editor's set",
