@@ -54,7 +54,11 @@ describe("cleanFileName (pdf-sdk ADR 0009)", () => {
     expect(cleanFileName("a".repeat(MAX_NAME_LENGTH))).toHaveLength(MAX_NAME_LENGTH);
   });
 
-  it("always gives a safe name, or none, for any string", () => {
+  // fast-check's default 100 runs, over strings of up to 400 code units.
+  // That's work, not waiting: 1.1 to 1.3 s on its own, but 6.7 s with the
+  // machine at a load of about 31, over the default 5 s. The runs stay; the
+  // limit allows 30 s.
+  it("always gives a safe name, or none, for any string", { timeout: 30_000 }, () => {
     fc.assert(
       fc.property(fc.string({ unit: "binary", maxLength: 400 }), (raw) => {
         const clean = cleanFileName(raw);
