@@ -10,8 +10,10 @@ export type AudioOutputState = "stopped" | "playing" | "paused";
 
 /**
  * The output's state, for `useSyncExternalStore`. A new object on every
- * change. The playhead isn't in it, because it changes on every audio frame
- * (ADR 0003); read it with {@link AudioOutput.position}.
+ * change of state, and whenever the playhead jumps: a seek, a stop, or a
+ * plan that moves it. The playhead isn't in it, because it changes on every
+ * audio frame (ADR 0003); read it with {@link AudioOutput.position}, or
+ * follow it with `watchPlayhead`.
  *
  * @public
  */
@@ -31,9 +33,14 @@ export interface AudioOutputSnapshot {
  */
 export interface AudioOutput {
   getSnapshot(): AudioOutputSnapshot;
-  /** Calls the listener after every change of state. Returns a function that unsubscribes. */
+  /**
+   * Calls the listener after every change of state, and whenever the
+   * playhead jumps, but not as it moves while playing. Returns a function
+   * that unsubscribes. Like every method here, it works detached from the
+   * object.
+   */
   subscribe(listener: () => void): () => void;
-  /** The playhead, in frames, read from the audio clock. */
+  /** The playhead, a whole number of frames, read from the audio clock while playing. */
   position(): number;
   /**
    * Sets what plays: the plan and the decoded sources its clips refer to.

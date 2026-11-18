@@ -24,11 +24,15 @@ export function createFakeOutput(): { output: AudioOutput; clock: FakeClock } {
   const assertAlive = () => {
     if (destroyed) throw new Error("The output has been destroyed.");
   };
-  const setState = (state: AudioOutputSnapshot["state"]) => {
-    if (snapshot.state === state) return;
+  const notify = (state: AudioOutputSnapshot["state"]) => {
     snapshot = { state };
     for (const listener of [...listeners]) listener();
   };
+  const setState = (state: AudioOutputSnapshot["state"]) => {
+    if (snapshot.state !== state) notify(state);
+  };
+  /** The playhead jumped: a new snapshot in the same state, as the port asks. */
+  const jumped = () => notify(snapshot.state);
 
   const output: AudioOutput = {
     getSnapshot: () => snapshot,
@@ -40,7 +44,11 @@ export function createFakeOutput(): { output: AudioOutput; clock: FakeClock } {
     load(next: AudioPlan, _sources: ReadonlyMap<string, DecodedAudio>) {
       assertAlive();
       plan = next;
+      const before = playhead;
       playhead = Math.min(playhead, length());
+      if (playhead === before) return;
+      if (snapshot.state === "playing" && playhead >= length()) setState("stopped");
+      else jumped();
     },
     async play() {
       assertAlive();
@@ -54,12 +62,17 @@ export function createFakeOutput(): { output: AudioOutput; clock: FakeClock } {
     },
     stop() {
       assertAlive();
+      const before = playhead;
       playhead = 0;
-      setState("stopped");
+      if (snapshot.state !== "stopped") setState("stopped");
+      else if (before !== 0) jumped();
     },
     seek(frame) {
       assertAlive();
+      const before = playhead;
       playhead = Math.max(0, Math.min(Math.round(frame), length()));
+      if (snapshot.state === "playing" && playhead >= length()) setState("stopped");
+      else if (playhead !== before) jumped();
     },
     async destroy() {
       destroyed = true;

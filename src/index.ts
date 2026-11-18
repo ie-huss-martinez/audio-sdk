@@ -40,6 +40,8 @@ export type { AudioClipV1, AudioPlanV1 } from "./core/format/version-1.js";
 export { migrateAudioCommand, migratePlan } from "./core/format/version-1.js";
 export { dbToGain, gainAt } from "./core/model/envelope.js";
 export { mixLength } from "./core/model/mix.js";
+export type { AudioPeakColumns, AudioPeakColumnsOptions } from "./core/model/peaks.js";
+export { peakColumns } from "./core/model/peaks.js";
 export type {
   AudioClip,
   AudioClipBody,
@@ -73,7 +75,7 @@ export type {
   DecodedAudio,
 } from "./core/model/source.js";
 export { MAX_SOURCE_NAME_LENGTH } from "./core/model/source.js";
-export { framesToSeconds, secondsToFrames } from "./core/model/time.js";
+export { formatTimecode, framesToSeconds, secondsToFrames } from "./core/model/time.js";
 export { MAX_METADATA_LENGTH } from "./core/operations/checks.js";
 export type {
   AudioAddTrackCommand,
@@ -135,5 +137,8 @@ export type {
   AudioWarning,
 } from "./core/session/session.js";
 export { createAudioSession } from "./core/session/session.js";
+export type { AudioFrameScheduler } from "./core/session/watch-playhead.js";
+export { watchPlayhead } from "./core/session/watch-playhead.js";
 export type { AudioMessageCatalogue } from "./messages/en.js";
 export { audioMessages } from "./messages/en.js";
+export { audioErrorText, audioWarningText } from "./messages/text.js";

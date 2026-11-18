@@ -40,7 +40,8 @@ export interface OutputEnvironment {
  * - **One `AudioContext`,** created on the first `play()`, which should be
  *   a user gesture, as browsers' autoplay rules require. If the context
  *   doesn't run within two seconds, `play()` rejects with
- *   `UNSUPPORTED_ENVIRONMENT`, and the output stays as it was.
+ *   `UNSUPPORTED_ENVIRONMENT` and `details.reason` `"autoplay-blocked"`,
+ *   and the output stays as it was.
  * - **Each clip is an `AudioBufferSourceNode`** on its source, through a
  *   `GainNode` automated from `gainAt`, so playback follows the envelope
  *   export applies. Sources mix into the plan's channels by Web Audio's
@@ -99,6 +100,12 @@ export function createOutput(environment: OutputEnvironment): AudioOutput {
   const setState = (state: AudioOutputState) => {
     if (store.getSnapshot().state !== state) store.set(Object.freeze({ state }));
   };
+  /**
+   * Tells subscribers the playhead jumped, with a new snapshot in the same
+   * state, so a view that reads `position()` on changes catches a seek, a
+   * stop, or a plan that moves it, even while paused (point 8 of #54).
+   */
+  const jumped = () => store.set(Object.freeze({ state: store.getSnapshot().state }));
 
   /** A source as an `AudioBuffer`, copied into one once if it isn't. */
   function buffer(id: string): AudioBuffer {
@@ -204,8 +211,12 @@ export function createOutput(environment: OutputEnvironment): AudioOutput {
       unschedule();
       plan = next;
       sources = nextSources;
+      const before = playhead;
       playhead = Math.min(playhead, length());
-      if (!wasPlaying) return;
+      if (!wasPlaying) {
+        if (playhead !== before) jumped();
+        return;
+      }
       if (playhead >= length()) {
         playhead = length();
         setState("stopped");
@@ -222,7 +233,9 @@ export function createOutput(environment: OutputEnvironment): AudioOutput {
         throw new AudioError(
           "UNSUPPORTED_ENVIRONMENT",
           "The browser didn't start audio output. Play from a click or a key press.",
-          { details: { feature: "audio-output" } },
+          // Most often a browser's autoplay rule, which a click lifts
+          // (point 9 of #54): the reason lets an editor say so.
+          { details: { feature: "audio-output", reason: "autoplay-blocked" } },
         );
       }
       // Another call may have started, or the plan changed, while waiting.
@@ -242,17 +255,21 @@ export function createOutput(environment: OutputEnvironment): AudioOutput {
     stop() {
       assertAlive();
       unschedule();
+      const before = playhead;
       playhead = 0;
-      setState("stopped");
+      if (store.getSnapshot().state !== "stopped") setState("stopped");
+      else if (before !== 0) jumped();
     },
 
     seek(frame) {
       assertAlive();
       const wasPlaying = playing !== undefined;
+      const before = position();
       unschedule();
       playhead = Math.max(0, Math.min(Math.round(frame), length()));
       if (wasPlaying && playhead < length()) schedule();
-      else if (wasPlaying) setState("stopped");
+      if (wasPlaying && playhead >= length()) setState("stopped");
+      else if (playhead !== before) jumped();
     },
 
     async destroy() {

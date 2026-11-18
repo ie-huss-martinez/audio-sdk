@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dbToGain, gainAt } from "./envelope.js";
 import { type AudioClipBody, assertClip, clipLength, clipProblem, NO_FADE } from "./plan.js";
-import { assertFrames, framesToSeconds, secondsToFrames } from "./time.js";
+import { assertFrames, formatTimecode, framesToSeconds, secondsToFrames } from "./time.js";
 
 function clip(overrides: Partial<AudioClipBody> = {}): AudioClipBody {
   return {
@@ -25,6 +25,31 @@ describe("time", () => {
 
   it.each([-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])("rejects %s frames", (value) => {
     expect(() => assertFrames("start", value)).toThrow(RangeError);
+  });
+
+  it.each([
+    [0, 48_000, "0:00.00"],
+    [595_200, 48_000, "0:12.40"],
+    [3_120_000, 48_000, "1:05.00"],
+    // Rounded down: 12.4099… seconds shows as 12.40.
+    [547_276, 44_100, "0:12.40"],
+    [44_099, 44_100, "0:00.99"],
+    [59 * 60 * 48_000 + 59 * 48_000 + 47_999, 48_000, "59:59.99"],
+    [3_600 * 48_000, 48_000, "1:00:00.00"],
+    [(3 * 3_600 + 2 * 60 + 5) * 8_000 + 4_000, 8_000, "3:02:05.50"],
+  ])("formats %d frames at %d Hz as %s", (frames, rate, text) => {
+    expect(formatTimecode(frames, rate)).toBe(text);
+  });
+
+  it("refuses frames and rates that aren't whole", () => {
+    for (const [frames, rate] of [
+      [-1, 48_000],
+      [1.5, 48_000],
+      [10, 0],
+      [10, 44_100.5],
+    ] as const) {
+      expect(() => formatTimecode(frames, rate)).toThrow(RangeError);
+    }
   });
 });
 

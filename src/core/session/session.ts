@@ -7,7 +7,7 @@ import {
   withProcessingTime,
 } from "@hussmartinez/sdk-core";
 import { abortError, asAudioError, throwIfAborted } from "../errors/abort.js";
-import { AudioError } from "../errors/audio-error.js";
+import { AudioError, isAudioError } from "../errors/audio-error.js";
 import {
   type AudioFilePolicyOverrides,
   type AudioLimitName,
@@ -710,7 +710,16 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     // file's limit catches: the plan's own length has one (docs/adr/0006).
     const length = planLength(next);
     if (length > planLength(current)) {
-      policy.check("maxDuration", Math.ceil((length * 1_000) / next.sampleRate));
+      try {
+        policy.check("maxDuration", Math.ceil((length * 1_000) / next.sampleRate));
+      } catch (error) {
+        // The plan, not a file, would be too long: a reason of its own, so
+        // its text can say so (docs/adr/0006).
+        if (!isAudioError(error, "DURATION_TOO_LONG")) throw error;
+        throw new AudioError("DURATION_TOO_LONG", "The plan would be longer than maxDuration.", {
+          details: { ...error.details, reason: "plan-too-long" },
+        });
+      }
     }
     return result;
   }

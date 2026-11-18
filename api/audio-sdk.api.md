@@ -7,6 +7,7 @@
 import { FilePolicy } from '@hussmartinez/sdk-core';
 import { FilePolicyOverrides } from '@hussmartinez/sdk-core';
 import { Limits } from '@hussmartinez/sdk-core';
+import { Messages } from '@hussmartinez/sdk-core';
 import { SdkCoreErrorCode } from '@hussmartinez/sdk-core';
 import { SdkError } from '@hussmartinez/sdk-core';
 
@@ -151,6 +152,9 @@ export class AudioError extends SdkError<AudioErrorCode> {
 export type AudioErrorCode = SdkCoreErrorCode | "INVALID_AUDIO" | "UNSUPPORTED_FORMAT" | "DECODE_FAILED" | "INVALID_COMMAND" | "INVALID_DOCUMENT" | "DURATION_TOO_LONG" | "TOO_MANY_CHANNELS" | "SAMPLE_RATE_TOO_HIGH" | "SESSION_TOO_LARGE" | "TOO_MANY_CLIPS" | "TOO_MANY_TRACKS";
 
 // @public
+export function audioErrorText(messages: Messages<AudioMessageCatalogue>, error: unknown): string;
+
+// @public
 export interface AudioExportFormat {
     // (undocumented)
     readonly container: "wav";
@@ -173,6 +177,14 @@ export type AudioFilePolicy = FilePolicy<AudioLimitDefinitions>;
 
 // @public
 export type AudioFilePolicyOverrides = FilePolicyOverrides<AudioLimitDefinitions>;
+
+// @public
+export interface AudioFrameScheduler {
+    // (undocumented)
+    cancel(handle: unknown): void;
+    // (undocumented)
+    request(callback: () => void): unknown;
+}
 
 // @public
 export interface AudioInsertClipsCommand {
@@ -323,6 +335,8 @@ export const audioMessages: {
         readonly one: "This recording has {actual} track. Many tracks may be slow to play and export.";
         readonly other: "This recording has {actual} tracks. Many tracks may be slow to play and export.";
     };
+    readonly "errors.UNSUPPORTED_ENVIRONMENT.autoplay-blocked": "The browser didn't let sound start. Press Play to start it.";
+    readonly "errors.DURATION_TOO_LONG.plan-too-long": "This would make the recording {actual, duration} long, which is over the {maximum, duration} limit.";
     readonly "warnings.truncated": "This recording looks incomplete, perhaps from an interrupted recording or download. It opened with the audio it holds.";
     readonly "errors.UNKNOWN": "Something went wrong. Please try again.";
     readonly "errors.ABORTED": "The operation was cancelled.";
@@ -427,6 +441,21 @@ export interface AudioOutputSnapshot {
 
 // @public
 export type AudioOutputState = "stopped" | "playing" | "paused";
+
+// @public
+export interface AudioPeakColumns {
+    // (undocumented)
+    readonly max: Float32Array<ArrayBuffer>;
+    // (undocumented)
+    readonly min: Float32Array<ArrayBuffer>;
+}
+
+// @public
+export interface AudioPeakColumnsOptions {
+    readonly columns: number;
+    readonly from: number;
+    readonly to: number;
+}
 
 // @public
 export interface AudioPeakLevel {
@@ -849,6 +878,9 @@ export type AudioWarning = {
 };
 
 // @public
+export function audioWarningText(messages: Messages<AudioMessageCatalogue>, warning: AudioWarning): string;
+
+// @public
 export function clipAt(track: AudioTrack, frame: number): AudioClip | undefined;
 
 // @public
@@ -892,6 +924,9 @@ export interface DecodedAudio {
 export const EMPTY_METADATA: AudioMetadata;
 
 // @public
+export function formatTimecode(frames: number, sampleRate: number): string;
+
+// @public
 export function framesToSeconds(frames: number, sampleRate: number): number;
 
 // @public
@@ -930,6 +965,9 @@ export function mixLength(plan: AudioPlan): number;
 export const NO_FADE: AudioFade;
 
 // @public
+export function peakColumns(peaks: AudioPeaks, options: AudioPeakColumnsOptions): AudioPeakColumns;
+
+// @public
 export function planLength(plan: AudioPlan): number;
 
 // @public
@@ -946,5 +984,8 @@ export function toAudioPlanDocument(plan: AudioPlan, sources: Readonly<Record<st
 
 // @public
 export function trackLength(track: AudioTrack): number;
+
+// @public
+export function watchPlayhead(output: AudioOutput, listener: (frame: number) => void, frames?: AudioFrameScheduler): () => void;
 
 ```

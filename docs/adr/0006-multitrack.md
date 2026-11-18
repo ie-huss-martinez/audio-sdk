@@ -9,6 +9,7 @@
 - **Amended:** 2026-11-18, with playback's levels as built: every track with clips is scheduled, muted or not, and a plan with the same clips changes only levels.
 - **Amended:** 2026-11-18, with the limits as built: each is checked when the plan grows past where it was.
 - **Amended:** 2026-11-18, with the session's points from #54 as built: the session doesn't create adapters, `createAudioAdapters` makes them with one set of options, a source's name defaults to its file's, and the keys and selection rules.
+- **Amended:** 2026-11-18, with the playhead and text points from #54 as built: the output notifies when the playhead jumps, and two text helpers stand in for sdk-core until it looks texts up by reason.
 - **Supersedes in part:** [ADR 0003](0003-clip-plan-document-model.md) (the plan's shape, derived positions, the command table and version 1 of the formats) and [ADR 0005](0005-editor-shell.md) (the timeline, the selection and the order of the work). **Extends:** [ADR 0004](0004-audio-limits.md), with two limits.
 
 ## Context
@@ -174,15 +175,17 @@ From [#54](https://github.com/ie-huss-martinez/audio-sdk/issues/54), by its numb
 | 6 | Teardown order is undocumented | **Accepted,** as documentation: the session never destroys what it's given, and a test holds it to that. It doesn't make adapters of its own, so there's no `session.destroy()`; see below |
 | 7 | Store methods aren't documented as bound | **Accepted.** The session's and the output's methods work detached, which a test checks |
 | 8 | Following the playhead takes a hook | **Accepted.** `watchPlayhead(output, listener)`, framework-free. `position()` is a whole frame. The output notifies its subscribers when the playhead jumps |
-| 9 | Blocked autoplay reads as an unsupported browser | **Accepted.** `details.reason: "autoplay-blocked"`, with its own text |
+| 9 | Blocked autoplay reads as an unsupported browser | **Accepted.** `details.reason: "autoplay-blocked"`, with its own text, through `audioErrorText` until sdk-core looks texts up by reason; see below |
 | 10 | The README has no playback section | **Accepted** |
 | 11 | No timecode formatter | **Accepted.** `formatTimecode(frames, sampleRate)` from the root entry, giving `0:12.40` |
-| 12 | No warning text helper | **Accepted.** `messages.warning(warning)`, proposed in `sdk-core` if its message object must grow |
+| 12 | No warning text helper | **Accepted,** as `audioWarningText(messages, warning)` here, with `messages.warning(warning)` proposed for sdk-core; see below |
 | 13 | Picking a peak level is left to the UI | **Accepted.** `peakColumns(peaks, { from, to, columns })` returns each column's minimum and maximum, from the right level |
 | 14 | `assetsUrl` is passed twice, and the inline worker's chunk is still emitted | **Accepted in part.** `createAudioAdapters({ assetsUrl })` makes the engine, the processor and the output with one set of options, and `destroy()`s them together; see below. The chunk is a lazy import that a self-hosting page never fetches; not emitting it needs a second build of the entry, which is a family decision ([sdk-core ADR 0038](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0038-self-hosted-assets-and-worker-version.md)) and isn't made here |
 | 15 | `styles.css` is only a layer declaration | **Accepted.** The editor fills it. Until then the README says it's empty |
 
 **The session doesn't create adapters,** though this table first said that one created without an engine would make its own. The layer rules leave no place for it: the session is in `core/session`, which never imports an adapter, and adapters never import `core/session`. A module outside both would be the only place, and outside every rule. And a session that made its own would bundle the default engine's and processor's page sides, about 4 to 5 kB, for every host, including those that pass their own. So ownership stays with the host, as it was: `createAudioAdapters` beside the factories makes the three with one `assetsUrl`, and its `destroy()` releases them, after `session.close()`. The React editor's provider does the same for its hosts.
+
+**The playhead and text points, as built.** `watchPlayhead(output, listener)` reads `position()` on animation frames while playing and on every notification otherwise; for that, the output now notifies when the playhead jumps, after a seek, a stop or a plan that moves it, with a new snapshot in the same state, and its contract tests both outputs for it. `formatTimecode` rounds down to hundredths and uses the same digits in every locale, as a timecode does. `peakColumns` takes the coarsest level whose buckets fit a column. Texts that depend on a reason, such as a blocked `play()`'s `autoplay-blocked` and an edit's `plan-too-long`, are in the catalogue as `errors.<CODE>.<reason>`, which is the lookup proposed for sdk-core's `messages.error()`. Until sdk-core has it, `audioErrorText(messages, error)` does that lookup and falls back to `messages.error()`, and `audioWarningText(messages, warning)` gives a warning's text, which `messages.t()` can't type for a limit known only at run time. Both become thin, or go, when sdk-core has them.
 
 ### The editor
 
