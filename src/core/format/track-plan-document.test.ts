@@ -43,6 +43,15 @@ const v1 = (...clips: AudioClip[]): AudioPlan => ({
   metadata: { ...EMPTY_METADATA, title: "Take 1" },
 });
 
+/**
+ * Timeouts for the property tests, which run thousands of cases. Measured
+ * with the designed run counts on a 12-core machine: alone, and with the
+ * whole unit suite running three times at once, which is busier than CI
+ * and slows them about tenfold. Each timeout is over twice its busy time.
+ * The run counts aren't lowered to fit a timeout.
+ */
+const SLOW = 120_000;
+
 function refusal(run: () => unknown): { code: string; reason: unknown } | undefined {
   try {
     run();
@@ -220,49 +229,59 @@ describe("migrating version 1 commands", () => {
     expect(later(BASE, command)).toEqual(expected);
   });
 
-  it("does what version 1 did, or refuses what it refused, for any command", () => {
-    fc.assert(
-      fc.property(
-        planArb.chain((plan) => fc.tuple(fc.constant(plan), commandFor(plan))),
-        ([plan, command]) => {
-          expect(later(plan, command)).toEqual(earlier(plan, command));
-        },
-      ),
-      { numRuns: 1_000 },
-    );
-  });
-
-  it("leaves a migrated plan back to back, so later version 1 commands still mean the same", () => {
-    fc.assert(
-      fc.property(
-        planArb.chain((plan) =>
-          fc.tuple(fc.constant(plan), fc.array(commandFor(plan), { maxLength: 4 })),
+  it(
+    "does what version 1 did, or refuses what it refused, for any command",
+    () => {
+      fc.assert(
+        fc.property(
+          planArb.chain((plan) => fc.tuple(fc.constant(plan), commandFor(plan))),
+          ([plan, command]) => {
+            expect(later(plan, command)).toEqual(earlier(plan, command));
+          },
         ),
-        ([plan, commands]) => {
-          let state = migratePlan(plan);
-          for (const command of commands) {
-            try {
-              let next = state;
-              for (const migrated of migrateCommand(command, state)) {
-                next = reduce(next, migrated).state;
+        { numRuns: 3_000 },
+      );
+      // 3.4 s alone, 32 s busy.
+    },
+    SLOW,
+  );
+
+  it(
+    "leaves a migrated plan back to back, so later version 1 commands still mean the same",
+    () => {
+      fc.assert(
+        fc.property(
+          planArb.chain((plan) =>
+            fc.tuple(fc.constant(plan), fc.array(commandFor(plan), { maxLength: 4 })),
+          ),
+          ([plan, commands]) => {
+            let state = migratePlan(plan);
+            for (const command of commands) {
+              try {
+                let next = state;
+                for (const migrated of migrateCommand(command, state)) {
+                  next = reduce(next, migrated).state;
+                }
+                state = next;
+              } catch (error) {
+                if (!isAudioError(error, "INVALID_COMMAND")) throw error;
               }
-              state = next;
-            } catch (error) {
-              if (!isAudioError(error, "INVALID_COMMAND")) throw error;
             }
-          }
-          const [track] = state.tracks;
-          let at = 0;
-          for (const entry of track?.clips ?? []) {
-            expect(entry.at).toBe(at);
-            at += entry.end - entry.start;
-          }
-          expect(trackPlanLength(state)).toBe(at);
-        },
-      ),
-      { numRuns: 300 },
-    );
-  });
+            const [track] = state.tracks;
+            let at = 0;
+            for (const entry of track?.clips ?? []) {
+              expect(entry.at).toBe(at);
+              at += entry.end - entry.start;
+            }
+            expect(trackPlanLength(state)).toBe(at);
+          },
+        ),
+        { numRuns: 500 },
+      );
+      // 0.5 s alone, 5.5 s busy.
+    },
+    SLOW / 4,
+  );
 
   it("refuses commands that aren't version 1's, and clips the plan doesn't have", () => {
     const plan = migratePlan(BASE);

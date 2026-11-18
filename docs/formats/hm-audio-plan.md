@@ -85,12 +85,12 @@ The TypeScript tests also check that the schemas agree with the readers. Every d
 
 ## Version 2: tracks
 
-Version 2 of both formats describes the multitrack plan of [ADR 0006](../adr/0006-multitrack.md): tracks of clips positioned in time. **The package doesn't read or write it yet.** Its schemas, its reader and reducer and their vectors are in the repository first; the session, the worker and the public API move to it in the next change, and until then `readAudioPlanDocument` and `toAudioPlanDocument` are version 1's.
+Version 2 of both formats describes the multitrack plan of [ADR 0006](../adr/0006-multitrack.md): tracks of clips positioned in time. **The package doesn't read or write it yet, and doesn't ship its schemas.** They're in `conformance/formats/` for now, with the reader, the reducer and their vectors, and move to the published `formats/` with the change that makes the package read and write version 2: a published schema for a format no release opens would invite documents that 0.5 can't read. Until then `readAudioPlanDocument` and `toAudioPlanDocument` are version 1's.
 
 | Format | Schema |
 |---|---|
-| `hm-audio-plan` 2 | [`formats/hm-audio-plan/v2.schema.json`](../../formats/hm-audio-plan/v2.schema.json) |
-| `hm-audio-command` 2 | [`formats/hm-audio-command/v2.schema.json`](../../formats/hm-audio-command/v2.schema.json) |
+| `hm-audio-plan` 2 | [`conformance/formats/hm-audio-plan/v2.schema.json`](../../conformance/formats/hm-audio-plan/v2.schema.json) |
+| `hm-audio-command` 2 | [`conformance/formats/hm-audio-command/v2.schema.json`](../../conformance/formats/hm-audio-command/v2.schema.json) |
 
 ```json
 {

@@ -21994,7 +21994,2427 @@
       }
     },
     {
-      "name": "generated 93: audio.trimClip, refused, clips-out-of-order",
+      "name": "generated 93: audio.keepRange, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": 1,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Voice",
+              "gainDb": 3,
+              "muted": false,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "s1",
+                  "start": 368,
+                  "end": 433,
+                  "gainDb": 10,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "t2",
+              "name": "",
+              "gainDb": -2,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "b",
+                  "at": 40,
+                  "source": "s1",
+                  "start": 88,
+                  "end": 93,
+                  "gainDb": 4,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.keepRange",
+          "start": 20,
+          "end": 36
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": 1,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "Voice",
+            "gainDb": 3,
+            "muted": false,
+            "soloed": true,
+            "clips": [
+              {
+                "key": "a",
+                "at": 0,
+                "source": "s1",
+                "start": 388,
+                "end": 404,
+                "gainDb": 10,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          },
+          {
+            "key": "t2",
+            "name": "",
+            "gainDb": -2,
+            "muted": false,
+            "soloed": false,
+            "clips": []
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 94: audio.moveClips, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": 4,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Music 🎵",
+              "gainDb": 10,
+              "muted": true,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "s2",
+                  "start": 135,
+                  "end": 186,
+                  "gainDb": -9,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.moveClips",
+          "keys": [
+            "a"
+          ],
+          "by": 1,
+          "track": "t1"
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": 4,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "Music 🎵",
+            "gainDb": 10,
+            "muted": true,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 1,
+                "source": "s2",
+                "start": 135,
+                "end": 186,
+                "gainDb": -9,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 95: audio.insertClips, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": 6,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "",
+              "gainDb": -1,
+              "muted": true,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "s2",
+                  "start": 49,
+                  "end": 148,
+                  "gainDb": -18,
+                  "fadeIn": {
+                    "frames": 49,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "t2",
+              "name": "",
+              "gainDb": 4,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "b",
+                  "at": 0,
+                  "source": "s1",
+                  "start": 200,
+                  "end": 242,
+                  "gainDb": -1,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                },
+                {
+                  "key": "c",
+                  "at": 42,
+                  "source": "s1",
+                  "start": 154,
+                  "end": 187,
+                  "gainDb": -5,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "d",
+                  "at": 75,
+                  "source": "s1",
+                  "start": 129,
+                  "end": 134,
+                  "gainDb": 2,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.insertClips",
+          "track": "t1",
+          "clips": [
+            {
+              "key": "h",
+              "at": 110,
+              "source": "s2",
+              "start": 265,
+              "gainDb": -18,
+              "end": 360,
+              "fadeIn": {
+                "frames": 0,
+                "curve": "linear"
+              },
+              "fadeOut": {
+                "frames": 0,
+                "curve": "equalPower"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": 6,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "",
+            "gainDb": -1,
+            "muted": true,
+            "soloed": true,
+            "clips": [
+              {
+                "key": "a",
+                "at": 0,
+                "source": "s2",
+                "start": 49,
+                "end": 148,
+                "gainDb": -18,
+                "fadeIn": {
+                  "frames": 49,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "h",
+                "at": 110,
+                "source": "s2",
+                "start": 265,
+                "end": 360,
+                "gainDb": -18,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              }
+            ]
+          },
+          {
+            "key": "t2",
+            "name": "",
+            "gainDb": 4,
+            "muted": false,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "b",
+                "at": 0,
+                "source": "s1",
+                "start": 200,
+                "end": 242,
+                "gainDb": -1,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              },
+              {
+                "key": "c",
+                "at": 42,
+                "source": "s1",
+                "start": 154,
+                "end": 187,
+                "gainDb": -5,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "d",
+                "at": 75,
+                "source": "s1",
+                "start": 129,
+                "end": 134,
+                "gainDb": 2,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 96: audio.moveTrack, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": -6,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Music 🎵",
+              "gainDb": -5,
+              "muted": true,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 7,
+                  "source": "s1",
+                  "start": 88,
+                  "end": 159,
+                  "gainDb": 6,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                },
+                {
+                  "key": "b",
+                  "at": 85,
+                  "source": "s2",
+                  "start": 166,
+                  "end": 234,
+                  "gainDb": -7,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "t2",
+              "name": "Voice",
+              "gainDb": 8,
+              "muted": true,
+              "soloed": true,
+              "clips": []
+            },
+            {
+              "key": "t3",
+              "name": "Music 🎵",
+              "gainDb": -10,
+              "muted": false,
+              "soloed": true,
+              "clips": []
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.moveTrack",
+          "key": "t1",
+          "to": 2
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": -6,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t2",
+            "name": "Voice",
+            "gainDb": 8,
+            "muted": true,
+            "soloed": true,
+            "clips": []
+          },
+          {
+            "key": "t3",
+            "name": "Music 🎵",
+            "gainDb": -10,
+            "muted": false,
+            "soloed": true,
+            "clips": []
+          },
+          {
+            "key": "t1",
+            "name": "Music 🎵",
+            "gainDb": -5,
+            "muted": true,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 7,
+                "source": "s1",
+                "start": 88,
+                "end": 159,
+                "gainDb": 6,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              },
+              {
+                "key": "b",
+                "at": 85,
+                "source": "s2",
+                "start": 166,
+                "end": 234,
+                "gainDb": -7,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 97: audio.setFade, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": 0,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Music 🎵",
+              "gainDb": -1,
+              "muted": true,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 7,
+                  "source": "s1",
+                  "start": 250,
+                  "end": 253,
+                  "gainDb": 10,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "b",
+                  "at": 17,
+                  "source": "s2",
+                  "start": 293,
+                  "end": 364,
+                  "gainDb": 7,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "c",
+                  "at": 88,
+                  "source": "s1",
+                  "start": 33,
+                  "end": 118,
+                  "gainDb": 16,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.setFade",
+          "key": "a",
+          "edge": "out",
+          "frames": 2,
+          "curve": "linear"
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": 0,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "Music 🎵",
+            "gainDb": -1,
+            "muted": true,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 7,
+                "source": "s1",
+                "start": 250,
+                "end": 253,
+                "gainDb": 10,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 2,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "b",
+                "at": 17,
+                "source": "s2",
+                "start": 293,
+                "end": 364,
+                "gainDb": 7,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "c",
+                "at": 88,
+                "source": "s1",
+                "start": 33,
+                "end": 118,
+                "gainDb": 16,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 98: audio.moveTrack, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": -1,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Music 🎵",
+              "gainDb": -10,
+              "muted": true,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 7,
+                  "source": "s2",
+                  "start": 298,
+                  "end": 372,
+                  "gainDb": -1,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "t2",
+              "name": "Voice",
+              "gainDb": -12,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "b",
+                  "at": 40,
+                  "source": "s2",
+                  "start": 176,
+                  "end": 262,
+                  "gainDb": -8,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.moveTrack",
+          "key": "t2",
+          "to": 0
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": -1,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t2",
+            "name": "Voice",
+            "gainDb": -12,
+            "muted": false,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "b",
+                "at": 40,
+                "source": "s2",
+                "start": 176,
+                "end": 262,
+                "gainDb": -8,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          },
+          {
+            "key": "t1",
+            "name": "Music 🎵",
+            "gainDb": -10,
+            "muted": true,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 7,
+                "source": "s2",
+                "start": 298,
+                "end": 372,
+                "gainDb": -1,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 99: audio.insertTime, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": -2,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Music 🎵",
+              "gainDb": 1,
+              "muted": false,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 40,
+                  "source": "s1",
+                  "start": 29,
+                  "end": 43,
+                  "gainDb": -15,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "b",
+                  "at": 54,
+                  "source": "s2",
+                  "start": 158,
+                  "end": 223,
+                  "gainDb": -19,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "t2",
+              "name": "Voice",
+              "gainDb": 6,
+              "muted": true,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "c",
+                  "at": 0,
+                  "source": "s1",
+                  "start": 177,
+                  "end": 221,
+                  "gainDb": -11,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "d",
+                  "at": 84,
+                  "source": "s1",
+                  "start": 392,
+                  "end": 435,
+                  "gainDb": -18,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.insertTime",
+          "at": 40,
+          "frames": 2,
+          "tracks": [
+            "t2",
+            "t1"
+          ],
+          "newKeys": {
+            "t2": "f"
+          }
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": -2,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "Music 🎵",
+            "gainDb": 1,
+            "muted": false,
+            "soloed": true,
+            "clips": [
+              {
+                "key": "a",
+                "at": 42,
+                "source": "s1",
+                "start": 29,
+                "end": 43,
+                "gainDb": -15,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "b",
+                "at": 56,
+                "source": "s2",
+                "start": 158,
+                "end": 223,
+                "gainDb": -19,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          },
+          {
+            "key": "t2",
+            "name": "Voice",
+            "gainDb": 6,
+            "muted": true,
+            "soloed": true,
+            "clips": [
+              {
+                "key": "c",
+                "at": 0,
+                "source": "s1",
+                "start": 177,
+                "end": 217,
+                "gainDb": -11,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "f",
+                "at": 42,
+                "source": "s1",
+                "start": 217,
+                "end": 221,
+                "gainDb": -11,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "d",
+                "at": 86,
+                "source": "s1",
+                "start": 392,
+                "end": 435,
+                "gainDb": -18,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 100: audio.addTrack, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": 6,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Music 🎵",
+              "gainDb": 6,
+              "muted": true,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 7,
+                  "source": "s2",
+                  "start": 249,
+                  "end": 306,
+                  "gainDb": -18,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.addTrack",
+          "key": "t2",
+          "index": 1
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": 6,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "Music 🎵",
+            "gainDb": 6,
+            "muted": true,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 7,
+                "source": "s2",
+                "start": 249,
+                "end": 306,
+                "gainDb": -18,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              }
+            ]
+          },
+          {
+            "key": "t2",
+            "name": "",
+            "gainDb": 0,
+            "muted": false,
+            "soloed": false,
+            "clips": []
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 101: audio.deleteRange, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": -2,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "",
+              "gainDb": -9,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 7,
+                  "source": "s1",
+                  "start": 230,
+                  "end": 248,
+                  "gainDb": -13,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "b",
+                  "at": 25,
+                  "source": "s1",
+                  "start": 96,
+                  "end": 135,
+                  "gainDb": 10,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "t2",
+              "name": "",
+              "gainDb": -4,
+              "muted": true,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "c",
+                  "at": 40,
+                  "source": "s2",
+                  "start": 160,
+                  "end": 218,
+                  "gainDb": 17,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "d",
+                  "at": 105,
+                  "source": "s2",
+                  "start": 41,
+                  "end": 60,
+                  "gainDb": 10,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.deleteRange",
+          "start": 1,
+          "end": 113,
+          "tracks": [
+            "t2"
+          ],
+          "ripple": false
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": -2,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "",
+            "gainDb": -9,
+            "muted": false,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 7,
+                "source": "s1",
+                "start": 230,
+                "end": 248,
+                "gainDb": -13,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "b",
+                "at": 25,
+                "source": "s1",
+                "start": 96,
+                "end": 135,
+                "gainDb": 10,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              }
+            ]
+          },
+          {
+            "key": "t2",
+            "name": "",
+            "gainDb": -4,
+            "muted": true,
+            "soloed": true,
+            "clips": [
+              {
+                "key": "d",
+                "at": 113,
+                "source": "s2",
+                "start": 49,
+                "end": 60,
+                "gainDb": 10,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 102: audio.addTrack, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": -5,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Music 🎵",
+              "gainDb": 5,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "s2",
+                  "start": 393,
+                  "end": 428,
+                  "gainDb": 1,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                },
+                {
+                  "key": "b",
+                  "at": 75,
+                  "source": "s1",
+                  "start": 54,
+                  "end": 117,
+                  "gainDb": 19,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.addTrack",
+          "key": "f",
+          "index": 0,
+          "name": ""
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": -5,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "f",
+            "name": "",
+            "gainDb": 0,
+            "muted": false,
+            "soloed": false,
+            "clips": []
+          },
+          {
+            "key": "t1",
+            "name": "Music 🎵",
+            "gainDb": 5,
+            "muted": false,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 0,
+                "source": "s2",
+                "start": 393,
+                "end": 428,
+                "gainDb": 1,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              },
+              {
+                "key": "b",
+                "at": 75,
+                "source": "s1",
+                "start": 54,
+                "end": 117,
+                "gainDb": 19,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 103: audio.splitClip, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": -1,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "",
+              "gainDb": -4,
+              "muted": true,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 40,
+                  "source": "s1",
+                  "start": 113,
+                  "end": 196,
+                  "gainDb": 16,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "t2",
+              "name": "Voice",
+              "gainDb": -4,
+              "muted": false,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "b",
+                  "at": 7,
+                  "source": "s2",
+                  "start": 132,
+                  "end": 169,
+                  "gainDb": 13,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.splitClip",
+          "key": "a",
+          "at": 107,
+          "newKey": "f"
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": -1,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "",
+            "gainDb": -4,
+            "muted": true,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 40,
+                "source": "s1",
+                "start": 113,
+                "end": 180,
+                "gainDb": 16,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "f",
+                "at": 107,
+                "source": "s1",
+                "start": 180,
+                "end": 196,
+                "gainDb": 16,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          },
+          {
+            "key": "t2",
+            "name": "Voice",
+            "gainDb": -4,
+            "muted": false,
+            "soloed": true,
+            "clips": [
+              {
+                "key": "b",
+                "at": 7,
+                "source": "s2",
+                "start": 132,
+                "end": 169,
+                "gainDb": 13,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 104: audio.moveClips, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": -5,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Music 🎵",
+              "gainDb": -8,
+              "muted": true,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 7,
+                  "source": "s1",
+                  "start": 257,
+                  "end": 348,
+                  "gainDb": 19,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                },
+                {
+                  "key": "b",
+                  "at": 138,
+                  "source": "s1",
+                  "start": 235,
+                  "end": 261,
+                  "gainDb": -5,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                },
+                {
+                  "key": "c",
+                  "at": 204,
+                  "source": "s1",
+                  "start": 184,
+                  "end": 205,
+                  "gainDb": 2,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.moveClips",
+          "keys": [
+            "c"
+          ],
+          "by": -97,
+          "track": "t1"
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": -5,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "Music 🎵",
+            "gainDb": -8,
+            "muted": true,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 7,
+                "source": "s1",
+                "start": 257,
+                "end": 348,
+                "gainDb": 19,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              },
+              {
+                "key": "c",
+                "at": 107,
+                "source": "s1",
+                "start": 184,
+                "end": 205,
+                "gainDb": 2,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              },
+              {
+                "key": "b",
+                "at": 138,
+                "source": "s1",
+                "start": 235,
+                "end": 261,
+                "gainDb": -5,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 105: audio.moveClips, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": -4,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "",
+              "gainDb": -5,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 7,
+                  "source": "s1",
+                  "start": 170,
+                  "end": 204,
+                  "gainDb": -6,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                },
+                {
+                  "key": "b",
+                  "at": 41,
+                  "source": "s1",
+                  "start": 194,
+                  "end": 196,
+                  "gainDb": -11,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "t2",
+              "name": "Voice",
+              "gainDb": 12,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "c",
+                  "at": 0,
+                  "source": "s1",
+                  "start": 366,
+                  "end": 410,
+                  "gainDb": -15,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                },
+                {
+                  "key": "d",
+                  "at": 44,
+                  "source": "s2",
+                  "start": 254,
+                  "end": 318,
+                  "gainDb": 12,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "t3",
+              "name": "Voice",
+              "gainDb": -9,
+              "muted": true,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "e",
+                  "at": 7,
+                  "source": "s1",
+                  "start": 345,
+                  "end": 418,
+                  "gainDb": 19,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "f",
+                  "at": 80,
+                  "source": "s2",
+                  "start": 25,
+                  "end": 52,
+                  "gainDb": -18,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "g",
+                  "at": 114,
+                  "source": "s1",
+                  "start": 102,
+                  "end": 182,
+                  "gainDb": -14,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.moveClips",
+          "keys": [
+            "e",
+            "b"
+          ],
+          "by": 292
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": -4,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "",
+            "gainDb": -5,
+            "muted": false,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 7,
+                "source": "s1",
+                "start": 170,
+                "end": 204,
+                "gainDb": -6,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              },
+              {
+                "key": "b",
+                "at": 333,
+                "source": "s1",
+                "start": 194,
+                "end": 196,
+                "gainDb": -11,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              }
+            ]
+          },
+          {
+            "key": "t2",
+            "name": "Voice",
+            "gainDb": 12,
+            "muted": false,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "c",
+                "at": 0,
+                "source": "s1",
+                "start": 366,
+                "end": 410,
+                "gainDb": -15,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              },
+              {
+                "key": "d",
+                "at": 44,
+                "source": "s2",
+                "start": 254,
+                "end": 318,
+                "gainDb": 12,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          },
+          {
+            "key": "t3",
+            "name": "Voice",
+            "gainDb": -9,
+            "muted": true,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "f",
+                "at": 80,
+                "source": "s2",
+                "start": 25,
+                "end": 52,
+                "gainDb": -18,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "g",
+                "at": 114,
+                "source": "s1",
+                "start": 102,
+                "end": 182,
+                "gainDb": -14,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              },
+              {
+                "key": "e",
+                "at": 299,
+                "source": "s1",
+                "start": 345,
+                "end": 418,
+                "gainDb": 19,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 106: audio.trimClip, refused, clips-out-of-order",
       "input": {
         "plan": {
           "format": "hm-audio-plan",
@@ -22092,7 +24512,1147 @@
       }
     },
     {
-      "name": "generated 94: audio.trimClip, refused, clip-outside-source",
+      "name": "generated 107: audio.addTrack, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": 2,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Voice",
+              "gainDb": -7,
+              "muted": false,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "s2",
+                  "start": 49,
+                  "end": 141,
+                  "gainDb": 6,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                },
+                {
+                  "key": "b",
+                  "at": 92,
+                  "source": "s1",
+                  "start": 333,
+                  "end": 376,
+                  "gainDb": 4,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "c",
+                  "at": 135,
+                  "source": "s2",
+                  "start": 155,
+                  "end": 171,
+                  "gainDb": -15,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "t2",
+              "name": "Voice",
+              "gainDb": 11,
+              "muted": false,
+              "soloed": true,
+              "clips": []
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.addTrack",
+          "key": "g",
+          "index": 0,
+          "name": ""
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": 2,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "g",
+            "name": "",
+            "gainDb": 0,
+            "muted": false,
+            "soloed": false,
+            "clips": []
+          },
+          {
+            "key": "t1",
+            "name": "Voice",
+            "gainDb": -7,
+            "muted": false,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 0,
+                "source": "s2",
+                "start": 49,
+                "end": 141,
+                "gainDb": 6,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              },
+              {
+                "key": "b",
+                "at": 92,
+                "source": "s1",
+                "start": 333,
+                "end": 376,
+                "gainDb": 4,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "c",
+                "at": 135,
+                "source": "s2",
+                "start": 155,
+                "end": 171,
+                "gainDb": -15,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          },
+          {
+            "key": "t2",
+            "name": "Voice",
+            "gainDb": 11,
+            "muted": false,
+            "soloed": true,
+            "clips": []
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 108: audio.insertTime, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": -5,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Voice",
+              "gainDb": 2,
+              "muted": true,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "s1",
+                  "start": 325,
+                  "end": 400,
+                  "gainDb": 1,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.insertTime",
+          "at": 3,
+          "frames": 24,
+          "tracks": [
+            "t1"
+          ],
+          "newKeys": {
+            "t1": "b"
+          }
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": -5,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "Voice",
+            "gainDb": 2,
+            "muted": true,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 0,
+                "source": "s1",
+                "start": 325,
+                "end": 328,
+                "gainDb": 1,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "b",
+                "at": 27,
+                "source": "s1",
+                "start": 328,
+                "end": 400,
+                "gainDb": 1,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 109: audio.moveClips, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": 3,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "",
+              "gainDb": -3,
+              "muted": true,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "s1",
+                  "start": 39,
+                  "end": 102,
+                  "gainDb": 13,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.moveClips",
+          "keys": [
+            "a"
+          ],
+          "by": 49,
+          "track": "t1"
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": 3,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "",
+            "gainDb": -3,
+            "muted": true,
+            "soloed": true,
+            "clips": [
+              {
+                "key": "a",
+                "at": 49,
+                "source": "s1",
+                "start": 39,
+                "end": 102,
+                "gainDb": 13,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 110: audio.insertTime, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": -1,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "",
+              "gainDb": 4,
+              "muted": true,
+              "soloed": true,
+              "clips": []
+            },
+            {
+              "key": "t2",
+              "name": "",
+              "gainDb": 11,
+              "muted": false,
+              "soloed": false,
+              "clips": []
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.insertTime",
+          "at": 0,
+          "frames": 4,
+          "tracks": [
+            "t1",
+            "t2"
+          ],
+          "newKeys": {}
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": -1,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "",
+            "gainDb": 4,
+            "muted": true,
+            "soloed": true,
+            "clips": []
+          },
+          {
+            "key": "t2",
+            "name": "",
+            "gainDb": 11,
+            "muted": false,
+            "soloed": false,
+            "clips": []
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 111: audio.splitClip, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": 4,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Voice",
+              "gainDb": 5,
+              "muted": true,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "s1",
+                  "start": 214,
+                  "end": 297,
+                  "gainDb": 15,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                },
+                {
+                  "key": "b",
+                  "at": 83,
+                  "source": "s1",
+                  "start": 293,
+                  "end": 391,
+                  "gainDb": -12,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "c",
+                  "at": 181,
+                  "source": "s2",
+                  "start": 158,
+                  "end": 227,
+                  "gainDb": -18,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.splitClip",
+          "key": "b",
+          "at": 180,
+          "newKey": "t2"
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": 4,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "Voice",
+            "gainDb": 5,
+            "muted": true,
+            "soloed": true,
+            "clips": [
+              {
+                "key": "a",
+                "at": 0,
+                "source": "s1",
+                "start": 214,
+                "end": 297,
+                "gainDb": 15,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              },
+              {
+                "key": "b",
+                "at": 83,
+                "source": "s1",
+                "start": 293,
+                "end": 390,
+                "gainDb": -12,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "t2",
+                "at": 180,
+                "source": "s1",
+                "start": 390,
+                "end": 391,
+                "gainDb": -12,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "c",
+                "at": 181,
+                "source": "s2",
+                "start": 158,
+                "end": 227,
+                "gainDb": -18,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 112: audio.insertTime, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": 4,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "Music 🎵",
+              "gainDb": 11,
+              "muted": true,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 0,
+                  "source": "s1",
+                  "start": 121,
+                  "end": 219,
+                  "gainDb": -20,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "b",
+                  "at": 98,
+                  "source": "s2",
+                  "start": 162,
+                  "end": 169,
+                  "gainDb": 8,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "c",
+                  "at": 145,
+                  "source": "s1",
+                  "start": 278,
+                  "end": 295,
+                  "gainDb": -7,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            },
+            {
+              "key": "t2",
+              "name": "Voice",
+              "gainDb": -11,
+              "muted": true,
+              "soloed": true,
+              "clips": [
+                {
+                  "key": "d",
+                  "at": 40,
+                  "source": "s1",
+                  "start": 125,
+                  "end": 199,
+                  "gainDb": 9,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "e",
+                  "at": 114,
+                  "source": "s1",
+                  "start": 115,
+                  "end": 199,
+                  "gainDb": -20,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                },
+                {
+                  "key": "f",
+                  "at": 198,
+                  "source": "s1",
+                  "start": 255,
+                  "end": 256,
+                  "gainDb": 11,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "linear"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.insertTime",
+          "at": 125,
+          "frames": 7,
+          "tracks": [
+            "t2",
+            "t1"
+          ],
+          "newKeys": {
+            "t2": "g"
+          }
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": 4,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "Music 🎵",
+            "gainDb": 11,
+            "muted": true,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 0,
+                "source": "s1",
+                "start": 121,
+                "end": 219,
+                "gainDb": -20,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "b",
+                "at": 98,
+                "source": "s2",
+                "start": 162,
+                "end": 169,
+                "gainDb": 8,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "c",
+                "at": 152,
+                "source": "s1",
+                "start": 278,
+                "end": 295,
+                "gainDb": -7,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          },
+          {
+            "key": "t2",
+            "name": "Voice",
+            "gainDb": -11,
+            "muted": true,
+            "soloed": true,
+            "clips": [
+              {
+                "key": "d",
+                "at": 40,
+                "source": "s1",
+                "start": 125,
+                "end": 199,
+                "gainDb": 9,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "e",
+                "at": 114,
+                "source": "s1",
+                "start": 115,
+                "end": 126,
+                "gainDb": -20,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "g",
+                "at": 132,
+                "source": "s1",
+                "start": 126,
+                "end": 199,
+                "gainDb": -20,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              },
+              {
+                "key": "f",
+                "at": 205,
+                "source": "s1",
+                "start": 255,
+                "end": 256,
+                "gainDb": 11,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "linear"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 113: audio.trimClip, applied",
+      "input": {
+        "plan": {
+          "format": "hm-audio-plan",
+          "version": 2,
+          "sampleRate": 48000,
+          "channels": 2,
+          "gainDb": -1,
+          "sources": {
+            "s1": {
+              "frames": 1000
+            },
+            "s2": {
+              "frames": 500
+            }
+          },
+          "tracks": [
+            {
+              "key": "t1",
+              "name": "",
+              "gainDb": 5,
+              "muted": true,
+              "soloed": false,
+              "clips": [
+                {
+                  "key": "a",
+                  "at": 40,
+                  "source": "s1",
+                  "start": 210,
+                  "end": 276,
+                  "gainDb": 0,
+                  "fadeIn": {
+                    "frames": 0,
+                    "curve": "equalPower"
+                  },
+                  "fadeOut": {
+                    "frames": 0,
+                    "curve": "linear"
+                  }
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "title": "",
+            "artist": "",
+            "album": "",
+            "year": "",
+            "comment": ""
+          }
+        },
+        "command": {
+          "type": "audio.trimClip",
+          "key": "a",
+          "start": 172,
+          "end": 593
+        }
+      },
+      "expected": {
+        "format": "hm-audio-plan",
+        "version": 2,
+        "sampleRate": 48000,
+        "channels": 2,
+        "gainDb": -1,
+        "sources": {
+          "s1": {
+            "frames": 1000
+          },
+          "s2": {
+            "frames": 500
+          }
+        },
+        "tracks": [
+          {
+            "key": "t1",
+            "name": "",
+            "gainDb": 5,
+            "muted": true,
+            "soloed": false,
+            "clips": [
+              {
+                "key": "a",
+                "at": 2,
+                "source": "s1",
+                "start": 172,
+                "end": 593,
+                "gainDb": 0,
+                "fadeIn": {
+                  "frames": 0,
+                  "curve": "equalPower"
+                },
+                "fadeOut": {
+                  "frames": 0,
+                  "curve": "linear"
+                }
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "title": "",
+          "artist": "",
+          "album": "",
+          "year": "",
+          "comment": ""
+        }
+      }
+    },
+    {
+      "name": "generated 114: audio.trimClip, refused, clip-outside-source",
       "input": {
         "plan": {
           "format": "hm-audio-plan",
@@ -22255,7 +25815,7 @@
       }
     },
     {
-      "name": "generated 95: audio.trimClip, refused, clips-out-of-order",
+      "name": "generated 115: audio.trimClip, refused, clips-out-of-order",
       "input": {
         "plan": {
           "format": "hm-audio-plan",
@@ -22378,7 +25938,7 @@
       }
     },
     {
-      "name": "generated 96: audio.trimClip, refused, clip-outside-source",
+      "name": "generated 116: audio.trimClip, refused, clip-outside-source",
       "input": {
         "plan": {
           "format": "hm-audio-plan",

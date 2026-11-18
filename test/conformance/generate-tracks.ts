@@ -20,7 +20,7 @@ import { applyToTracks, migrateAndApply, readAndWriteTracks } from "./run-tracks
  */
 
 const SEED = 6;
-const GENERATED_APPLIED = 60;
+const GENERATED_APPLIED = 80;
 const GENERATED_PER_REFUSAL = 2;
 /** The most generated cases that apply, of any one command. */
 const GENERATED_PER_COMMAND = 6;
@@ -379,7 +379,7 @@ export function trackCommandCases(): ConformanceFile {
   const samples = fc
     .sample(
       trackPlanArb.chain((state) => fc.tuple(fc.constant(state), trackCommandFor(state))),
-      { seed: SEED, numRuns: 1_500 },
+      { seed: SEED, numRuns: 3_000 },
     )
     .map(([state, command]) => ({
       input: { plan: toTrackPlanDocument(state, sources), command },
@@ -552,7 +552,7 @@ export function migrationCases(): ConformanceFile {
   const samples = fc
     .sample(
       planArb.chain((state) => fc.tuple(fc.constant(state), commandFor(state))),
-      { seed: SEED, numRuns: 800 },
+      { seed: SEED, numRuns: 2_000 },
     )
     .map(([state, command]) => ({
       input: { plan: toAudioPlanDocument(state, sources), command },

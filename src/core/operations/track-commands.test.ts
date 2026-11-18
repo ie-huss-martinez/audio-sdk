@@ -20,6 +20,15 @@ const reduce = createTrackPlanReducer((id) =>
   Object.hasOwn(SOURCES, id) ? SOURCES[id] : undefined,
 );
 
+/**
+ * Timeouts for the property tests, which run thousands of cases. Measured
+ * with the designed run counts on a 12-core machine: alone, and with the
+ * whole unit suite running three times at once, which is busier than CI
+ * and slows them about tenfold. Each timeout is over twice its busy time.
+ * The run counts aren't lowered to fit a timeout.
+ */
+const SLOW = 120_000;
+
 const clip = (
   key: string,
   at: number,
@@ -486,48 +495,58 @@ describe("the reducer", () => {
     );
   });
 
-  it("keeps every plan valid, and undoes every command exactly", () => {
-    fc.assert(
-      fc.property(
-        trackPlanArb.chain((state) => fc.tuple(fc.constant(state), trackCommandFor(state))),
-        ([state, command]) => {
-          expectValid(state);
-          const before = structuredClone(state);
-          let applied = true;
-          try {
-            roundTrip(state, command);
-          } catch (error) {
-            if (!isAudioError(error, "INVALID_COMMAND")) throw error;
-            applied = false;
-          }
-          // Applied or refused, the plan it was given is untouched.
-          expect(state).toEqual(before);
-          return applied || true;
-        },
-      ),
-      { numRuns: 500 },
-    );
-  });
+  it(
+    "keeps every plan valid, and undoes every command exactly",
+    () => {
+      fc.assert(
+        fc.property(
+          trackPlanArb.chain((state) => fc.tuple(fc.constant(state), trackCommandFor(state))),
+          ([state, command]) => {
+            expectValid(state);
+            const before = structuredClone(state);
+            let applied = true;
+            try {
+              roundTrip(state, command);
+            } catch (error) {
+              if (!isAudioError(error, "INVALID_COMMAND")) throw error;
+              applied = false;
+            }
+            // Applied or refused, the plan it was given is untouched.
+            expect(state).toEqual(before);
+            return applied || true;
+          },
+        ),
+        { numRuns: 3_000 },
+      );
+      // 4.3 s alone, 47 s busy.
+    },
+    SLOW,
+  );
 
-  it("applies most generated commands, so the property isn't vacuous", () => {
-    let applied = 0;
-    const kinds = new Set<string>();
-    fc.assert(
-      fc.property(
-        trackPlanArb.chain((state) => fc.tuple(fc.constant(state), trackCommandFor(state))),
-        ([state, command]) => {
-          try {
-            reduce(state, command);
-            applied += 1;
-            kinds.add(command.type);
-          } catch {
-            // Refused: counted by its absence.
-          }
-        },
-      ),
-      { numRuns: 1_500, seed: 6 },
-    );
-    expect(applied).toBeGreaterThan(300);
-    expect(kinds.size).toBe(16);
-  });
+  it(
+    "applies most generated commands, so the property isn't vacuous",
+    () => {
+      let applied = 0;
+      const kinds = new Set<string>();
+      fc.assert(
+        fc.property(
+          trackPlanArb.chain((state) => fc.tuple(fc.constant(state), trackCommandFor(state))),
+          ([state, command]) => {
+            try {
+              reduce(state, command);
+              applied += 1;
+              kinds.add(command.type);
+            } catch {
+              // Refused: counted by its absence.
+            }
+          },
+        ),
+        { numRuns: 3_000, seed: 6 },
+      );
+      expect(applied).toBeGreaterThan(600);
+      expect(kinds.size).toBe(16);
+      // 1.2 s alone, 11 s busy.
+    },
+    SLOW / 2,
+  );
 });

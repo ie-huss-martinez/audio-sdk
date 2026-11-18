@@ -23,37 +23,52 @@ const COMMANDS = new URL("../../conformance/hm-audio-commands-2.json", import.me
 const PLANS = new URL("../../conformance/hm-audio-plan-2.json", import.meta.url);
 const MIGRATIONS = new URL("../../conformance/hm-audio-command-migration.json", import.meta.url);
 
+/**
+ * Timeouts for the property tests, which run thousands of cases. Measured
+ * with the designed run counts on a 12-core machine: alone, and with the
+ * whole unit suite running three times at once, which is busier than CI
+ * and slows them about tenfold. Each timeout is over twice its busy time.
+ * The run counts aren't lowered to fit a timeout.
+ */
+const SLOW = 120_000;
+
 const text = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 
-it("keeps the checked-in cases up to date with their generator", async () => {
-  // `pnpm conformance:update` rewrites them.
-  await expect(text(trackPlanCases())).toMatchFileSnapshot(
-    "../../conformance/hm-audio-plan-2.json",
-  );
-  await expect(text(trackCommandCases())).toMatchFileSnapshot(
-    "../../conformance/hm-audio-commands-2.json",
-  );
-  await expect(text(migrationCases())).toMatchFileSnapshot(
-    "../../conformance/hm-audio-command-migration.json",
-  );
-  // Generating samples a few thousand commands, which is slow beside the other suites.
-}, 30_000);
+it(
+  "keeps the checked-in cases up to date with their generator",
+  async () => {
+    // `pnpm conformance:update` rewrites them.
+    await expect(text(trackPlanCases())).toMatchFileSnapshot(
+      "../../conformance/hm-audio-plan-2.json",
+    );
+    await expect(text(trackCommandCases())).toMatchFileSnapshot(
+      "../../conformance/hm-audio-commands-2.json",
+    );
+    await expect(text(migrationCases())).toMatchFileSnapshot(
+      "../../conformance/hm-audio-command-migration.json",
+    );
+    // Generating samples five thousand commands: 4.0 s alone, 40 s busy.
+  },
+  SLOW,
+);
 
 describeConformance(PLANS, readAndWriteTracks);
 describeConformance(COMMANDS, applyToTracks);
 describeConformance(MIGRATIONS, migrateAndApply);
 
+// Version 2's schemas stay out of the published `formats/` until the package
+// reads and writes version 2 (docs/formats/hm-audio-plan.md).
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 const schema = (path: string) =>
-  JSON.parse(readFileSync(new URL(`../../formats/${path}`, import.meta.url), "utf8")) as object;
+  JSON.parse(readFileSync(new URL(`../../${path}`, import.meta.url), "utf8")) as object;
 const ID = "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan";
-ajv.addSchema(schema("hm-audio-plan/v1.schema.json"));
-ajv.addSchema(schema("hm-audio-plan/v2.schema.json"));
+ajv.addSchema(schema("formats/hm-audio-plan/v1.schema.json"));
+ajv.addSchema(schema("conformance/formats/hm-audio-plan/v2.schema.json"));
 const valid = (id: string) => ajv.getSchema(id) as (value: unknown) => boolean;
 const planV1Valid = valid(`${ID}/v1.schema.json`);
 const planValid = valid(`${ID}/v2.schema.json`);
-const commandValid = ajv.compile(schema("hm-audio-command/v2.schema.json"));
-const commandV1Valid = ajv.compile(schema("hm-audio-command/v1.schema.json"));
+const commandValid = ajv.compile(schema("conformance/formats/hm-audio-command/v2.schema.json"));
+const commandV1Valid = ajv.compile(schema("formats/hm-audio-command/v1.schema.json"));
 
 /**
  * Refusals the schemas express themselves. The others depend on the plan,
@@ -139,61 +154,71 @@ describe("version 2's schemas agree with the readers", () => {
     Object.entries(SOURCES).map(([id, frames]) => [id, { frames }]),
   );
 
-  it("never let the reducer apply a command the schema refuses", () => {
-    fc.assert(
-      fc.property(
-        trackPlanArb.chain((state) =>
-          fc.tuple(
-            fc.constant(state),
-            fc.oneof(trackCommandFor(state), mutated(trackCommandFor(state))),
+  it(
+    "never let the reducer apply a command the schema refuses",
+    () => {
+      fc.assert(
+        fc.property(
+          trackPlanArb.chain((state) =>
+            fc.tuple(
+              fc.constant(state),
+              fc.oneof(trackCommandFor(state), mutated(trackCommandFor(state))),
+            ),
           ),
+          ([state, command]) => {
+            const plan = toTrackPlanDocument(state, sources);
+            let applied = true;
+            try {
+              applyToTracks({ plan, command });
+            } catch {
+              applied = false;
+            }
+            if (applied) expect(commandValid(command)).toBe(true);
+          },
         ),
-        ([state, command]) => {
-          const plan = toTrackPlanDocument(state, sources);
-          let applied = true;
-          try {
-            applyToTracks({ plan, command });
-          } catch {
-            applied = false;
-          }
-          if (applied) expect(commandValid(command)).toBe(true);
-        },
-      ),
-      { numRuns: 500 },
-    );
-  });
+        { numRuns: 3_000 },
+      );
+      // 2.6 s alone, 16 s busy.
+    },
+    SLOW / 2,
+  );
 
-  it("never let the reader accept a document the schema refuses", () => {
-    const document = trackPlanArb.map((state) => toTrackPlanDocument(state, sources));
-    /** One of the first track's fields, or its first clip's, replaced. */
-    const deeper = fc
-      .tuple(document, fc.jsonValue({ maxDepth: 1 }), fc.string(), fc.boolean())
-      .map(([value, replacement, name, inClip]) => {
-        const copy = JSON.parse(JSON.stringify(value)) as { tracks: Record<string, unknown>[] };
-        const [first] = copy.tracks;
-        const [clip] = (first?.["clips"] ?? []) as Record<string, unknown>[];
-        const target = inClip && clip ? clip : first;
-        if (target) {
-          Object.defineProperty(target, name, {
-            value: replacement,
-            enumerable: true,
-            writable: true,
-            configurable: true,
-          });
-        }
-        return copy;
-      });
-    fc.assert(
-      fc.property(fc.oneof(mutated(document), deeper), (value) => {
-        let accepted = true;
-        try {
-          readAndWriteTracks(value);
-        } catch {
-          accepted = false;
-        }
-        if (accepted) expect(planValid(value)).toBe(true);
-      }),
-      { numRuns: 500 },
-    );
-  });
+  it(
+    "never let the reader accept a document the schema refuses",
+    () => {
+      const document = trackPlanArb.map((state) => toTrackPlanDocument(state, sources));
+      /** One of the first track's fields, or its first clip's, replaced. */
+      const deeper = fc
+        .tuple(document, fc.jsonValue({ maxDepth: 1 }), fc.string(), fc.boolean())
+        .map(([value, replacement, name, inClip]) => {
+          const copy = JSON.parse(JSON.stringify(value)) as { tracks: Record<string, unknown>[] };
+          const [first] = copy.tracks;
+          const [clip] = (first?.["clips"] ?? []) as Record<string, unknown>[];
+          const target = inClip && clip ? clip : first;
+          if (target) {
+            Object.defineProperty(target, name, {
+              value: replacement,
+              enumerable: true,
+              writable: true,
+              configurable: true,
+            });
+          }
+          return copy;
+        });
+      fc.assert(
+        fc.property(fc.oneof(mutated(document), deeper), (value) => {
+          let accepted = true;
+          try {
+            readAndWriteTracks(value);
+          } catch {
+            accepted = false;
+          }
+          if (accepted) expect(planValid(value)).toBe(true);
+        }),
+        { numRuns: 3_000 },
+      );
+      // 1.1 s alone, 2.1 s busy.
+    },
+    SLOW / 4,
+  );
 });

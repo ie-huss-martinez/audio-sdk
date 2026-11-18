@@ -33,7 +33,7 @@ import {
 export const AUDIO_TRACK_PLAN_VERSION = 2;
 
 /**
- * `hm-audio-plan` version 2, which `formats/hm-audio-plan/v2.schema.json`
+ * `hm-audio-plan` version 2, which the schema of that version
  * describes.
  *
  * @internal
