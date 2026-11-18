@@ -1,11 +1,14 @@
-import type { ShortcutPart } from "@hussmartinez/sdk-core";
+import { isSdkError, type ShortcutPart } from "@hussmartinez/sdk-core";
 import { useAnnounce, usePlatform } from "@hussmartinez/ui/react";
 import { useCallback, useMemo } from "react";
+import { formatTimecode } from "../core/model/time.js";
+import type { AudioCommandRejection } from "../core/operations/commands.js";
+import { findClip } from "../features/clips/clips.js";
 import type {
   AudioToolAnnouncement,
   AudioToolContext,
   AudioToolState,
-} from "../features/tools/tools.js";
+} from "../features/tools/types.js";
 import { useAudioEditorContext, useAudioOutput, useAudioSession } from "./context.js";
 import { trackName } from "./names.js";
 
@@ -21,6 +24,8 @@ export interface AudioTools {
   readonly flags: ReadonlyMap<string, ToolFlags>;
   /** Runs a tool, if it's present and enabled now. Returns whether it ran. */
   run(id: string): boolean;
+  /** The context tools run with, for the timeline's drags and keys, which edit as tools do. */
+  context(): AudioToolContext;
   /** A tool's shortcuts, for `aria-keyshortcuts`. */
   ariaKeyShortcuts(id: string): string | undefined;
   /** A tool's label with its first shortcut, such as "Undo (Ctrl+Z)", for its tooltip. */
@@ -36,17 +41,18 @@ export interface AudioTools {
  */
 export function useAudioTools(): AudioTools {
   const editor = useAudioEditorContext();
-  const { messages, tools, shortcuts, zoom, maxZoom, setZoom, currentTrack } = editor;
+  const { messages, tools, shortcuts, zoom, maxZoom, setZoom, currentTrack, selectedClip } = editor;
   const { session, snapshot } = useAudioSession();
   const { output, snapshot: playback } = useAudioOutput();
   const announce = useAnnounce();
   const platform = usePlatform();
 
-  const { plan } = snapshot;
+  const { plan, sources } = snapshot;
   const state = useMemo<AudioToolState>(
     () => ({
       plan,
       track: plan?.tracks.find((track) => track.key === currentTrack) ?? plan?.tracks[0],
+      clip: plan && selectedClip !== undefined ? findClip(plan, selectedClip) : undefined,
       playing: playback.state === "playing",
       canUndo: snapshot.canUndo,
       canRedo: snapshot.canRedo,
@@ -54,7 +60,7 @@ export function useAudioTools(): AudioTools {
       zoom,
       maxZoom,
     }),
-    [plan, currentTrack, playback, snapshot, zoom, maxZoom],
+    [plan, currentTrack, selectedClip, playback, snapshot, zoom, maxZoom],
   );
   const flags = useMemo(
     () =>
@@ -67,46 +73,69 @@ export function useAudioTools(): AudioTools {
     [tools, state],
   );
 
+  const context = useCallback((): AudioToolContext => {
+    const frames = new Map(sources.map((source) => [source.id, source.frames]));
+    const say = (message: AudioToolAnnouncement) => {
+      const index = message.track && plan ? plan.tracks.indexOf(message.track) : 0;
+      const rate = plan?.sampleRate ?? 1;
+      announce(
+        // Each message uses the parameters it names, and ignores the rest.
+        messages.t(
+          message.key as "announce.trimmed",
+          {
+            track: message.track ? trackName(messages, message.track, index) : "",
+            time: message.frame === undefined ? "" : formatTimecode(message.frame, rate),
+            end: message.end === undefined ? "" : formatTimecode(message.end, rate),
+          } as { time: string; end: string },
+        ),
+      );
+    };
+    return {
+      state,
+      execute: (commands) => {
+        try {
+          session.execute(commands);
+          return undefined;
+        } catch (error) {
+          // A refused edit leaves the plan as it was; the tool says so.
+          if (isSdkError(error) && error.code === "INVALID_COMMAND") {
+            const reason = (error.details as { reason?: AudioCommandRejection } | undefined)
+              ?.reason;
+            return reason ?? "failed";
+          }
+          return "failed";
+        }
+      },
+      undo: () => session.undo(),
+      redo: () => session.redo(),
+      // A blocked play is the transport's to explain, by its button.
+      play: () => void output.play().catch(() => {}),
+      pause: () => output.pause(),
+      seek: (frame) => output.seek(frame),
+      playhead: () => output.position(),
+      sourceFrames: (source) => frames.get(source) ?? 0,
+      setZoom,
+      chooseFile: (purpose) => editor.fileChooser.current?.(purpose),
+      newKey: () => session.createKey(),
+      focusTrack: (key) => {
+        editor.pendingFocus.current = key;
+      },
+      focusClip: (key) => {
+        editor.pendingClipFocus.current = key;
+        editor.setSelectedClip(key);
+      },
+      announce: say,
+    };
+  }, [state, plan, sources, session, output, setZoom, editor, announce, messages]);
+
   const run = useCallback(
     (id: string) => {
       const tool = tools.get(id);
       if (!tool || (tool.isEnabled && !tool.isEnabled(state))) return false;
-      const say = (message: AudioToolAnnouncement) => {
-        if ("track" in message) {
-          const index = plan?.tracks.indexOf(message.track) ?? 0;
-          announce(messages.t(message.key, { track: trackName(messages, message.track, index) }));
-        } else {
-          announce(messages.t(message.key));
-        }
-      };
-      const context: AudioToolContext = {
-        state,
-        execute: (commands) => {
-          try {
-            session.execute(commands);
-          } catch {
-            // A refused edit is shown by its error's text where the editor
-            // shows errors; the plan is as it was.
-          }
-        },
-        undo: () => session.undo(),
-        redo: () => session.redo(),
-        // A blocked play is the transport's to explain, by its button.
-        play: () => void output.play().catch(() => {}),
-        pause: () => output.pause(),
-        seek: (frame) => output.seek(frame),
-        setZoom,
-        chooseFile: (purpose) => editor.fileChooser.current?.(purpose),
-        newKey: () => session.createKey(),
-        focusTrack: (key) => {
-          editor.pendingFocus.current = key;
-        },
-        announce: say,
-      };
-      void tool.run(context);
+      void tool.run(context());
       return true;
     },
-    [tools, state, plan, session, output, setZoom, editor, announce, messages],
+    [tools, state, context],
   );
 
   const describe = useCallback(
@@ -122,6 +151,7 @@ export function useAudioTools(): AudioTools {
     () => ({
       flags,
       run,
+      context,
       ariaKeyShortcuts: (id: string) => shortcuts.ariaKeyShortcuts(id),
       labelWithKeys: (id: string) => {
         const tool = tools.get(id);
@@ -130,6 +160,6 @@ export function useAudioTools(): AudioTools {
         return first ? messages.t("toolbar.withKeys", { label, keys: describe(first) }) : label;
       },
     }),
-    [flags, run, shortcuts, tools, messages, describe],
+    [flags, run, context, shortcuts, tools, messages, describe],
   );
 }

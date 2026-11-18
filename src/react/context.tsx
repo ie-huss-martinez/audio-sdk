@@ -123,6 +123,8 @@ interface EditorContext {
    * added, and how its header says it has.
    */
   readonly pendingFocus: RefObject<string | undefined>;
+  /** A clip that takes focus when the timeline next renders, as after a split. */
+  readonly pendingClipFocus: RefObject<string | undefined>;
   /** The present tools, and the toolbar's groups of them. */
   readonly tools: ToolRegistry<AudioTool>;
   /** The present tools' shortcuts, for this platform. */
@@ -275,6 +277,7 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
   const [currentTrack, setCurrentTrack] = useState<string>();
   const [renaming, setRenaming] = useState<string>();
   const pendingFocus = useRef<string | undefined>(undefined);
+  const pendingClipFocus = useRef<string | undefined>(undefined);
   const fileChooser = useRef<((purpose: "open" | "insert") => void) | null>(null);
 
   // The registries, from the tools and toolbar props, as plain data.
@@ -316,6 +319,7 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
       currentTrack,
       setCurrentTrack,
       pendingFocus,
+      pendingClipFocus,
       tools,
       shortcuts,
       fileChooser,

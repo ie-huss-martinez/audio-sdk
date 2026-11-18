@@ -1,54 +1,13 @@
 import axe from "axe-core";
-import { act, createRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
-import { wavFile } from "../../test/fixtures/pcm-files.js";
-import { cleanUp, mount, waitFor } from "../../test/react.js";
-import { sessionEvents } from "../../test/session-events.js";
-import type { AudioPlan } from "../core/model/plan.js";
-import { AudioEditor, type AudioEditorHandle } from "./AudioEditor.js";
+import { disabled, editor, recording, step } from "../../test/editor.js";
+import { cleanUp, waitFor } from "../../test/react.js";
 
 afterEach(async () => {
   await cleanUp();
   await new Promise((resolve) => setTimeout(resolve, 0));
 });
-
-/** A tone at 8 kHz, as a WAV file. */
-function recording(name = "take.wav", seconds = 1): File {
-  const samples = Array.from({ length: 8_000 * seconds }, (_, i) => Math.sin(i / 9) * 0.25);
-  return new File([wavFile([samples])], name, { type: "audio/wav" });
-}
-
-async function step(run: () => unknown): Promise<void> {
-  await act(async () => {
-    await run();
-  });
-}
-
-/** An editor with these recordings open, each on a track of its own, and its latest plan. */
-async function editor(...files: File[]) {
-  const events = sessionEvents();
-  const ref = createRef<AudioEditorHandle>();
-  const latest: { plan?: AudioPlan } = {};
-  const container = await mount(
-    <AudioEditor ref={ref} onEvent={events.onEvent} onChange={(plan) => (latest.plan = plan)} />,
-    "width: 900px; height: 600px; display: grid; grid-template-rows: minmax(0, 1fr);",
-  );
-  const [first, ...rest] = files;
-  if (first) await step(() => ref.current?.open(first));
-  for (const file of rest) await step(() => ref.current?.insert(file));
-  const plan = () => latest.plan as AudioPlan;
-  const button = (label: string) =>
-    container.querySelector<HTMLButtonElement>(
-      `button[aria-label="${label}"]`,
-    ) as HTMLButtonElement;
-  const tool = (id: string) =>
-    container.querySelector<HTMLButtonElement>(`[data-hm-tool="${id}"]`) as HTMLButtonElement;
-  const lanes = () => [...container.querySelectorAll("[data-hm-silent], .hm-timeline-lane")].length;
-  return { container, events, ref, plan, button, tool, lanes };
-}
-
-const disabled = (element: Element) => element.getAttribute("aria-disabled") === "true";
 
 describe("the toolbar", () => {
   it("has the tools in groups, with their keys, and each one's state", async () => {
@@ -58,7 +17,7 @@ describe("the toolbar", () => {
       [...toolbar.querySelectorAll('[role="group"]')].map((group) =>
         group.getAttribute("aria-label"),
       ),
-    ).toEqual(["File", "History", "Tracks", "Zoom"]);
+    ).toEqual(["File", "History", "Tracks", "Clip", "Zoom"]);
     expect(tool("audio.undo").getAttribute("aria-keyshortcuts")).toMatch(/Z/);
     expect(tool("audio.zoom-in").getAttribute("title")).toBe("Zoom in (+)");
     // Nothing to undo yet, and one track can't be removed.

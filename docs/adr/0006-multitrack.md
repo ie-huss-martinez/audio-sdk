@@ -12,7 +12,7 @@
 - **Amended:** 2026-11-18, with the playhead and text points from #54 as built: the output notifies when the playhead jumps, and two text helpers stand in for sdk-core until it looks texts up by reason.
 - **Amended:** 2026-11-18, with the first editor step: a clip moves by its title strip only (`ui`'s `moveHandle="title"`), and the provider as built.
 - **Amended:** 2026-11-18, with the timeline as built (step 11).
-- **Amended:** 2026-11-18, with the track tools as built (step 12).
+- **Amended:** 2026-11-18, with the track tools as built (step 12), and the clip tools (step 13a).
 - **Supersedes in part:** [ADR 0003](0003-clip-plan-document-model.md) (the plan's shape, derived positions, the command table and version 1 of the formats) and [ADR 0005](0005-editor-shell.md) (the timeline, the selection and the order of the work). **Extends:** [ADR 0004](0004-audio-limits.md), with two limits.
 
 ## Context
@@ -196,6 +196,8 @@ From [#54](https://github.com/ie-huss-martinez/audio-sdk/issues/54), by its numb
 
 **The track tools, as built (step 12).** The tools are `defineTool`s in `src/features/tools/`, registered with sdk-core's tool and shortcut registries, and the `tools` and `toolbar` props choose them as plain data. The toolbar comes first in the tab order, with four groups: File (Open, Add recording), History (Undo, Redo), Tracks (Add, Remove, Move up, Move down) and Zoom (the zoom buttons move there from the timeline). Keys go through the registry on the editor's root: the family's undo, redo, zoom and play-pause, `M` for Mute, and Home and End. The registry leaves fields, dialogs and a control's Space, Enter and arrows alone, but not Home and End, so the root also leaves those to a list, a toolbar or a slider, whose own keys they are. The track tools act on the current track, the one focus was last in, and the first otherwise. After adding a track, or moving one, focus goes to its name; after removing one, to the track that took its place, or the one above. A track's header has its name as a button, Mute, Solo and a gain slider from −60 to +12 dB; the commands allow more, which the inspector will set. A gain drag is one undo step, committed when the pointer lifts, and each key press is one, because `ui`'s Slider has no event for a gesture's end. Renaming is in one dialog at the editor's root, not in the header, so the header's arrow keys never reach the name's field. Mute, Solo, a track's arrival and its removal are announced. The shortcut registry's `root` option needs sdk-core 0.4.2, so the dependency moves to 0.4.4, which the siblings use.
 
+**The clip tools, as built (step 13a).** Step 13 is split in two: 13a is the clip tools, and 13b range selection with Delete and Ripple, so each pull request can be reviewed whole. Fades move to the inspector's step, 14, since their length comes from the inspector ([ADR 0005](0005-editor-shell.md)). The clip tools are in `src/features/clips/`, in a Clip group of the toolbar: Split (`S`), Delete (the family's `delete`), Trim start and Trim end (`[` and `]`, to the playhead), Move earlier and later, and Move to the track above and below. They act on the selected clip, and the selection follows focus, by Tab too, since `ui`'s clip track selects on arrows and clicks only. Split takes the clip under the playhead on the selected clip's track, or the current one, and says so when there's none; where the playhead is isn't tool state, because it changes every frame while playing. On a clip, `ui`'s clip track has the Alt keys, the brackets and the drags, and the editor edits through the same functions as the buttons: a move or trim is checked against the plan first, so a drag shows where a clip can't go, and a refused one is announced, never pushing anything aside. Keys and buttons nudge by 10 ms; the inspector's Start field will set a position exactly. After a split, focus is on the part after the playhead; after a move to another track, on the moved clip; after a delete on a clip, where `ui` puts it.
+
 ### The editor
 
 ADR 0005's regions stay: toolbar, timeline, transport, inspector. The root also takes `ui`'s `hm-text` class. What changes is the timeline.
@@ -263,8 +265,8 @@ One pull request at a time, in this order. Each code change has a changeset.
 10. The provider, the hooks and the shell: the root with `hm-text`, the empty, opening and error states, and the transport.
 11. The timeline: lanes, waveforms and the playhead, with zoom and its buttons.
 12. Track headers and the track tools: add, remove, reorder, rename, gain, mute and solo.
-13. The clip tools: range selection, delete and ripple, split, trim, move, fades, with their buttons, keys and focus rules.
-14. The inspector.
+13. The clip tools, in two pull requests: (a) split, delete, trim and move, with their buttons, keys and focus rules; (b) range selection, with delete and ripple.
+14. The inspector, with fades.
 15. The export dialog, with the summary and the clipping report.
 16. The element.
 17. `examples/vite` and `examples/next`, with keyboard-only end-to-end tests.

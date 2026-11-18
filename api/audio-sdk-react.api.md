@@ -75,6 +75,7 @@ export const audioEditorMessages: {
     readonly "toolbar.file": "File";
     readonly "toolbar.history": "History";
     readonly "toolbar.tracks": "Tracks";
+    readonly "toolbar.clips": "Clip";
     readonly "toolbar.view": "Zoom";
     readonly "toolbar.withKeys": "{label} ({keys})";
     readonly "tools.open": "Open";
@@ -86,6 +87,14 @@ export const audioEditorMessages: {
     readonly "tools.moveTrackUp": "Move track up";
     readonly "tools.moveTrackDown": "Move track down";
     readonly "tools.mute": "Mute track";
+    readonly "tools.split": "Split at the playhead";
+    readonly "tools.delete": "Delete";
+    readonly "tools.trimStart": "Trim the start to the playhead";
+    readonly "tools.trimEnd": "Trim the end to the playhead";
+    readonly "tools.moveEarlier": "Move the clip earlier";
+    readonly "tools.moveLater": "Move the clip later";
+    readonly "tools.moveToTrackAbove": "Move the clip to the track above";
+    readonly "tools.moveToTrackBelow": "Move the clip to the track below";
     readonly "tools.zoomIn": "Zoom in";
     readonly "tools.zoomOut": "Zoom out";
     readonly "tools.zoomFit": "Fit to width";
@@ -110,6 +119,13 @@ export const audioEditorMessages: {
     readonly "announce.unmuted": "{track} unmuted.";
     readonly "announce.soloed": "{track} soloed.";
     readonly "announce.unsoloed": "{track} no longer soloed.";
+    readonly "announce.split": "Split at {time}.";
+    readonly "announce.noClipToSplit": "There's no clip on {track} at the playhead to split.";
+    readonly "announce.clipDeleted": "Clip deleted.";
+    readonly "announce.clipMovedTo": "Clip moved to {track}.";
+    readonly "announce.trimmed": "The clip is now {time} to {end}.";
+    readonly "announce.noRoom": "There's no room for the clip there.";
+    readonly "announce.refused": "That edit isn't possible.";
     readonly "transport.label": "Playback";
     readonly "transport.play": "Play";
     readonly "transport.pause": "Pause";
