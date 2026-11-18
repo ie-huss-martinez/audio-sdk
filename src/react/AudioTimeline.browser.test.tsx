@@ -134,6 +134,27 @@ describe("the timeline", () => {
     await waitFor(() => expect(track()).toBeCloseTo(fitted, 0));
   });
 
+  it("shows each lane's waveform through its clips, which are see-through", async () => {
+    const events = sessionEvents();
+    const opened = events.nextLoad();
+    const container = await mount(
+      <AudioEditor initialFile={recording("take.wav", 2)} onEvent={events.onEvent} />,
+    );
+    await opened();
+    const clip = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>('[role="option"]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    // ui's clips are filled; the editor's are clear, so the layer under them shows.
+    expect(getComputedStyle(clip).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    const layer = container.querySelector(".hm-audio-editor-wave-layer") as Element;
+    const clips = clip.closest('[role="listbox"]') as Element;
+    expect(layer.compareDocumentPosition(clips) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Let ui's announcer say the recording opened inside act().
+    await step(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+  });
+
   it("draws each lane's waveform from the peaks, never reading samples", async () => {
     const events = sessionEvents();
     const opened = events.nextLoad();

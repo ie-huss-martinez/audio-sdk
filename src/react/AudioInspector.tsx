@@ -168,19 +168,21 @@ function Gain({
   const [live, setLive] = useFollowing(value);
   return (
     <div className="hm-audio-editor-inspector-gain">
-      <Slider
-        label={label}
-        min={SLIDER_GAIN.min}
-        max={SLIDER_GAIN.max}
-        step={1}
-        value={Math.min(SLIDER_GAIN.max, Math.max(SLIDER_GAIN.min, live))}
-        onValueChange={setLive}
-        formatValue={(gain) => messages.t("track.gainValue", { gain })}
-        // One undo step a gesture: a drag, or the keys pressed until let go.
-        onValueCommit={(gainDb) => {
-          if (gainDb !== value) onCommit(gainDb);
-        }}
-      />
+      {/* A visible label, not only an accessible name (WCAG 3.3.2). */}
+      <Field label={label}>
+        <Slider
+          min={SLIDER_GAIN.min}
+          max={SLIDER_GAIN.max}
+          step={1}
+          value={Math.min(SLIDER_GAIN.max, Math.max(SLIDER_GAIN.min, live))}
+          onValueChange={setLive}
+          formatValue={(gain) => messages.t("track.gainValue", { gain })}
+          // One undo step a gesture: a drag, or the keys pressed until let go.
+          onValueCommit={(gainDb) => {
+            if (gainDb !== value) onCommit(gainDb);
+          }}
+        />
+      </Field>
       <Field label={exactLabel}>
         <NumberField
           value={value}

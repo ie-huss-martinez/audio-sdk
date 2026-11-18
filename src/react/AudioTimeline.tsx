@@ -231,14 +231,16 @@ export function EditorTimeline({
               // the focused one, however focus arrives (docs/adr/0005).
               onFocus={() => setCurrentTrack(track.key)}
             >
-              <TimelineLayer className="hm-audio-editor-wave-layer" aria-hidden="true">
-                <AudioWaveform track={track} peaksOf={peaksOf} subscribeRange={subscribeRange} />
-              </TimelineLayer>
+              {/* Under the waveform, which shows through the clips: their
+                  background is transparent in the editor's styles. */}
               {selection?.tracks.includes(track.key) ? (
                 <TimelineLayer className="hm-audio-editor-range-layer" aria-hidden="true">
                   <RangeMark selection={selection} />
                 </TimelineLayer>
               ) : null}
+              <TimelineLayer className="hm-audio-editor-wave-layer" aria-hidden="true">
+                <AudioWaveform track={track} peaksOf={peaksOf} subscribeRange={subscribeRange} />
+              </TimelineLayer>
               <TimelineClips
                 ref={(handle) => {
                   if (handle) clipTracks.current.set(track.key, handle);
