@@ -1,18 +1,20 @@
-import { useTimelineLanes, useTimelineScale } from "@hussmartinez/ui/react";
-import { type ReactNode, type RefObject, useEffect, useRef } from "react";
+import { TimelineLayer, useTimelineLanes, useTimelineScale } from "@hussmartinez/ui/react";
+import { type PointerEvent, type ReactNode, useRef } from "react";
 import type { AudioSelection } from "../core/session/session.js";
 import { useAudioEditorContext } from "./context.js";
 
-/**
- * What a press on the track leaves to its own controls: a clip's title
- * and edges, which drag it, the lanes' headers and the playhead's slider.
- */
-const CONTROLS =
-  ".hm-timeline-clip-content, .hm-timeline-clip-edge, .hm-timeline-lane-header, " +
-  ".hm-timeline-bar, .hm-timeline-corner, button, input";
-
 /** How far a pointer moves, in CSS pixels, before a press becomes a drag. */
 const DRAG_THRESHOLD = 4;
+
+interface Press {
+  readonly id: number;
+  readonly x: number;
+  readonly unit: number;
+  readonly lane: string | undefined;
+  readonly touch: boolean;
+  lastLane: string | undefined;
+  dragging: boolean;
+}
 
 /**
  * Selecting a range of time with a pointer (docs/adr/0005, docs/adr/0006):
@@ -22,110 +24,86 @@ const DRAG_THRESHOLD = 4;
  * touch screen a drag scrolls, so only a tap counts; the toolbar's Start
  * and End buttons select there.
  *
- * It renders nothing: it listens on the timeline's track, inside the
- * timeline so it can use its scale and lanes.
+ * It's a layer under the lanes, written before them: `ui`'s lanes let a
+ * press through to it on their empty space and on a clip's body, and keep
+ * their headers', clips' titles' and edges' presses (ui 0.14).
  */
-export function RangeGestures({
-  timeline,
-}: {
-  readonly timeline: RefObject<HTMLElement | null>;
-}): ReactNode {
+export function RangeGestures(): ReactNode {
   const { session, output } = useAudioEditorContext();
   const scale = useTimelineScale();
   const { lanes, laneAt } = useTimelineLanes();
-  // The latest of each, for listeners added once.
-  const latest = useRef({ scale, lanes, laneAt, session, output });
-  latest.current = { scale, lanes, laneAt, session, output };
+  const press = useRef<Press | undefined>(undefined);
 
-  useEffect(() => {
-    const track = timeline.current?.querySelector<HTMLElement>(".hm-timeline-track");
-    if (!track) return;
-    let press:
-      | {
-          readonly id: number;
-          readonly x: number;
-          readonly unit: number;
-          readonly lane: string | undefined;
-          readonly touch: boolean;
-          lastLane: string | undefined;
-          dragging: boolean;
-        }
-      | undefined;
-
-    const onDown = (event: PointerEvent) => {
-      if (event.button !== 0 || press) return;
-      if (event.target instanceof Element && event.target.closest(CONTROLS)) return;
-      const { scale: now, laneAt: at } = latest.current;
-      if (now.pixelsPerUnit === 0) return;
-      const lane = at(event.clientY);
-      const touch = event.pointerType === "touch";
-      press = {
-        id: event.pointerId,
-        x: event.clientX,
-        unit: now.unitAt(event.clientX, { snap: !event.altKey }),
-        lane,
-        touch,
-        lastLane: lane,
-        dragging: false,
-      };
-      if (!touch) {
-        // Keeps the drag ours past the track's edge, and the page's text
-        // unselected. Capture fails for a pointer that's already gone, and
-        // the drag still works while the pointer stays over the track.
-        try {
-          track.setPointerCapture(event.pointerId);
-        } catch {}
-        event.preventDefault();
-      }
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || press.current || scale.pixelsPerUnit === 0) return;
+    const lane = laneAt(event.clientY);
+    const touch = event.pointerType === "touch";
+    press.current = {
+      id: event.pointerId,
+      x: event.clientX,
+      unit: scale.unitAt(event.clientX, { snap: !event.altKey }),
+      lane,
+      touch,
+      lastLane: lane,
+      dragging: false,
     };
+    if (!touch) {
+      // Keeps the drag ours past the timeline's edge, and the page's text
+      // unselected. Capture fails for a pointer that's already gone, and
+      // the drag still works while the pointer stays over the timeline.
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {}
+      event.preventDefault();
+    }
+  };
 
-    const onMove = (event: PointerEvent) => {
-      if (!press || event.pointerId !== press.id || press.touch) return;
-      if (!press.dragging && Math.abs(event.clientX - press.x) < DRAG_THRESHOLD) return;
-      press.dragging = true;
-      const { scale: now, lanes: ids, laneAt: at, session: current } = latest.current;
-      press.lastLane = at(event.clientY) ?? press.lastLane;
-      const unit = now.unitAt(event.clientX, { snap: !event.altKey });
-      const from = press.lane === undefined ? -1 : ids.indexOf(press.lane);
-      const to = press.lastLane === undefined ? -1 : ids.indexOf(press.lastLane);
-      const tracks =
-        from < 0 || to < 0 ? undefined : ids.slice(Math.min(from, to), Math.max(from, to) + 1);
-      current.select({
-        start: Math.min(press.unit, unit),
-        end: Math.max(press.unit, unit),
-        ...(tracks ? { tracks } : {}),
-      });
-    };
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const current = press.current;
+    if (!current || event.pointerId !== current.id || current.touch) return;
+    if (!current.dragging && Math.abs(event.clientX - current.x) < DRAG_THRESHOLD) return;
+    current.dragging = true;
+    current.lastLane = laneAt(event.clientY) ?? current.lastLane;
+    const unit = scale.unitAt(event.clientX, { snap: !event.altKey });
+    const from = current.lane === undefined ? -1 : lanes.indexOf(current.lane);
+    const to = current.lastLane === undefined ? -1 : lanes.indexOf(current.lastLane);
+    const tracks =
+      from < 0 || to < 0 ? undefined : lanes.slice(Math.min(from, to), Math.max(from, to) + 1);
+    session.select({
+      start: Math.min(current.unit, unit),
+      end: Math.max(current.unit, unit),
+      ...(tracks ? { tracks } : {}),
+    });
+  };
 
-    const onUp = (event: PointerEvent) => {
-      if (!press || event.pointerId !== press.id) return;
-      const done = press;
-      press = undefined;
-      if (track.hasPointerCapture(event.pointerId)) track.releasePointerCapture(event.pointerId);
-      if (done.dragging) return;
-      // A touch that moved was a scroll.
-      if (done.touch && Math.abs(event.clientX - done.x) >= DRAG_THRESHOLD) return;
-      latest.current.output.seek(done.unit);
-      latest.current.session.select(undefined);
-    };
+  const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    const done = press.current;
+    if (!done || event.pointerId !== done.id) return;
+    press.current = undefined;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (done.dragging) return;
+    // A touch that moved was a scroll.
+    if (done.touch && Math.abs(event.clientX - done.x) >= DRAG_THRESHOLD) return;
+    output.seek(done.unit);
+    session.select(undefined);
+  };
 
-    const onCancel = (event: PointerEvent) => {
-      if (press && event.pointerId === press.id) press = undefined;
-    };
+  const onPointerCancel = (event: PointerEvent<HTMLDivElement>) => {
+    if (press.current && event.pointerId === press.current.id) press.current = undefined;
+  };
 
-    track.addEventListener("pointerdown", onDown);
-    track.addEventListener("pointermove", onMove);
-    track.addEventListener("pointerup", onUp);
-    track.addEventListener("pointercancel", onCancel);
-    return () => {
-      track.removeEventListener("pointerdown", onDown);
-      track.removeEventListener("pointermove", onMove);
-      track.removeEventListener("pointerup", onUp);
-      track.removeEventListener("pointercancel", onCancel);
-    };
-  }, [timeline]);
-
-  return null;
+  return (
+    <TimelineLayer
+      className="hm-audio-editor-press-layer"
+      aria-hidden="true"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+    />
+  );
 }
 
 /** The selected range on one lane, drawn under its clips. */
