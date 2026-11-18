@@ -1,5 +1,74 @@
 # @hussmartinez/audio-sdk
 
+## 0.6.0
+
+### Minor Changes
+
+- [#60](https://github.com/ie-huss-martinez/audio-sdk/pull/60) [`5844aed`](https://github.com/ie-huss-martinez/audio-sdk/commit/5844aed5b7e291446c8fc26d82621578e1221dfd) Thanks [@hussmartinez](https://github.com/hussmartinez)! - **Multitrack.** The plan is now a list of tracks, each with a name, a gain, mute and solo, and clips placed in time. Tracks play together, and `export()` mixes them. This changes the plan's shape, most commands and what `export()` returns.
+  
+  **The plan**
+  
+  - `plan.clips` is gone: clips are in `plan.tracks[i].clips`, and each has `at`, the timeline frame it starts on. A track's clips are in time order and never overlap. `plan.gainDb` is the master gain.
+  - `planLength(plan)` is where the last clip on any track ends. `clipOffsets` is removed: read `clip.at`. New: `audibleTracks`, `mixLength`, `clipEnd`, `trackLength` and `clipAt`.
+  - `session.open()` makes one track with one clip, so a single recording reads as `plan.tracks[0].clips[0]`.
+  
+  **Commands**
+  
+  - Clip edits no longer move other clips. `audio.insertClips { track, clips }` needs free space, `audio.removeClips` leaves silence, and `audio.trimClip` keeps the audio where it is on the timeline. Each fails with `clips-overlap` rather than push a neighbour.
+  - Closing a gap is asked for: `audio.deleteRange { start, end, tracks, ripple, newKeys? }`. To get the old `audio.deleteRange { start, end, newKey }`, name every track, set `ripple: true`, and pass `newKeys: { [trackKey]: session.createKey() }`.
+  - `audio.moveClips` is now `{ keys, by, track? }`: a move in time, and to another track. `audio.reorderClips` is removed.
+  - New: `audio.keepRange`, `audio.insertTime`, `audio.addTrack`, `audio.removeTracks`, `audio.moveTrack`, `audio.setTrack`, `audio.setMasterGain` and `audio.setChannels`.
+  - `migrateAudioCommand(command, plan)` turns a stored version 1 command into the version 2 commands with the same effect.
+  
+  **The session**
+  
+  - **`session.insert()` no longer appends.** It adds the recording on a new track of its own, starting at `at`, which defaults to 0, so it plays together with what's there. To append as before, name the track and its end: `session.insert(file, { track: track.key, at: trackLength(track) })`, with `track` being `plan.tracks[0]`. A recording with more channels than the plan widens the plan.
+  - `snapshot.selection` is `{ start, end, tracks }`, and `session.select()` takes optional `tracks`.
+  - `session.export()` resolves `{ blob, peakDb, clippedFrames }` instead of a `Blob`: use `.blob`. A mix of tracks can go over full scale; it's clamped, and `peakDb` and `clippedFrames` say how far and how often. An export with every track silent is refused with the reason `nothing-audible`.
+  - An export ends where the last audible clip ends. Silence after it isn't exported, and a muted track doesn't lengthen the file: for a pause at the end, put a clip there.
+  
+  **Documents**
+  
+  - `toAudioPlanDocument` writes `hm-audio-plan` version 2, and `readAudioPlanDocument` reads versions 1 and 2, returning a multitrack plan: a version 1 document becomes one track. The version 2 schemas ship in `formats/`.
+  
+  **If you pass your own `processor`,** `render()` must mix the plan's audible tracks, with track and master gains, and resolve `{ blob, peakDb, clippedFrames }`. An `output` gets the plan with tracks in `load()`.
+
+- [#66](https://github.com/ie-huss-martinez/audio-sdk/pull/66) [`2e9399a`](https://github.com/ie-huss-martinez/audio-sdk/commit/2e9399a0e5be7a8f9904a296f19ffe46623024c5) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Helpers for building playback and text on the session.
+  
+  - **`watchPlayhead(output, listener)`** follows the playhead without a framework: it calls you with the frame now, on animation frames while playing, and whenever the playhead jumps. Returns a function that stops it.
+  - **The output notifies subscribers when the playhead jumps,** after a seek, a stop or a plan that moves it, with a new snapshot in the same state. Before, a seek while paused told nobody. `position()` is a whole number of frames. **If you pass your own `output`,** it must do the same.
+  - **`formatTimecode(frames, sampleRate)`** gives `0:12.40`, or `1:02:05.00` from an hour on, rounded down to hundredths.
+  - **`peakColumns(peaks, { from, to, columns })`** gives each column of a waveform its lowest and highest sample, from the overview level that fits the zoom.
+  - **`audioErrorText(messages, error)`** gives an error's text by its code and its `details.reason` together, falling back to `messages.error()`. A blocked `play()` now has `details.reason: "autoplay-blocked"` and says that sound needs a press of Play, rather than that the browser lacks a feature. An edit that would make the plan too long has `details.reason: "plan-too-long"`, with its own text.
+  - **`audioWarningText(messages, warning)`** gives any of the snapshot's warnings its text.
+  
+  The catalogue gains `errors.UNSUPPORTED_ENVIRONMENT.autoplay-blocked` and `errors.DURATION_TOO_LONG.plan-too-long`. If you supply your own catalogue, add them.
+
+- [#56](https://github.com/ie-huss-martinez/audio-sdk/pull/56) [`18ba106`](https://github.com/ie-huss-martinez/audio-sdk/commit/18ba1063d030ea85922525c839b98ec5b1e4658d) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Insert recordings at any sample rate. `session.insert()` used to refuse a file whose rate differed from the session's with `UNSUPPORTED_FORMAT`; it now converts it to the session's rate, in the worker, with progress and cancellation. The converted source reports the file's own rate as `resampledFrom` in `snapshot.sources`.
+  
+  `AudioEngine.decode()` takes a new option, `sampleRate`, the rate to return the audio at. The SDK's engine converts with its own windowed-sinc resampler, so every browser gives the same samples. **If you pass your own `engine`,** it must honour `sampleRate` too: the session refuses audio at any other rate with `INVALID_AUDIO`.
+
+- [#65](https://github.com/ie-huss-martinez/audio-sdk/pull/65) [`92237c5`](https://github.com/ie-huss-martinez/audio-sdk/commit/92237c5d41bb8bf33cdc8af9ea76b74d12c7d4bd) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Make the session easier to build a UI on.
+  
+  - **`createAudioAdapters({ assetsUrl })`** makes the engine, the processor and the output with one set of options, so a self-hosted worker's address is given once. Its `destroy()` releases all three. You still own them: the session never destroys what it's given, as before.
+  - **Recordings have names:** `open()` and `insert()` take an optional `name`, and use a `File`'s own name without one. It's on each entry of `snapshot.sources`, as `name`, cleaned as pdf-sdk cleans file names: the last path segment, without control, bidirectional formatting or Windows-refused characters (`< > : " | ? *`), in NFC, without leading dots or surrounding space, and at most 128 code points (`MAX_SOURCE_NAME_LENGTH`). It never goes into events, the plan or a document.
+  - **The session gives commands the keys they leave out:** `newKey` in `audio.splitClip`, `key` in `audio.addTrack`, and the `newKeys` of `audio.deleteRange` and `audio.insertTime`. You no longer need `session.createKey()` for those, though passing your own still works.
+  - **A command that changes nothing succeeds without an undo step,** such as setting a gain that's already set. Before, some were refused.
+  - **The selection follows defined rules:** a time edit (`audio.deleteRange`, `audio.keepRange`, `audio.insertTime`) clears it; other edits, undo and redo keep it, clamped to the plan.
+  - **The session's and the output's methods work on their own,** so `useSyncExternalStore(session.subscribe, session.getSnapshot)` works as written.
+  
+  If you relied on a time edit shrinking the selection, select again after it.
+
+- [#63](https://github.com/ie-huss-martinez/audio-sdk/pull/63) [`87eb53b`](https://github.com/ie-huss-martinez/audio-sdk/commit/87eb53bd5f73eec998ddc5e86bee7f2c11d9ea49) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Limit the number of tracks and the plan's length. A new limit, `maxTracks`, defaults to 16: a command or an insert that would add a track past it throws `TOO_MANY_TRACKS`, a new error code, with text in `audioMessages`. And `maxDuration`, 3 hours by default, now bounds the plan's length as well as each file's: an edit or an insert that would make the plan longer throws `DURATION_TOO_LONG`. Clips can be placed anywhere on the timeline, so without it one command could ask for hours of silence.
+  
+  Both leave the plan as it was, and both are changed through `filePolicy`, such as `{ maxTracks: 32 }`. `maxClips` counts the clips of every track together.
+  
+  If you handle error codes exhaustively, add `TOO_MANY_TRACKS`. If you supply your own message catalogue, add `errors.TOO_MANY_TRACKS` and `warnings.maxTracks`.
+
+### Patch Changes
+
+- [#62](https://github.com/ie-huss-martinez/audio-sdk/pull/62) [`5255606`](https://github.com/ie-huss-martinez/audio-sdk/commit/52556068211668b2a459d067c77120557877db8c) Thanks [@hussmartinez](https://github.com/hussmartinez)! - Muting, soloing and changing a track's gain or the master gain during playback now take effect at once, without a gap. `createAudioOutput()` used to stop and reschedule every clip on any change of the plan; a plan that differs only in those levels is now applied to what's playing, over 5 ms. Other edits still reschedule from the playhead. Nothing changes in the API.
+
 ## 0.5.0
 
 ### Minor Changes
