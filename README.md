@@ -1,14 +1,14 @@
 # audio-sdk
 
-A client-side audio SDK: trim, split, fade, adjust gain, play and export audio entirely in the browser. Audio never leaves the device. Its headless core is published; a React editor (`AudioEditor`) and a `<hm-audio-editor>` custom element come later.
+A client-side audio SDK: layer recordings on tracks, trim, split, fade, adjust gain, play and export audio entirely in the browser. Audio never leaves the device. Its headless core is published; a React editor (`AudioEditor`) and a `<hm-audio-editor>` custom element come later.
 
 This repository publishes **[`@hussmartinez/audio-sdk`](https://www.npmjs.com/package/@hussmartinez/audio-sdk)**. It follows the family standards in [`sdk-core`'s `STANDARDS.md`](https://github.com/ie-huss-martinez/sdk-core/blob/main/STANDARDS.md), and in particular the decisions on [hostile input and no network](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0012-hostile-input-and-no-network.md), [workers and assets](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0011-worker-messaging-and-assets.md) and [ports and adapters](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0008-ports-adapters-and-session.md).
 
-> Status: pre-1.0. The headless core is published: opening, editing with undo, playback, and exporting to WAV. Multitrack and the editor UI are next ([ADR 0006](docs/adr/0006-multitrack.md)), and the API may change between minor versions until 1.0.
+> Status: pre-1.0. The headless core is published: opening, multitrack editing with undo, playback, and exporting to WAV ([ADR 0006](docs/adr/0006-multitrack.md)). The editor UI is next, and the API may change between minor versions until 1.0.
 
 ## Editing and exporting
 
-`createAudioSession()` holds the recording being edited: a clip plan over decoded sources, edited with commands, with undo and redo ([ADR 0003](docs/adr/0003-clip-plan-document-model.md)). It applies the file policy for you, and `export()` renders the result in a worker:
+`createAudioSession()` holds what's being edited: a plan of tracks, each with clips of decoded sources placed in time, edited with commands, with undo and redo ([ADR 0003](docs/adr/0003-clip-plan-document-model.md), [ADR 0006](docs/adr/0006-multitrack.md)). It applies the file policy for you, and `export()` mixes the tracks in a worker:
 
 ```ts
 import {
@@ -31,32 +31,51 @@ session.subscribe(() => render(session.getSnapshot())); // or useSyncExternalSto
 try {
   await session.open(file, { onProgress: showProgress });
 
-  // Cut the first second, and fade the rest in over half a second.
+  // The recording is one clip on one track. Cut its first second, closing
+  // the gap, and fade the rest in over half a second.
   const { plan } = session.getSnapshot();
   const rate = plan?.sampleRate ?? 48_000;
-  session.execute({ type: "audio.deleteRange", start: 0, end: rate, newKey: session.createKey() });
-  const [clip] = session.getSnapshot().plan?.clips ?? [];
+  const [voice] = plan?.tracks ?? [];
+  if (voice) {
+    session.execute({
+      type: "audio.deleteRange",
+      start: 0,
+      end: rate,
+      tracks: [voice.key],
+      ripple: true,
+      newKeys: { [voice.key]: session.createKey() },
+    });
+  }
+  const [clip] = session.getSnapshot().plan?.tracks[0]?.clips ?? [];
   if (clip) {
     session.execute({ type: "audio.setFade", key: clip.key, edge: "in", frames: rate / 2, curve: "equalPower" });
   }
+
+  // Lay music under it, on a track of its own, 12 dB down.
+  await session.insert(music, { onProgress: showProgress });
+  const bed = session.getSnapshot().plan?.tracks.at(-1);
+  if (bed) session.execute({ type: "audio.setTrack", key: bed.key, name: "Music", gainDb: -12 });
+
   session.execute({ type: "audio.setMetadata", field: "title", value: "Interview" });
   session.undo(); // and session.redo()
 
-  const wav = await session.export({
+  const { blob, peakDb, clippedFrames } = await session.export({
     format: { container: "wav", sampleFormat: "pcm24" },
     onProgress: showProgress,
   });
-  offerDownload(wav); // a Blob: the session never downloads anything itself
+  if (clippedFrames > 0) warnOfClipping(peakDb); // the mix went this far over full scale
+  offerDownload(blob); // the session never downloads anything itself
 } catch (error) {
   showError(messages.error(error)); // text by code, never the error's message
 }
 ```
 
-- **The snapshot** has the `plan` (clips in frames, and the metadata), the `sources`, `canUndo` and `canRedo`, `busy`, the last `error`, and `warnings`: limits past their warning thresholds, and `truncated` for a WAV or AIFF file cut short, which opens with the audio it holds. Show their text from `warnings.<name>` in `audioMessages`.
-- **Commands** are plain data, such as `audio.splitClip` or `audio.setGain`, with an exact inverse for undo. One that doesn't apply throws `INVALID_COMMAND` with a stable `details.reason`, such as `unknown-clip`. `session.group(fn)` makes several commands, such as a drag, one undo step.
-- **`session.insert(file, { at })`** adds another recording at a frame, as one undo step. A recording at another sample rate is converted to the session's, in the worker, and its entry in `snapshot.sources` gives the file's own rate as `resampledFrom`.
-- **Exports** render the plan as it is when the export starts, as 16-bit (the default) or 24-bit PCM, or 32-bit float WAV, with the metadata in the file. They run under `maxProcessingTime`, and the `signal` option cancels them.
-- **Plans are portable JSON:** `toAudioPlanDocument` and `readAudioPlanDocument` write and read the `hm-audio-plan` format, whose JSON Schema ships in the package, at `@hussmartinez/audio-sdk/formats/hm-audio-plan/v1.schema.json` ([format record](docs/formats/hm-audio-plan.md)).
+- **The snapshot** has the `plan` (its tracks, their clips in frames, the master gain and the metadata), the `sources`, the `selection`, `canUndo` and `canRedo`, `busy`, the last `error`, and `warnings`: limits past their warning thresholds, and `truncated` for a WAV or AIFF file cut short, which opens with the audio it holds. Show their text from `warnings.<name>` in `audioMessages`.
+- **Tracks** play together. Each has a name, a gain, mute and solo, and clips placed in time that never overlap: two sounds at once are two tracks. `audibleTracks(plan)` says which ones sound.
+- **Commands** are plain data, such as `audio.splitClip`, `audio.moveClips` or `audio.setTrack`, with an exact inverse for undo. Clip edits never move another clip: they fail with `clips-overlap` rather than push one. Time edits, `audio.deleteRange`, `audio.keepRange` and `audio.insertTime`, move what's after them on the tracks they name ([the format record](docs/formats/hm-audio-plan.md) lists every command). One that doesn't apply throws `INVALID_COMMAND` with a stable `details.reason`, such as `unknown-clip`. `session.group(fn)` makes several commands, such as a drag, one undo step.
+- **`session.insert(file, { track, at })`** adds another recording, as one undo step: on a new track of its own, or on the track you name, where it needs free space. A recording at another sample rate is converted to the session's, in the worker, and its entry in `snapshot.sources` gives the file's own rate as `resampledFrom`. One with more channels widens the plan to its count.
+- **Exports** mix the audible tracks as they are when the export starts, up to where the last audible clip ends, as 16-bit (the default) or 24-bit PCM, or 32-bit float WAV, with the metadata in the file. Tracks sum at unity, and the mix is clamped to full scale, never limited or normalised: the result's `peakDb` and `clippedFrames` say how far over it went, so you can lower the master gain with `audio.setMasterGain` and export again. They run under `maxProcessingTime`, and the `signal` option cancels them.
+- **Plans are portable JSON:** `toAudioPlanDocument` and `readAudioPlanDocument` write and read the `hm-audio-plan` format, version 2, whose JSON Schema ships in the package, at `@hussmartinez/audio-sdk/formats/hm-audio-plan/v2.schema.json` ([format record](docs/formats/hm-audio-plan.md)). Version 1 documents are read too, as one track, and `migrateAudioCommand` turns a stored version 1 command into version 2's.
 
 ## Playback
 
@@ -98,7 +117,7 @@ await processor.destroy();
 - **Start playback from a user gesture.** Browsers block audio until someone interacts with the page. The first `play()` creates the one `AudioContext`; if it doesn't start within two seconds, `play()` rejects with `UNSUPPORTED_ENVIRONMENT` and `details.feature` set to `"audio-output"`, and nothing changes.
 - **The playhead** is a position in frames, read from the audio clock by `output.position()`. It isn't in the snapshot, because it changes on every audio frame, so subscribers aren't called as it moves: poll it on animation frames while playing. A seek, a changed plan and the end of playback move it too.
 - **At the end,** the state becomes `stopped` and the playhead stays at the end. `stop()` goes back to the start.
-- **Playback is what export renders:** each clip's gain and fades come from the same `gainAt`, and sources mix into the plan's channels by the same rules. One difference: playback isn't clamped, so the device clips at full scale where export clamps.
+- **Playback is what export renders:** the same audible tracks, track gains and master gain; each clip's gain and fades come from the same `gainAt`, and sources mix into the plan's channels by the same rules. One difference: playback isn't clamped, so the device clips at full scale where export clamps.
 - **Opening another recording, or closing,** stops the output at the start. An insert doesn't.
 - **The session doesn't own what you give it.** `session.close()` releases the recording, not the engine, the processor or the output: destroy each yourself, as above.
 - **No Content Security Policy directive** is needed for playback: it uses no worker and makes no requests.
@@ -188,7 +207,7 @@ The session adds:
 | Code | When |
 |---|---|
 | `TOO_MANY_FILES`, `SESSION_TOO_LARGE`, `TOO_MANY_CLIPS` | An insert or an edit would exceed `maxFiles`, `maxSessionSize` or `maxClips` |
-| `INVALID_COMMAND` | A command doesn't apply, or there's nothing to export; `details.reason` says why |
+| `INVALID_COMMAND` | A command doesn't apply, or there's nothing to export; `details.reason` says why, such as `clips-overlap`, `empty-plan` or `nothing-audible` |
 | `INVALID_DOCUMENT` | A plan document isn't valid; `details.reason` says why. Another format or a later version is `UNSUPPORTED_FORMAT` |
 
 ## Development

@@ -1,11 +1,15 @@
-# `hm-audio-plan` and `hm-audio-command`, version 1
+# `hm-audio-plan` and `hm-audio-command`
 
-audio-sdk's portable formats ([sdk-core ADR 0045](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0045-portable-formats-and-conformance-vectors.md)). A port in another language reads and writes them, and proves it applies commands as this SDK does by passing the vectors in [`conformance/`](../../conformance).
+audio-sdk's portable formats ([sdk-core ADR 0045](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0045-portable-formats-and-conformance-vectors.md)). A port in another language reads and writes them, and proves it applies commands and mixes as this SDK does by passing the vectors in [`conformance/`](../../conformance).
 
 | Format | Schema | What it holds |
 |---|---|---|
-| `hm-audio-plan` 1 | [`formats/hm-audio-plan/v1.schema.json`](../../formats/hm-audio-plan/v1.schema.json) | A clip plan ([ADR 0003](../adr/0003-clip-plan-document-model.md)), with the sources its clips use |
-| `hm-audio-command` 1 | [`formats/hm-audio-command/v1.schema.json`](../../formats/hm-audio-command/v1.schema.json) | One user-level edit command |
+| `hm-audio-plan` 2 | [`formats/hm-audio-plan/v2.schema.json`](../../formats/hm-audio-plan/v2.schema.json) | A multitrack plan ([ADR 0006](../adr/0006-multitrack.md)), with the sources its clips use |
+| `hm-audio-command` 2 | [`formats/hm-audio-command/v2.schema.json`](../../formats/hm-audio-command/v2.schema.json) | One user-level edit command |
+| `hm-audio-plan` 1 | [`formats/hm-audio-plan/v1.schema.json`](../../formats/hm-audio-plan/v1.schema.json) | One track of clips played back to back ([ADR 0003](../adr/0003-clip-plan-document-model.md)). Read by migrating it; never written |
+| `hm-audio-command` 1 | [`formats/hm-audio-command/v1.schema.json`](../../formats/hm-audio-command/v1.schema.json) | A version 1 command. Migrated to version 2's |
+
+The package writes version 2 and reads both: `readAudioPlanDocument(json)` returns a version 2 plan from a document of either version, `toAudioPlanDocument(plan, sources)` writes version 2, and `migrateAudioCommand(command, plan)` turns a version 1 command into version 2's. A later version is refused with `UNSUPPORTED_FORMAT`.
 
 ## Loading the schemas
 
@@ -13,8 +17,8 @@ The schemas ship with the package, under `@hussmartinez/audio-sdk/formats/`, so 
 
 ```ts
 import { Ajv2020 } from "ajv/dist/2020.js";
-import planSchema from "@hussmartinez/audio-sdk/formats/hm-audio-plan/v1.schema.json" with { type: "json" };
-import commandSchema from "@hussmartinez/audio-sdk/formats/hm-audio-command/v1.schema.json" with { type: "json" };
+import planSchema from "@hussmartinez/audio-sdk/formats/hm-audio-plan/v2.schema.json" with { type: "json" };
+import commandSchema from "@hussmartinez/audio-sdk/formats/hm-audio-command/v2.schema.json" with { type: "json" };
 
 const ajv = new Ajv2020({ strict: true });
 // The command schema refers to the plan schema's definitions by its $id, so add that first.
@@ -24,73 +28,9 @@ const isCommand = ajv.compile(commandSchema);
 if (!isPlan(JSON.parse(text))) console.error(isPlan.errors);
 ```
 
-In Node without a bundler, `createRequire(import.meta.url).resolve("@hussmartinez/audio-sdk/formats/hm-audio-plan/v1.schema.json")` gives the file's path. The vectors in `conformance/` stay in the repository: they're for ports and the SDK's own tests.
+In Node without a bundler, `createRequire(import.meta.url).resolve("@hussmartinez/audio-sdk/formats/hm-audio-plan/v2.schema.json")` gives the file's path. The vectors in `conformance/` stay in the repository: they're for ports and the SDK's own tests.
 
-## `hm-audio-plan`
-
-```json
-{
-  "format": "hm-audio-plan",
-  "version": 1,
-  "sampleRate": 48000,
-  "channels": 2,
-  "sources": { "s1": { "frames": 1000 } },
-  "clips": [
-    {
-      "key": "a",
-      "source": "s1",
-      "start": 0,
-      "end": 100,
-      "gainDb": -3.5,
-      "fadeIn": { "frames": 20, "curve": "equalPower" },
-      "fadeOut": { "frames": 0, "curve": "linear" }
-    }
-  ],
-  "metadata": { "title": "Take 1", "artist": "", "album": "", "year": "", "comment": "" }
-}
-```
-
-- **Numbers:** every position and length is a whole number of frames at `sampleRate`. `gainDb` is the one float. It's copied, never computed, so it compares exactly (ADR 0045, section 3).
-- **Sources** are keyed by the ids the clips use, which only mean something within the document. Each gives its length in frames. Once documents travel with their files, it also gives an `asset`: the SHA-256 of the bytes, their media type and their size. A document never inlines audio.
-- **Beyond the schema,** a reader checks what depends on the whole document: every clip lies within a source the document lists, its fades fit it together, and keys are unique.
-- **Lengths are in Unicode code points,** as the schema's `maxLength` counts them: a metadata value has at most 1,000, so 1,000 emoji fit, though they're 2,000 UTF-16 units. Every length limit in the family's formats counts code points (ADR 0045, section 8), which every language can count the same way.
-- **Strict:** an unknown field anywhere is refused, never dropped. So a later version's document can't be misread as this one.
-
-`readAudioPlanDocument(json)` reads a document, and `toAudioPlanDocument(plan, sources)` writes one.
-
-## `hm-audio-command`
-
-The edits a user makes: `audio.insertClips`, `audio.removeClips`, `audio.deleteRange`, `audio.trimClip`, `audio.splitClip`, `audio.moveClips`, `audio.setGain`, `audio.setFade` and `audio.setMetadata`, as [ADR 0003](../adr/0003-clip-plan-document-model.md) describes them. The commands undo runs, such as `audio.restoreClips`, are internal and aren't part of the format. The reducer refuses unknown fields here too.
-
-## Rejections
-
-A refusal is compared by its code and `details.reason`, never its message:
-
-| Code | Reasons |
-|---|---|
-| `UNSUPPORTED_FORMAT` | `unknown-format`, `unknown-format-version` |
-| `INVALID_DOCUMENT` | `malformed-document`, `unknown-source`, `duplicate-key`, `invalid-fade-curve`, `metadata-too-long`, and a clip's own problems: `invalid-frames`, `clip-too-short`, `clip-outside-source`, `gain-out-of-range`, `fades-too-long` |
-| `INVALID_COMMAND` | `AudioCommandRejection`'s tokens, such as `unknown-clip`, `key-taken` or `frame-outside-plan` |
-
-## The vectors
-
-| File | Subject | A case's input | Its expected result |
-|---|---|---|---|
-| [`conformance/hm-audio-plan.json`](../../conformance/hm-audio-plan.json) | `hm-audio-plan` | A document | The document as a reader writes it back, or the rejection |
-| [`conformance/hm-audio-commands.json`](../../conformance/hm-audio-commands.json) | `hm-audio-commands` | `{ plan, command }` | The resulting document, or the rejection. The command's inverse must also restore the plan |
-
-Hand-written cases cover every outcome. Generated ones come from the reducer's property-test generators, with a fixed seed: up to 60 commands that apply, and two of each refusal. `pnpm conformance:update` rewrites the files, and the tests fail when the checked-in files differ from what the generator writes.
-
-The TypeScript tests also check that the schemas agree with the readers. Every document and command the vectors accept passes its schema, and every structural refusal fails it. Over thousands of mutated inputs, the reducer and the reader never accept anything their schema refuses.
-
-## Version 2: tracks
-
-Version 2 of both formats describes the multitrack plan of [ADR 0006](../adr/0006-multitrack.md): tracks of clips positioned in time. **The package doesn't read or write it yet, and doesn't ship its schemas.** They're in `conformance/formats/` for now, with the reader, the reducer and their vectors, and move to the published `formats/` with the change that makes the package read and write version 2: a published schema for a format no release opens would invite documents that 0.5 can't read. Until then `readAudioPlanDocument` and `toAudioPlanDocument` are version 1's.
-
-| Format | Schema |
-|---|---|
-| `hm-audio-plan` 2 | [`conformance/formats/hm-audio-plan/v2.schema.json`](../../conformance/formats/hm-audio-plan/v2.schema.json) |
-| `hm-audio-command` 2 | [`conformance/formats/hm-audio-command/v2.schema.json`](../../conformance/formats/hm-audio-command/v2.schema.json) |
+## `hm-audio-plan`, version 2
 
 ```json
 {
@@ -132,8 +72,12 @@ Version 2 of both formats describes the multitrack plan of [ADR 0006](../adr/000
 - **A track's `name`** has at most 100 code points. Empty means it has none. It's untrusted text: show it as text, never as HTML.
 - **A plan has at least one track.** A track may have no clips.
 - **Beyond the schema,** a reader checks that every clip lies within a source the document lists, that its fades fit it, that each track is in time order without overlap, and that keys are unique.
+- **Numbers:** every position and length is a whole number of frames at `sampleRate`. The gains are the only floats. They're copied, never computed, so they compare exactly (ADR 0045, section 3).
+- **Sources** are keyed by the ids the clips use, which only mean something within the document. Each gives its length in frames. Once documents travel with their files, it also gives an `asset`: the SHA-256 of the bytes, their media type and their size. A document never inlines audio.
+- **Lengths are in Unicode code points,** as the schema's `maxLength` counts them: a metadata value has at most 1,000 and a track's name at most 100, so 100 emoji fit in a name, though they're 200 UTF-16 units (ADR 0045, section 8).
+- **Strict:** an unknown field anywhere is refused, never dropped. So a later version's document can't be misread as this one.
 
-### Version 2's commands
+## `hm-audio-command`, version 2
 
 Clip edits never move another clip, and fail with `clips-overlap` rather than push one. Time edits add or remove time on the tracks they name, and move everything after it on those tracks.
 
@@ -157,6 +101,48 @@ Clip edits never move another clip, and fail with `clips-overlap` rather than pu
 - **`newKeys` is an object, by track key:** the key of the part a cut leaves after it, on a track where a range lies inside one clip, or a frame inside one. A track that doesn't need its key ignores it, so a caller can always send one for every track. A key for a track the command doesn't name is `unknown-track`.
 - **What a schema states is checked first,** such as a gain's range or a name's length, then what depends on the plan. So a command the schema refuses is refused by the reducer for the schema's reason.
 - **Version 1's `audio.moveClips { keys, to }` and `audio.reorderClips` are gone:** with positions, order follows time.
+- **The commands undo runs** are internal and aren't part of the format: `audio.restoreClips`, `audio.updateClips`, `audio.placeClips`, `audio.replaceClips` and `audio.restoreTracks`. The reducer refuses unknown fields in every command.
+
+## Mixing
+
+Playback and export follow one definition ([ADR 0006](../adr/0006-multitrack.md)):
+
+> `out[frame] = clamp(master × Σ over audible tracks (track gain × clip's gainAt × the clip's source frame, mixed to the plan's channels))`
+
+- **Audible** tracks are those that aren't muted and, when any track is soloed, are soloed themselves. Mute wins over solo.
+- **Gains** are `10^(dB / 20)`. A clip's `gainAt` is its gain times its fades: a fade in starts at silence on the clip's first frame, and a fade out reaches silence on its last; `linear` changes at a constant rate, and `equalPower` follows a quarter sine.
+- **Channels** mix by the Web Audio specification's speaker rules for mono, stereo, quad and 5.1, and channel by channel otherwise.
+- **Tracks sum at unity,** in plan order. Nothing is scaled by the number of tracks, limited or normalised.
+- **The mix is as long as the last audible clip,** so a muted track neither sounds nor pads it.
+- **Clamping** is to full scale, from −1 to 1. An export also gives the mix's peak before clamping and how many frames were clamped.
+
+## Version 1
+
+Version 1 held one list of clips, played back to back, with no positions:
+
+```json
+{
+  "format": "hm-audio-plan",
+  "version": 1,
+  "sampleRate": 48000,
+  "channels": 2,
+  "sources": { "s1": { "frames": 1000 } },
+  "clips": [
+    {
+      "key": "a",
+      "source": "s1",
+      "start": 0,
+      "end": 100,
+      "gainDb": -3.5,
+      "fadeIn": { "frames": 20, "curve": "equalPower" },
+      "fadeOut": { "frames": 0, "curve": "linear" }
+    }
+  ],
+  "metadata": { "title": "Take 1", "artist": "", "album": "", "year": "", "comment": "" }
+}
+```
+
+Its commands were `audio.insertClips { at, clips, splitKey? }`, `audio.removeClips { keys }`, `audio.deleteRange { start, end, newKey? }`, `audio.trimClip`, `audio.splitClip`, `audio.moveClips { keys, to }`, `audio.setGain`, `audio.setFade` and `audio.setMetadata`. Each closed the gap it left, because a clip's place was the sum of the lengths before it. The package no longer runs them; its tests keep version 1's reducer as the reference that the migration is checked against.
 
 ### Migrating from version 1
 
@@ -174,25 +160,33 @@ Clip edits never move another clip, and fail with `clips-overlap` rather than pu
 
   A command that names a clip the plan doesn't have, or an index past the end, is refused by the migration with `INVALID_COMMAND`. Any other invalid command migrates to commands the reducer refuses, and the refusal is the first one met in that order.
 
-### Version 2's rejections
+## Rejections
 
-Version 1's, and:
+A refusal is compared by its code and `details.reason`, never its message:
 
-| Code | New reasons |
+| Code | Reasons |
 |---|---|
-| `INVALID_DOCUMENT` | `clips-overlap`, `clips-out-of-order`, `no-tracks`, `name-too-long` |
-| `INVALID_COMMAND` | `clips-overlap`, `clips-out-of-order`, `no-tracks`, `unknown-track`, `last-track`, `name-too-long` |
+| `UNSUPPORTED_FORMAT` | `unknown-format`, `unknown-format-version` |
+| `INVALID_DOCUMENT` | `malformed-document`, `unknown-source`, `duplicate-key`, `clips-overlap`, `clips-out-of-order`, `no-tracks`, `invalid-fade-curve`, `metadata-too-long`, `name-too-long`, and a clip's own problems: `invalid-frames`, `clip-too-short`, `clip-outside-source`, `gain-out-of-range`, `fades-too-long` |
+| `INVALID_COMMAND` | `AudioCommandRejection`'s tokens, such as `unknown-clip`, `unknown-track`, `key-taken`, `clips-overlap`, `frame-outside-plan` or `last-track` |
 
-### Version 2's vectors
+## The vectors
 
 | File | Subject | A case's input | Its expected result |
 |---|---|---|---|
 | [`conformance/hm-audio-plan-2.json`](../../conformance/hm-audio-plan-2.json) | `hm-audio-plan-2` | A document of version 1 or 2 | The version 2 document a reader writes back, or the rejection |
 | [`conformance/hm-audio-commands-2.json`](../../conformance/hm-audio-commands-2.json) | `hm-audio-commands-2` | `{ plan, command }`, both version 2 | The resulting document, or the rejection. The command's inverse must also restore the plan |
 | [`conformance/hm-audio-command-migration.json`](../../conformance/hm-audio-command-migration.json) | `hm-audio-command-migration` | `{ plan, command }`, both version 1 | The version 2 document after migrating both and applying the commands, or the first rejection. The migrated commands aren't compared, only what they do |
+| [`conformance/hm-audio-mix.json`](../../conformance/hm-audio-mix.json) | `hm-audio-mix` | `{ plan, sources }`: a version 2 document, and each source's samples, one list per channel | `{ channels, peak, clipped }`: the mix, clamped; its largest absolute sample before clamping, where 1 is full scale; and the frames clamped. Every number within the case's `tolerance`, because gains and fades are computed |
+| [`conformance/hm-audio-plan.json`](../../conformance/hm-audio-plan.json) | `hm-audio-plan` | A version 1 document | The version 1 document a version 1 reader writes back, or the rejection |
+| [`conformance/hm-audio-commands.json`](../../conformance/hm-audio-commands.json) | `hm-audio-commands` | `{ plan, command }`, both version 1 | The resulting version 1 document, or the rejection, by version 1's reducer |
 
-The same tests check version 2's schemas against its reader and reducer, as for version 1.
+Hand-written cases cover every outcome. Generated ones come from the reducers' property-test generators, with a fixed seed. `pnpm conformance:update` rewrites the files, and the tests fail when the checked-in files differ from what the generators write.
+
+The last two files are version 1's own. They run against version 1's reducer and writer, which live in the repository's tests, in `test/v1/`, and they're what a port needs only if it wants to check a version 1 implementation of its own. A version 2 port needs the first four.
+
+The TypeScript tests also check that the schemas agree with the readers. Every document and command the vectors accept passes its schema, and every structural refusal fails it. Over thousands of mutated inputs, the reducers and the readers never accept anything their schema refuses.
 
 ## Changing the formats
 
-A breaking change is a new version, with its schema beside this one and a migration from version 1 (ADR 0045, section 1). A reader refuses a later version with `UNSUPPORTED_FORMAT` and `unknown-format-version`.
+A breaking change is a new version, with its schema beside the others and a migration from the version before (ADR 0045, section 1). A reader refuses a later version with `UNSUPPORTED_FORMAT` and `unknown-format-version`.

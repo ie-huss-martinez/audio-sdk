@@ -39,11 +39,14 @@ describe("connectOutput", () => {
     await session.open(recording(1_000));
     await output.play();
     clock.advance(300);
+    const [track] = session.getSnapshot().plan?.tracks ?? [];
     session.execute({
       type: "audio.deleteRange",
       start: 600,
       end: 900,
-      newKey: session.createKey(),
+      tracks: [track?.key ?? ""],
+      ripple: true,
+      newKeys: { [track?.key ?? ""]: session.createKey() },
     });
     expect(load.mock.lastCall?.[0]).toBe(session.getSnapshot().plan);
     expect(output.getSnapshot().state).toBe("playing");
@@ -97,7 +100,7 @@ describe("connectOutput", () => {
     disconnect();
     session.execute({
       type: "audio.setGain",
-      keys: [session.getSnapshot().plan?.clips[0]?.key as string],
+      keys: [session.getSnapshot().plan?.tracks[0]?.clips[0]?.key as string],
       gainDb: -3,
     });
     expect(load).toHaveBeenCalledTimes(1);

@@ -1,4 +1,4 @@
-import type { AudioClip, AudioFadeCurve } from "./plan.js";
+import type { AudioClipBody, AudioFadeCurve } from "./plan.js";
 
 /**
  * Converts decibels to a linear gain factor.
@@ -26,7 +26,7 @@ function fadeShape(curve: AudioFadeCurve, position: number): number {
  * @param frame - A frame within the clip, from 0 to its length minus one.
  * @public
  */
-export function gainAt(clip: AudioClip, frame: number): number {
+export function gainAt(clip: AudioClipBody, frame: number): number {
   const length = clip.end - clip.start;
   let gain = dbToGain(clip.gainDb);
   const { fadeIn, fadeOut } = clip;

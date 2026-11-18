@@ -4,9 +4,11 @@ import {
   type AudioMetadata,
   type AudioProcessor,
   type AudioSampleFormat,
-  clipLength,
+  audibleTracks,
+  clipAt,
+  dbToGain,
   gainAt,
-  planLength,
+  mixLength,
 } from "../../src/index.js";
 
 /** What the fake processor writes: JSON, standing in for a WAV file. */
@@ -60,37 +62,48 @@ export function createFakeProcessor(): AudioProcessor {
       throwIfAborted(options.signal);
       const { plan, sources, format } = job;
       const sampleFormat = format.sampleFormat ?? "pcm16";
-      for (const clip of plan.clips) {
+      for (const clip of plan.tracks.flatMap((track) => track.clips)) {
         const source = sources.get(clip.source);
         if (!source)
           throw new TypeError(`Clip ${clip.key}'s source ${clip.source} isn't in the job.`);
         assertClip(clip, source.length);
       }
 
-      const output = Array.from(
-        { length: plan.channels },
-        () => new Array<number>(planLength(plan)),
-      );
-      let at = 0;
-      for (const [index, clip] of plan.clips.entries()) {
-        await Promise.resolve();
-        throwIfAborted(options.signal);
-        const source = sources.get(clip.source);
-        if (!source) throw new TypeError("unreachable");
-        const length = clipLength(clip);
-        for (let c = 0; c < plan.channels; c += 1) {
-          const from = sourceChannel(c, source.numberOfChannels);
-          const data = from === undefined ? undefined : source.getChannelData(from);
-          const target = output[c] as number[];
-          for (let i = 0; i < length; i += 1) {
-            const sample = data ? (data[clip.start + i] ?? 0) : 0;
-            target[at + i] = quantise(sample * gainAt(clip, i), sampleFormat);
-          }
+      // Frame by frame, as the mix is defined: the sum over the audible
+      // tracks of each one's clip at that frame, then the master gain.
+      const frames = mixLength(plan);
+      const tracks = audibleTracks(plan);
+      const master = dbToGain(plan.gainDb);
+      const output = Array.from({ length: plan.channels }, () => new Array<number>(frames));
+      let peak = 0;
+      let clippedFrames = 0;
+      for (let frame = 0; frame < frames; frame += 1) {
+        if (frame % 64 === 0) {
+          await Promise.resolve();
+          throwIfAborted(options.signal);
         }
-        at += length;
-        options.onProgress?.((index + 1) / plan.clips.length);
+        let over = false;
+        for (let c = 0; c < plan.channels; c += 1) {
+          let sum = 0;
+          for (const track of tracks) {
+            const clip = clipAt(track, frame);
+            const source = clip && sources.get(clip.source);
+            if (!clip || !source) continue;
+            const from = sourceChannel(c, source.numberOfChannels);
+            if (from === undefined) continue;
+            const within = frame - clip.at;
+            const sample = source.getChannelData(from)[clip.start + within] ?? 0;
+            sum += sample * gainAt(clip, within) * dbToGain(track.gainDb);
+          }
+          const value = sum * master;
+          peak = Math.max(peak, Math.abs(value));
+          if (Math.abs(value) > 1) over = true;
+          (output[c] as number[])[frame] = quantise(value, sampleFormat);
+        }
+        if (over) clippedFrames += 1;
+        options.onProgress?.((frame + 1) / frames);
       }
-      if (plan.clips.length === 0) options.onProgress?.(1);
+      if (frames === 0) options.onProgress?.(1);
 
       const wav: FakeWav = {
         sampleRate: plan.sampleRate,
@@ -98,7 +111,11 @@ export function createFakeProcessor(): AudioProcessor {
         metadata: plan.metadata,
         samples: output,
       };
-      return new Blob([MAGIC, JSON.stringify(wav)], { type: "audio/wav" });
+      return {
+        blob: new Blob([MAGIC, JSON.stringify(wav)], { type: "audio/wav" }),
+        peakDb: 20 * Math.log10(peak),
+        clippedFrames,
+      };
     },
     async destroy() {
       destroyed = true;

@@ -5,15 +5,15 @@ import { createProcessor, EXPORT_BLOCK_FRAMES } from "../../src/adapters/audio-p
 import { quantise } from "../../src/adapters/wav/wav-writer.js";
 import { channelMix } from "../../src/core/model/mix.js";
 import {
-  type AudioClip,
+  type AudioClipBody,
   type AudioPlan,
   type AudioSampleFormat,
   clipLength,
-  EMPTY_METADATA,
   gainAt,
   NO_FADE,
 } from "../../src/index.js";
 import { describeAudioProcessorContract } from "../contracts/audio-processor.contract.js";
+import { singleTrack } from "../helpers/plans.js";
 import { startInProcessWorker } from "./in-process-worker.js";
 import { inspectWav, memoryAudio } from "./wav-reader.js";
 
@@ -32,7 +32,7 @@ describeAudioProcessorContract("audio processor", {
   inspect: inspectWav,
 });
 
-const clip = (changes: Partial<AudioClip>): AudioClip => ({
+const clip = (changes: Partial<AudioClipBody>): AudioClipBody => ({
   key: "c",
   source: "a",
   start: 0,
@@ -43,12 +43,7 @@ const clip = (changes: Partial<AudioClip>): AudioClip => ({
   ...changes,
 });
 
-const plan = (clips: AudioClip[], channels = 1): AudioPlan => ({
-  sampleRate: 8_000,
-  channels,
-  clips,
-  metadata: EMPTY_METADATA,
-});
+const plan = (clips: AudioClipBody[], channels = 1): AudioPlan => singleTrack(clips, { channels });
 
 /** What a sample reads back as, through a reader that divides by 2ⁿ⁻¹. */
 function stored(sample: number, format: AudioSampleFormat): number {
@@ -86,7 +81,7 @@ describe("the audio processor", () => {
     const sources = new Map([["a", memoryAudio(8_000, [ramp, mirror])]]);
     const first = clip({ key: "x", end: 70_000 });
     const second = clip({ key: "y", start: 70_000, end: length });
-    const output = await processor(watched).render({
+    const { blob: output } = await processor(watched).render({
       plan: plan([first, second], 2),
       sources,
       format: { container: "wav", sampleFormat: "float32" },
@@ -100,7 +95,7 @@ describe("the audio processor", () => {
   });
 
   it("pads an odd number of sample bytes, so the RIFF size matches the file", async () => {
-    const output = await processor().render({
+    const { blob: output } = await processor().render({
       plan: plan([clip({ end: 3 })]),
       sources: new Map([["a", memoryAudio(8_000, [[0.1, 0.2, 0.3]])]]),
       format: { container: "wav", sampleFormat: "pcm24" },
@@ -112,7 +107,7 @@ describe("the audio processor", () => {
   });
 
   it("writes an empty plan as a valid file with no frames", async () => {
-    const output = await processor().render({
+    const { blob: output } = await processor().render({
       plan: plan([]),
       sources: new Map(),
       format: { container: "wav" },
@@ -163,7 +158,7 @@ describe("the audio processor", () => {
                 fadeIn: fc.record({ share: fc.double({ min: 0, max: 0.5, noNaN: true }), curve }),
                 fadeOut: fc.record({ share: fc.double({ min: 0, max: 0.5, noNaN: true }), curve }),
               })
-              .map(({ source: index, a, b, gainDb, fadeIn, fadeOut }): AudioClip => {
+              .map(({ source: index, a, b, gainDb, fadeIn, fadeOut }): AudioClipBody => {
                 const length = (sources[index] as number[][])[0]?.length ?? 1;
                 const start = a % length;
                 const end = start + 1 + (b % (length - start));
@@ -183,6 +178,7 @@ describe("the audio processor", () => {
           .map((clips) => ({
             sources,
             sampleFormat,
+            clips: clips.map((each, index) => ({ ...each, key: `c${index}` })),
             plan: plan(
               clips.map((each, index) => ({ ...each, key: `c${index}` })),
               channels,
@@ -191,19 +187,19 @@ describe("the audio processor", () => {
       );
     const shared = processor();
     await fc.assert(
-      fc.asyncProperty(job, async ({ sources, sampleFormat, plan: rendered }) => {
+      fc.asyncProperty(job, async ({ sources, sampleFormat, clips, plan: rendered }) => {
         const decoded = new Map(
           sources.map((channels, index) => [`s${index}`, memoryAudio(8_000, channels)]),
         );
-        const output = await shared.render({
+        const { blob: output } = await shared.render({
           plan: rendered,
           sources: decoded,
           format: { container: "wav", sampleFormat },
         });
         const read = await inspectWav(output).catch(() => undefined);
-        if (rendered.clips.length === 0) return;
+        if (clips.length === 0) return;
         const expected = Array.from({ length: rendered.channels }, () => [] as number[]);
-        for (const each of rendered.clips) {
+        for (const each of clips) {
           const audio = decoded.get(each.source) as ReturnType<typeof memoryAudio>;
           const matrix = channelMix(audio.numberOfChannels, rendered.channels);
           for (let i = 0; i < clipLength(each); i += 1) {

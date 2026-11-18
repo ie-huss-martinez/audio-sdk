@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-  type AudioClip,
+  type AudioClipBody,
   type AudioOutput,
   type AudioPlan,
   type DecodedAudio,
-  EMPTY_METADATA,
   NO_FADE,
 } from "../../src/index.js";
+import { singleTrack } from "../helpers/plans.js";
 
 /**
  * What an output's contract test needs: a way to create the output, and to
@@ -25,12 +25,13 @@ export interface AudioOutputHarness {
 
 const RATE = 8_000;
 
-function clip(key: string, end: number): AudioClip {
+function clip(key: string, end: number): AudioClipBody {
   return { key, source: "a", start: 0, end, gainDb: 0, fadeIn: NO_FADE, fadeOut: NO_FADE };
 }
 
-function plan(...clips: AudioClip[]): AudioPlan {
-  return { sampleRate: RATE, channels: 1, clips, metadata: EMPTY_METADATA };
+/** One track, with the clips back to back. */
+function plan(...clips: AudioClipBody[]): AudioPlan {
+  return singleTrack(clips, { sampleRate: RATE });
 }
 
 /**
