@@ -1,7 +1,7 @@
 {
   "name": "@hussmartinez/audio-sdk-example-vite",
   "private": true,
-  "description": "A Vite page that uses the built @hussmartinez/audio-sdk engine, inline and self-hosted, for the end-to-end tests.",
+  "description": "Vite pages that use the built @hussmartinez/audio-sdk: its engine, inline and self-hosted, the React editor and the element, for the end-to-end tests.",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
@@ -10,11 +10,16 @@
     "start": "vite preview --port 4310 --strictPort"
   },
   "dependencies": {
-    "@hussmartinez/audio-sdk": "workspace:*"
+    "@hussmartinez/audio-sdk": "workspace:*",
+    "@hussmartinez/ui": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
   },
   "devDependencies": {
     "@hussmartinez/sdk-config": "catalog:",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:"
   }

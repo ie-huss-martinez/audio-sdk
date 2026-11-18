@@ -1,7 +1,7 @@
 {
   "name": "@hussmartinez/audio-sdk-e2e",
   "private": true,
-  "description": "End-to-end tests of @hussmartinez/audio-sdk against its built examples: the codec capability matrix, no foreign requests, and self-hosting under a strict Content Security Policy.",
+  "description": "End-to-end tests of @hussmartinez/audio-sdk against its built examples: the codec capability matrix, no foreign requests, self-hosting under a strict Content Security Policy, the editor and the element by keyboard alone, and server rendering in Next.js.",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
@@ -9,6 +9,7 @@
     "test:e2e": "tsc --noEmit && hm-in-image playwright test"
   },
   "devDependencies": {
+    "@axe-core/playwright": "catalog:",
     "@hussmartinez/sdk-config": "catalog:",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",

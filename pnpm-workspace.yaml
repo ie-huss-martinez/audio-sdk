@@ -12,6 +12,7 @@ packages:
 # with `catalog:`, and pnpm writes the real ranges into published manifests.
 catalog:
   "@arethetypeswrong/cli": ^0.18.5
+  "@axe-core/playwright": ^4.14.0
   "@changesets/changelog-github": ^1.0.1
   "@changesets/cli": ^3.0.3
   "@biomejs/biome": ^2.6.5
@@ -33,6 +34,7 @@ catalog:
   fast-check: ^4.10.2
   husky: ^9.1.7
   lint-staged: ^17.6.0
+  next: ^16.4.0
   playwright: 1.65.0
   publint: ^0.3.25
   react: ^19.3.0
@@ -51,6 +53,8 @@ catalog:
 # optional platform package without its postinstall.
 allowBuilds:
   esbuild: false
+  # Next.js's optional image optimiser; the examples don't use next/image.
+  sharp: false
 # Fail the install when an unapproved package wants to run a build script.
 strictDepBuilds: true
 # Don't resolve versions published less than a day ago, except the family's
