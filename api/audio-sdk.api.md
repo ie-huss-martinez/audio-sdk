@@ -20,11 +20,27 @@ export const AUDIO_PLAN_FORMAT = "hm-audio-plan";
 export const AUDIO_PLAN_VERSION = 2;
 
 // @public
+export interface AudioAdapters {
+    destroy(): Promise<void>;
+    // (undocumented)
+    readonly engine: AudioEngine;
+    // (undocumented)
+    readonly output: AudioOutput;
+    // (undocumented)
+    readonly processor: AudioProcessor;
+}
+
+// @public
+export interface AudioAdaptersOptions {
+    readonly assetsUrl?: string | URL;
+    readonly idleTimeout?: number;
+}
+
+// @public
 export interface AudioAddTrackCommand {
     // (undocumented)
     readonly index: number;
-    // (undocumented)
-    readonly key: string;
+    readonly key?: string;
     // (undocumented)
     readonly name?: string;
     // (undocumented)
@@ -167,8 +183,10 @@ export interface AudioInsertClipsCommand {
     readonly type: "audio.insertClips";
 }
 
+// Warning: (ae-forgotten-export) The symbol "AudioOpenOptions" needs to be exported by the entry point index.d.ts
+//
 // @public
-export interface AudioInsertOptions extends AudioProgressOptions {
+export interface AudioInsertOptions extends AudioOpenOptions {
     readonly at?: number;
     readonly track?: string;
 }
@@ -617,7 +635,7 @@ export interface AudioSession {
     getSnapshot(): AudioSessionSnapshot;
     group<T>(fn: () => T): T;
     insert(file: Blob, options?: AudioInsertOptions): Promise<void>;
-    open(file: Blob, options?: AudioProgressOptions): Promise<void>;
+    open(file: Blob, options?: AudioOpenOptions): Promise<void>;
     // (undocumented)
     redo(): void;
     select(range: {
@@ -765,6 +783,7 @@ export interface AudioSourceInfo {
     readonly container: AudioContainer;
     readonly frames: number;
     readonly id: string;
+    readonly name?: string;
     readonly resampledFrom?: number;
     // (undocumented)
     readonly sampleRate: number;
@@ -776,8 +795,7 @@ export interface AudioSplitClipCommand {
     readonly at: number;
     // (undocumented)
     readonly key: string;
-    // (undocumented)
-    readonly newKey: string;
+    readonly newKey?: string;
     // (undocumented)
     readonly type: "audio.splitClip";
 }
@@ -843,6 +861,9 @@ export function clipLength(clip: AudioClipBody): number;
 export function connectOutput(session: AudioSession, output: AudioOutput): () => void;
 
 // @public
+export function createAudioAdapters(options?: AudioAdaptersOptions): AudioAdapters;
+
+// @public
 export function createAudioEngine(options?: AudioEngineOptions): AudioEngine;
 
 // @public
@@ -886,6 +907,9 @@ export const MAX_GAIN_DB = 120;
 
 // @public
 export const MAX_METADATA_LENGTH = 1000;
+
+// @public
+export const MAX_SOURCE_NAME_LENGTH = 255;
 
 // @public
 export const MAX_TRACK_NAME_LENGTH = 100;

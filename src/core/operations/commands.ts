@@ -88,7 +88,12 @@ export interface AudioSplitClipCommand {
   readonly type: "audio.splitClip";
   readonly key: string;
   readonly at: number;
-  readonly newKey: string;
+  /**
+   * The second part's key. `session.execute` gives one from
+   * `session.createKey()` when it's left out; a stored command, and the
+   * format, always carry it.
+   */
+  readonly newKey?: string;
 }
 
 /**
@@ -145,6 +150,7 @@ export interface AudioDeleteRangeCommand {
   /**
    * By track key: the key of the part after the range, on a track where the
    * range lies inside one clip. A track that doesn't need its key ignores it.
+   * `session.execute` gives a key to every track named without one.
    */
   readonly newKeys?: Readonly<Record<string, string>>;
 }
@@ -172,7 +178,10 @@ export interface AudioInsertTimeCommand {
   readonly at: number;
   readonly frames: number;
   readonly tracks: readonly string[];
-  /** By track key: the key of the second part of a clip the frame splits. */
+  /**
+   * By track key: the key of the second part of a clip the frame splits.
+   * `session.execute` gives a key to every track named without one.
+   */
   readonly newKeys?: Readonly<Record<string, string>>;
 }
 
@@ -183,7 +192,12 @@ export interface AudioInsertTimeCommand {
  */
 export interface AudioAddTrackCommand {
   readonly type: "audio.addTrack";
-  readonly key: string;
+  /**
+   * The new track's key. `session.execute` gives one from
+   * `session.createKey()` when it's left out; a stored command, and the
+   * format, always carry it.
+   */
+  readonly key?: string;
   readonly index: number;
   readonly name?: string;
 }
@@ -950,11 +964,13 @@ function apply(plan: AudioPlan, command: AudioCommand, sourceFrames: SourceFrame
       if (at <= clip.at || at >= clipEnd(clip)) {
         refuse("not-inside-clip", "the frame must be strictly inside the clip");
       }
+      // The reducer needs every key it creates: the session fills it in.
       claim([command.newKey], keysOf(plan));
+      const newKey = command.newKey as string;
       const length = clip.end - clip.start;
       const parts = [
         cut(clip, 0, at - clip.at, clip.key, clip.at),
-        cut(clip, at - clip.at, length, command.newKey, at),
+        cut(clip, at - clip.at, length, newKey, at),
       ];
       const clips = (plan.tracks[track] as AudioTrack).clips;
       const index = clips.indexOf(clip);

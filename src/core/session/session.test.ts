@@ -342,6 +342,111 @@ describe("the audio session", () => {
     expect(snapshot().sources).toHaveLength(2);
   });
 
+  it("gives commands the keys they leave out, and records them, so undo and redo stay exact", async () => {
+    const { session, snapshot, keys, trackKeys, clips } = setup();
+    await session.open(recording(100));
+    const [key] = keys() as [string];
+    const [track] = trackKeys() as [string];
+    session.execute([
+      { type: "audio.splitClip", key, at: 50 },
+      { type: "audio.addTrack", index: 1 },
+    ]);
+    const added = trackKeys()[1] as string;
+    const [first, second] = keys() as [string, string];
+    expect(new Set([track, added, first, second]).size).toBe(4);
+    // A range inside a clip needs a key for the part after it.
+    session.execute({
+      type: "audio.deleteRange",
+      start: 60,
+      end: 70,
+      tracks: [track],
+      ripple: true,
+    });
+    expect(clips().map((clip) => [clip.at, clip.end - clip.start])).toEqual([
+      [0, 50],
+      [50, 10],
+      [60, 30],
+    ]);
+    const after = snapshot().plan;
+    session.undo();
+    session.undo();
+    expect(trackKeys()).toEqual([track]);
+    session.redo();
+    session.redo();
+    // The same keys, not new ones: the history recorded them.
+    expect(snapshot().plan).toEqual(after);
+    // A key that's given is used.
+    session.execute({ type: "audio.addTrack", key: "music", index: 0 });
+    expect(trackKeys()[0]).toBe("music");
+  });
+
+  it("succeeds without an undo step for a command that changes nothing", async () => {
+    const { session, snapshot, keys, events } = setup();
+    await session.open(recording(100));
+    session.execute({ type: "audio.setGain", keys: keys(), gainDb: -6 });
+    const before = snapshot();
+    const commands = events.length;
+    // The same gain again, and a master gain that's already 0 dB.
+    session.execute({ type: "audio.setGain", keys: keys(), gainDb: -6 });
+    session.execute({ type: "audio.setMasterGain", gainDb: 0 });
+    expect(snapshot()).toBe(before);
+    expect(events).toHaveLength(commands);
+    // One undo takes the one change away.
+    session.undo();
+    expect(snapshot().canUndo).toBe(false);
+    // A command that doesn't apply is still refused.
+    expect(
+      isAudioError(
+        thrown(() => session.execute({ type: "audio.setGain", keys: ["nope"], gainDb: 0 })),
+        "INVALID_COMMAND",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps a name for each recording, cleaned, from the host or the file, and never in events", async () => {
+    const { session, snapshot, events } = setup();
+    const file = new File([await recording(100).arrayBuffer()], "interview.wav");
+    await session.open(file);
+    expect(snapshot().sources[0]?.name).toBe("interview.wav");
+    // A bidirectional override would show "vaw.exe" as "exe.wav".
+    await session.insert(recording(10), { name: "  Music \u202Evaw.exe\u0007  " });
+    expect(snapshot().sources[1]?.name).toBe("Music vaw.exe");
+    await session.insert(recording(10), { name: "\u200E\u0000 " });
+    expect(snapshot().sources[2]).not.toHaveProperty("name");
+    await session.insert(recording(10), { name: "\u{1F399}".repeat(300) });
+    expect([...(snapshot().sources[3]?.name ?? "")]).toHaveLength(255);
+    await session.insert(recording(10));
+    expect(snapshot().sources[4]).not.toHaveProperty("name");
+    expect(JSON.stringify(events)).not.toContain("interview");
+    expect(JSON.stringify(events)).not.toContain("Music");
+    expect(JSON.stringify(snapshot().plan)).not.toContain("interview");
+  });
+
+  it("works with its methods passed on their own, as useSyncExternalStore takes them", async () => {
+    const { session } = setup();
+    const { getSnapshot, subscribe, open, execute, createKey } = session;
+    const changes: unknown[] = [];
+    const unsubscribe = subscribe(() => changes.push(getSnapshot()));
+    await open(recording(100));
+    execute({ type: "audio.addTrack", key: createKey(), index: 1 });
+    unsubscribe();
+    expect(changes.length).toBeGreaterThan(1);
+    expect(getSnapshot().plan?.tracks).toHaveLength(2);
+  });
+
+  it("destroys nothing it was given when it closes", async () => {
+    const engine = createFakeEngine();
+    const processor = createFakeProcessor();
+    const destroyed = [vi.spyOn(engine, "destroy"), vi.spyOn(processor, "destroy")];
+    const session = createAudioSession({ engine, processor });
+    await session.open(recording(100));
+    await session.close();
+    for (const spy of destroyed) expect(spy).not.toHaveBeenCalled();
+    // Both still work, for another session or the same one.
+    await session.open(recording(10));
+    expect((await session.export()).blob.size).toBeGreaterThan(0);
+  });
+
   it("records the commands of a group as one step", async () => {
     const { session, keys } = setup();
     await session.open(recording(100));
@@ -529,7 +634,7 @@ describe("the audio session", () => {
   });
 
   it("clamps the selection to the plan, and follows it as it shrinks", async () => {
-    const { session, snapshot, keys, ripple, trackKeys } = setup();
+    const { session, snapshot, keys, trackKeys } = setup();
     session.select({ start: 0, end: 10 });
     expect(snapshot().selection).toBeUndefined();
     await session.open(recording(100));
@@ -538,11 +643,41 @@ describe("the audio session", () => {
     expect(snapshot().selection).toEqual({ start: 20, end: 80, tracks });
     session.select({ start: -5, end: 500 });
     expect(snapshot().selection).toEqual({ start: 0, end: 100, tracks });
-    session.execute(ripple(50, 100));
+    // A trim shortens the plan without moving anything: the range follows it.
+    const [key] = keys() as [string];
+    session.execute({ type: "audio.trimClip", key, start: 0, end: 50 });
     expect(snapshot().selection).toEqual({ start: 0, end: 50, tracks });
     session.execute({ type: "audio.removeClips", keys: keys() });
     expect(snapshot().selection).toBeUndefined();
     expect(() => session.select({ start: 0.5, end: 2 })).toThrow(RangeError);
+  });
+
+  it("clears the selection after a time edit, and keeps it through other edits, undo and redo", async () => {
+    const { session, snapshot, keys, trackKeys } = setup();
+    await session.open(recording(100));
+    const tracks = trackKeys();
+    const [track] = tracks as [string];
+    const range = { start: 20, end: 40, tracks };
+    for (const command of [
+      { type: "audio.deleteRange", start: 60, end: 70, tracks, ripple: true },
+      { type: "audio.keepRange", start: 0, end: 90 },
+      { type: "audio.insertTime", at: 0, frames: 5, tracks: [track] },
+    ] as const) {
+      session.select(range);
+      session.execute(command);
+      expect(snapshot().selection, command.type).toBeUndefined();
+      // Undo and redo keep whatever selection there is now.
+      session.select(range);
+      session.undo();
+      expect(snapshot().selection).toEqual(range);
+      session.redo();
+      expect(snapshot().selection).toEqual(range);
+      session.undo();
+    }
+    session.select(range);
+    session.execute({ type: "audio.setGain", keys: keys(), gainDb: -3 });
+    session.execute({ type: "audio.setTrack", key: track, muted: true });
+    expect(snapshot().selection).toEqual(range);
   });
 
   it("selects a range on the tracks named, in plan order, and drops a track that's removed", async () => {

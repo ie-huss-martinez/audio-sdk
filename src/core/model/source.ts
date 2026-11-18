@@ -116,4 +116,43 @@ export interface AudioSourceInfo {
    * `frames` describe the converted audio.
    */
   readonly resampledFrom?: number;
+  /**
+   * The name the host gave the recording, or its file's name, to show
+   * people: at most {@link MAX_SOURCE_NAME_LENGTH} code points, without
+   * control or bidirectional formatting characters. It's never in events, the
+   * plan or a document. Show it as text, never as HTML.
+   */
+  readonly name?: string;
+}
+
+/**
+ * The longest source name, in Unicode code points. A longer one is cut.
+ *
+ * @public
+ */
+export const MAX_SOURCE_NAME_LENGTH = 255;
+
+/**
+ * Control characters, C0 and C1 (`\p{Cc}`), and the characters that change the
+ * direction text is shown in: the marks, embeddings, overrides and isolates.
+ * A file's name can carry them to disguise what it is, such as an override
+ * that shows `exe.wav` for `vaw.exe`.
+ */
+const UNSAFE_IN_NAMES = /[\p{Cc}\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/gu;
+
+/**
+ * A name made safe to show: control and bidirectional formatting characters
+ * removed, surrounding space trimmed, and cut to
+ * {@link MAX_SOURCE_NAME_LENGTH} code points. `undefined` when nothing's
+ * left.
+ *
+ * @internal
+ */
+export function cleanSourceName(name: unknown): string | undefined {
+  if (typeof name !== "string") return undefined;
+  const clean = [...name.replace(UNSAFE_IN_NAMES, "").trim()]
+    .slice(0, MAX_SOURCE_NAME_LENGTH)
+    .join("")
+    .trim();
+  return clean.length > 0 ? clean : undefined;
 }

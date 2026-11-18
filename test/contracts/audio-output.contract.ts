@@ -51,6 +51,21 @@ export function describeAudioOutputContract(name: string, harness: AudioOutputHa
       expect(output.position()).toBe(0);
     });
 
+    it("works with its methods passed on their own, as useSyncExternalStore takes them", async () => {
+      const { output, elapse } = harness.create();
+      const { getSnapshot, subscribe, load, play, pause, position } = output;
+      const states: string[] = [];
+      const unsubscribe = subscribe(() => states.push(getSnapshot().state));
+      load(plan(clip("a", 4_000)), sources());
+      await play();
+      await elapse(400);
+      pause();
+      unsubscribe();
+      expect(states).toEqual(["playing", "paused"]);
+      expect(position()).toBeGreaterThan(0);
+      await output.destroy();
+    });
+
     it("plays, notifying subscribers, and moves the playhead with the clock", async () => {
       const { output, elapse } = harness.create();
       output.load(plan(clip("a", 4_000)), sources());

@@ -13,20 +13,22 @@ This repository publishes **[`@hussmartinez/audio-sdk`](https://www.npmjs.com/pa
 ```ts
 import {
   audioMessages,
-  createAudioEngine,
-  createAudioProcessor,
+  createAudioAdapters,
   createAudioSession,
 } from "@hussmartinez/audio-sdk";
 import { createMessages } from "@hussmartinez/sdk-core";
 
 const messages = createMessages(audioMessages, { locale: "en" });
+// The engine, processor and output, made together; yours to destroy.
+const adapters = createAudioAdapters(); // or { assetsUrl } to self-host the worker
 const session = createAudioSession({
-  engine: createAudioEngine(),
-  processor: createAudioProcessor(),
+  engine: adapters.engine,
+  processor: adapters.processor,
   filePolicy: { maxDuration: 30 * 60 * 1_000 }, // or leave it out for the defaults
   onEvent: (event) => analytics.track(event), // anonymous: no names, samples or metadata
 });
-session.subscribe(() => render(session.getSnapshot())); // or useSyncExternalStore in React
+session.subscribe(() => render(session.getSnapshot()));
+// Or in React: useSyncExternalStore(session.subscribe, session.getSnapshot).
 
 try {
   await session.open(file, { onProgress: showProgress });
@@ -43,7 +45,6 @@ try {
       end: rate,
       tracks: [voice.key],
       ripple: true,
-      newKeys: { [voice.key]: session.createKey() },
     });
   }
   const [clip] = session.getSnapshot().plan?.tracks[0]?.clips ?? [];
@@ -73,6 +74,11 @@ try {
 - **The snapshot** has the `plan` (its tracks, their clips in frames, the master gain and the metadata), the `sources`, the `selection`, `canUndo` and `canRedo`, `busy`, the last `error`, and `warnings`: limits past their warning thresholds, and `truncated` for a WAV or AIFF file cut short, which opens with the audio it holds. Show their text from `warnings.<name>` in `audioMessages`.
 - **Tracks** play together. Each has a name, a gain, mute and solo, and clips placed in time that never overlap: two sounds at once are two tracks. `audibleTracks(plan)` says which ones sound.
 - **Commands** are plain data, such as `audio.splitClip`, `audio.moveClips` or `audio.setTrack`, with an exact inverse for undo. Clip edits never move another clip: they fail with `clips-overlap` rather than push one. Time edits, `audio.deleteRange`, `audio.keepRange` and `audio.insertTime`, move what's after them on the tracks they name ([the format record](docs/formats/hm-audio-plan.md) lists every command). One that doesn't apply throws `INVALID_COMMAND` with a stable `details.reason`, such as `unknown-clip`. `session.group(fn)` makes several commands, such as a drag, one undo step.
+- **Keys you leave out, the session gives:** a split's `newKey`, a new track's `key`, and the `newKeys` of a time edit, one for every track it names. The history records them, so undo and redo bring back the same keys. Pass your own, from `session.createKey()`, when you need to know them before the command runs.
+- **A command that changes nothing,** such as a gain that's already set, succeeds without an undo step.
+- **The selection** is a range of frames on some tracks, `{ start, end, tracks }`, set with `session.select()`. A time edit clears it, because it moves what was selected. Other edits, undo and redo keep it, clamped to the plan and to its tracks, and cleared when nothing's left.
+- **Recordings have names,** for showing people: a `File`'s own name, or the `name` you pass to `open()` or `insert()`, on each entry in `snapshot.sources`. Control and bidirectional formatting characters are removed, and names are cut to 255 code points. Names never go into events, the plan or a document.
+- **The session's methods work on their own,** without `session.`, so they can be passed around as `useSyncExternalStore` takes them. So do the output's.
 - **`session.insert(file, { track, at })`** adds another recording, as one undo step: on a new track of its own, or on the track you name, where it needs free space. A recording at another sample rate is converted to the session's, in the worker, and its entry in `snapshot.sources` gives the file's own rate as `resampledFrom`. One with more channels widens the plan to its count.
 - **Exports** mix the audible tracks as they are when the export starts, up to where the last audible clip ends, as 16-bit (the default) or 24-bit PCM, or 32-bit float WAV, with the metadata in the file. Tracks sum at unity, and the mix is clamped to full scale, never limited or normalised: the result's `peakDb` and `clippedFrames` say how far over it went, so you can lower the master gain with `audio.setMasterGain` and export again. They run under `maxProcessingTime`, and the `signal` option cancels them.
 - **Plans are portable JSON:** `toAudioPlanDocument` and `readAudioPlanDocument` write and read the `hm-audio-plan` format, version 2, whose JSON Schema ships in the package, at `@hussmartinez/audio-sdk/formats/hm-audio-plan/v2.schema.json` ([format record](docs/formats/hm-audio-plan.md)). Version 1 documents are read too, as one track, and `migrateAudioCommand` turns a stored version 1 command into version 2's.
@@ -82,9 +88,9 @@ try {
 `createAudioOutput()` plays a plan through Web Audio, and `connectOutput()` keeps it in step with a session, so playback follows every edit, undo and insert, even while playing ([ADR 0002](docs/adr/0002-workers-and-assets.md), [ADR 0003](docs/adr/0003-clip-plan-document-model.md)):
 
 ```ts
-import { connectOutput, createAudioOutput, isAudioError } from "@hussmartinez/audio-sdk";
+import { connectOutput, isAudioError } from "@hussmartinez/audio-sdk";
 
-const output = createAudioOutput();
+const { output } = adapters; // or createAudioOutput() on its own
 const disconnect = connectOutput(session, output);
 
 playButton.onclick = async () => {
@@ -106,12 +112,10 @@ requestAnimationFrame(function draw() {
 
 output.seek(5 * 48_000); // while playing, playback carries on from there
 
-// When you're done: disconnect, then release each thing you created.
+// When you're done: disconnect, close, then release the adapters.
 disconnect();
-await output.destroy();
 await session.close();
-await engine.destroy();
-await processor.destroy();
+await adapters.destroy(); // the engine, the processor and the output
 ```
 
 - **Start playback from a user gesture.** Browsers block audio until someone interacts with the page. The first `play()` creates the one `AudioContext`; if it doesn't start within two seconds, `play()` rejects with `UNSUPPORTED_ENVIRONMENT` and `details.feature` set to `"audio-output"`, and nothing changes.
@@ -120,7 +124,7 @@ await processor.destroy();
 - **Playback is what export renders:** the same audible tracks, track gains and master gain; each clip's gain and fades come from the same `gainAt`, and sources mix into the plan's channels by the same rules. One difference: playback isn't clamped, so the device clips at full scale where export clamps.
 - **A mute, a solo, a track's gain and the master gain are heard at once.** A plan that differs only in those is applied to what's playing over 5 ms, without rescheduling a clip, so there's no gap and no click. Any other edit reschedules from the playhead.
 - **Opening another recording, or closing,** stops the output at the start. An insert doesn't.
-- **The session doesn't own what you give it.** `session.close()` releases the recording, not the engine, the processor or the output: destroy each yourself, as above.
+- **The session doesn't own what you give it.** `session.close()` releases the recording, not the engine, the processor or the output: destroy them yourself, as above, with `adapters.destroy()`, or each one's `destroy()` if you made them with `createAudioEngine`, `createAudioProcessor` and `createAudioOutput`.
 - **No Content Security Policy directive** is needed for playback: it uses no worker and makes no requests.
 
 ## Using the engine directly
@@ -182,7 +186,7 @@ try {
 | Mode | How | Directives |
 |---|---|---|
 | Inline (the default) | `createAudioEngine()` and `createAudioProcessor()`: the worker is inlined and starts from a `blob:` URL | `worker-src blob:` |
-| Self-hosted | `createAudioEngine({ assetsUrl: "/audio-sdk/" })`, and the same option for `createAudioProcessor`: serve the package's `dist/assets/` there; the worker is `audio/audio.worker.js` | `worker-src 'self'` |
+| Self-hosted | `createAudioAdapters({ assetsUrl: "/audio-sdk/" })`, or the same option for `createAudioEngine` and `createAudioProcessor`: serve the package's `dist/assets/` there; the worker is `audio/audio.worker.js` | `worker-src 'self'` |
 
 Neither mode needs `'unsafe-eval'` or `'wasm-unsafe-eval'`, and the SDK makes no network requests of its own ([ADR 0002](docs/adr/0002-workers-and-assets.md)).
 

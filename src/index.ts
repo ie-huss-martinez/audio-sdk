@@ -9,6 +9,8 @@
  * @packageDocumentation
  */
 
+export type { AudioAdapters, AudioAdaptersOptions } from "./adapters/audio-adapters.js";
+export { createAudioAdapters } from "./adapters/audio-adapters.js";
 export type { AudioEngineOptions } from "./adapters/audio-engine.js";
 export { createAudioEngine } from "./adapters/audio-engine.js";
 export { createAudioOutput } from "./adapters/audio-output.js";
@@ -70,6 +72,7 @@ export type {
   AudioSourceInfo,
   DecodedAudio,
 } from "./core/model/source.js";
+export { MAX_SOURCE_NAME_LENGTH } from "./core/model/source.js";
 export { framesToSeconds, secondsToFrames } from "./core/model/time.js";
 export { MAX_METADATA_LENGTH } from "./core/operations/checks.js";
 export type {
