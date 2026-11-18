@@ -207,7 +207,8 @@ The session adds:
 
 | Code | When |
 |---|---|
-| `TOO_MANY_FILES`, `SESSION_TOO_LARGE`, `TOO_MANY_CLIPS` | An insert or an edit would exceed `maxFiles`, `maxSessionSize` or `maxClips` |
+| `TOO_MANY_FILES`, `SESSION_TOO_LARGE`, `TOO_MANY_CLIPS`, `TOO_MANY_TRACKS` | An insert or an edit would exceed `maxFiles`, `maxSessionSize`, `maxClips` or `maxTracks` |
+| `DURATION_TOO_LONG` | An insert or an edit would make the plan longer than `maxDuration`: clips can be placed anywhere, so the plan's length has the limit a file's has |
 | `INVALID_COMMAND` | A command doesn't apply, or there's nothing to export; `details.reason` says why, such as `clips-overlap`, `empty-plan` or `nothing-audible` |
 | `INVALID_DOCUMENT` | A plan document isn't valid; `details.reason` says why. Another format or a later version is `UNSUPPORTED_FORMAT` |
 

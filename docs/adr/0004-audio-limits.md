@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-12
 - **Amended:** 2026-11-13: `maxSessionSize` counts the decoded channels, not the probe's maximum.
+- **Amended:** 2026-11-18, with multitrack ([ADR 0006](0006-multitrack.md)): `maxTracks`, the plan's length checked against `maxDuration`, and `maxClips` counting every track.
 
 ## Context
 
@@ -22,7 +23,7 @@ The sources live on the page ([ADR 0002](0002-workers-and-assets.md)), where run
 
 ### The limits
 
-`audioLimits` is `coreLimits` with audio defaults, plus five audio limits, defined with `defineLimits` so that violations throw `AudioError`:
+`audioLimits` is `coreLimits` with audio defaults, plus six audio limits, defined with `defineLimits` so that violations throw `AudioError`:
 
 | Limit | Code | Default maximum | Default warning | Checked |
 |---|---|---|---|---|
@@ -34,7 +35,9 @@ The sources live on the page ([ADR 0002](0002-workers-and-assets.md)), where run
 | `maxChannels` | `TOO_MANY_CHANNELS` | 8 | none | Each file, from the probe |
 | `maxSampleRate` | `SAMPLE_RATE_TOO_HIGH` | 192 kHz | none | Each file, from the probe |
 | `maxSessionSize` | `SESSION_TOO_LARGE` | 1.5 GB | 750 MB | The decoded bytes of every source the session holds, on each open and insert |
-| `maxClips` | `TOO_MANY_CLIPS` | 2,000 | none | The plan, on each command that adds clips |
+| `maxClips` | `TOO_MANY_CLIPS` | 2,000 | none | The plan, over all its tracks, on each command that adds clips |
+| `maxTracks` | `TOO_MANY_TRACKS` | 16 | none | The plan, on each command or insert that adds a track |
+| `maxDuration`, for the plan | `DURATION_TOO_LONG` | 3 hours | none | The plan's length, on each command or insert that lengthens it |
 
 - **The core defaults change for audio.** 100 MB of files and 500 MB decoded would refuse a 30-minute WAV. 1 GB decoded fits about 43 minutes of stereo at 48 kHz, which covers most recordings people edit, and stays within what desktop and recent mobile browsers give a tab.
 - **These are starting values, measured before the first release** by opening and exporting files at each limit in the end-to-end suites on all three engines, including WebKit as a stand-in for mobile Safari. If they're too high for phones, the defaults go down, and the change gets its own record.

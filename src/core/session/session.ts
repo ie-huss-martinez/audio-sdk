@@ -254,7 +254,9 @@ export interface AudioSession {
   /**
    * Runs one command, or several as one undoable step. A command that
    * doesn't apply throws `AudioError` with `INVALID_COMMAND`, and one that
-   * would exceed `maxClips` throws `TOO_MANY_CLIPS`; either changes
+   * would exceed a limit throws its code: `TOO_MANY_CLIPS` for `maxClips`,
+   * `TOO_MANY_TRACKS` for `maxTracks`, and `DURATION_TOO_LONG` when the plan
+   * would become longer than `maxDuration`. Any of them changes
    * nothing. The commands are copied, so changing them afterwards has no
    * effect.
    */
@@ -463,6 +465,10 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     if (clips > 0 && clips >= policy.limits.maxClips.warning) {
       found.push({ type: "limit", limit: "maxClips", actual: clips });
     }
+    const tracks = plan?.tracks.length ?? 0;
+    if (tracks > 0 && tracks >= policy.limits.maxTracks.warning) {
+      found.push({ type: "limit", limit: "maxTracks", actual: tracks });
+    }
     return found;
   }
 
@@ -640,14 +646,29 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     }
   }
 
-  /** Applies commands to the plan, checking `maxClips`, without committing anything. */
+  /**
+   * Applies commands to the plan, checking `maxClips`, `maxTracks` and the
+   * plan's length against `maxDuration`, without committing anything.
+   */
   function applyChecked(
     current: AudioPlan,
     commands: readonly AudioCommand[],
   ): { state: AudioPlan; inverses: AudioCommand[] } {
     const result = applyCommands(reducer, current, commands);
-    const clips = clipsIn(result.state).length;
+    const next = result.state;
+    // Each limit is checked when the plan grows past where it was, so a
+    // plan already over a lowered limit can still be edited and shrunk.
+    const clips = clipsIn(next).length;
     if (clips > clipsIn(current).length) policy.check("maxClips", clips);
+    if (next.tracks.length > current.tracks.length) {
+      policy.check("maxTracks", next.tracks.length);
+    }
+    // Positions are free, so a clip can be placed hours in, which no
+    // file's limit catches: the plan's own length has one (docs/adr/0006).
+    const length = planLength(next);
+    if (length > planLength(current)) {
+      policy.check("maxDuration", Math.ceil((length * 1_000) / next.sampleRate));
+    }
     return result;
   }
 

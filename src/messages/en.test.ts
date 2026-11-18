@@ -32,6 +32,7 @@ const ALL_CODES: Record<AudioErrorCode, true> = {
   SAMPLE_RATE_TOO_HIGH: true,
   SESSION_TOO_LARGE: true,
   TOO_MANY_CLIPS: true,
+  TOO_MANY_TRACKS: true,
 };
 
 function violation(run: () => unknown): unknown {
@@ -91,6 +92,15 @@ describe("audioMessages", () => {
     );
     expect(en.t("errors.TOO_MANY_CLIPS", { maximum: 2_000 })).toBe(
       "A recording can have up to 2,000 clips. Join or delete clips, and try again.",
+    );
+    expect(en.t("errors.TOO_MANY_TRACKS", { maximum: 16 })).toBe(
+      "A recording can have up to 16 tracks. Remove a track, and try again.",
+    );
+    expect(en.t("errors.TOO_MANY_TRACKS", { maximum: 1 })).toBe(
+      "A recording can have 1 track. Remove a track, and try again.",
+    );
+    expect(en.t("warnings.maxTracks", { actual: 12 })).toBe(
+      "This recording has 12 tracks. Many tracks may be slow to play and export.",
     );
     expect(en.t("warnings.maxSessionSize", { actual: 800_000_000 })).toBe(
       "The open recordings use 800 MB of memory. Clearing the undo history frees memory.",

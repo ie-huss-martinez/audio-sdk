@@ -27,12 +27,12 @@ const coreImport = (name, imports, limit) => ({
 export default [
   {
     disablePlugins: ["@size-limit/esbuild"],
-    // Measured at 19.69 kB with the multitrack plan (docs/adr/0006): the
+    // Measured at 19.81 kB with the multitrack plan (docs/adr/0006): the
     // session, the reducer of tracks and time edits, the readers of both
     // format versions with the migration of version 1's plans and commands,
     // the mix's gathering, the engine's and the processor's page sides,
     // playback and the text of errors and warnings. Minified, as an
-    // application ships it, it's 15.13 kB. Before tracks it was 15.06 kB,
+    // application ships it, it's 15.24 kB. Before tracks it was 15.06 kB,
     // and 11.53 kB minified.
     name: "Server-safe core (.), with the shared code it loads",
     path: ["dist/index.js", "dist/shared/*.js"],
@@ -79,12 +79,13 @@ export default [
     brotli: true,
     limit: "15 kB",
   },
-  // Measured 8.82 kB: the session, the reducer of tracks, clip edits and
+  // Measured 8.96 kB: the session, the reducer of tracks, clip edits and
   // time edits, history and limits. It was 6.42 kB with one track.
   coreImport("Import: createAudioSession", "{ createAudioSession }", "9.5 kB"),
-  // Measured 3.55 kB: the engine's page side, decoding on the page, peaks,
-  // and sending blocks to the worker's resampler.
-  coreImport("Import: createAudioEngine", "{ createAudioEngine }", "3.6 kB"),
+  // Measured 3.60 kB: the engine's page side, decoding on the page, peaks,
+  // and sending blocks to the worker's resampler, with the limits'
+  // definitions, which the track limit added to. It was 3.55 kB.
+  coreImport("Import: createAudioEngine", "{ createAudioEngine }", "4 kB"),
   // Measured 2.68 kB: the processor's page side, gathering each block's
   // audible clips for the worker's mix.
   coreImport("Import: createAudioProcessor", "{ createAudioProcessor }", "3 kB"),
