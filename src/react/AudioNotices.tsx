@@ -1,8 +1,7 @@
-import { CloseIcon, IconButton } from "@hussmartinez/ui/react";
+import { CloseIcon, IconButton, useAnnounce } from "@hussmartinez/ui/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { AudioWarning } from "../core/session/session.js";
 import { audioWarningText } from "../messages/text.js";
-import { useJoinedAnnounce } from "./announce.js";
 import { useAudioEditorContext, useAudioSession } from "./context.js";
 import { classes, type PartClassNames } from "./parts.js";
 
@@ -50,7 +49,7 @@ export function Notices({
 }): ReactNode {
   const { messages } = useAudioEditorContext();
   const { snapshot } = useAudioSession();
-  const announce = useJoinedAnnounce();
+  const announce = useAnnounce();
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(() => new Set());
 
   // When early steps are dropped to make room, say so once, politely
