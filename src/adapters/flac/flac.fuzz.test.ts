@@ -12,6 +12,16 @@ import { probeFile } from "../probe.js";
  */
 
 const SETTLE_MS = 1_000;
+
+/**
+ * The longest a test may take: it walks every truncation of a file, or
+ * hundreds of generated inputs, so it's long under load. A hang is still
+ * caught at once, by each input's own {@link SETTLE_MS}. The slowest test
+ * here took 0.54 s alone and 2.7 s with the whole unit suite
+ * running three times at once, on 12 cores.
+ */
+const SLOW = 30_000;
+
 const TONE = Array.from({ length: 300 }, (_, i) => Math.sin(i / 5) * 0.7);
 
 const FIXTURES: Record<string, Uint8Array<ArrayBuffer>> = {
@@ -52,7 +62,7 @@ async function outcome(bytes: Uint8Array<ArrayBuffer>): Promise<Outcome> {
 
 const SETTLED = ["probed", "INVALID_AUDIO", "UNSUPPORTED_FORMAT"];
 
-describe("the FLAC walkers on hostile input", () => {
+describe("the FLAC walkers on hostile input", { timeout: SLOW }, () => {
   it.each(Object.entries(FIXTURES))("probe every fixture: %s", async (_, bytes) => {
     expect(await outcome(bytes)).toBe("probed");
   });

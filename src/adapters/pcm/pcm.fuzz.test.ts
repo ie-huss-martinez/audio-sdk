@@ -12,6 +12,16 @@ import { probePcm, readPcmFrames } from "./probe.js";
  */
 
 const SETTLE_MS = 1_000;
+
+/**
+ * The longest a test may take: it walks every truncation of a file, or
+ * hundreds of generated inputs, so it's long under load. A hang is still
+ * caught at once, by each input's own {@link SETTLE_MS}. The slowest test
+ * here took 0.40 s alone and 1.6 s with the whole unit suite
+ * running three times at once, on 12 cores.
+ */
+const SLOW = 30_000;
+
 const TONE = Array.from({ length: 64 }, (_, i) => Math.sin(i / 3) * 0.8);
 
 const FIXTURES: Record<string, Uint8Array<ArrayBuffer>> = {
@@ -61,7 +71,7 @@ async function outcome(bytes: Uint8Array<ArrayBuffer>): Promise<Outcome> {
   }
 }
 
-describe("the PCM readers on hostile input", () => {
+describe("the PCM readers on hostile input", { timeout: SLOW }, () => {
   it.each(Object.entries(FIXTURES))("read every fixture in full: %s", async (_, bytes) => {
     expect(await outcome(bytes)).toBe("read");
   });

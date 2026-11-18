@@ -12,6 +12,18 @@ import { probeFile } from "../probe.js";
  */
 
 const SETTLE_MS = 1_000;
+
+/**
+ * The longest a test may take: it walks every truncation of a file, or
+ * hundreds of generated inputs, so it's long under load. A hang is still
+ * caught at once, by each input's own {@link SETTLE_MS}. The slowest test
+ * here, every truncation of MPEG-2.5 mono with a VBRI tag, took 1.1 s alone
+ * and 4.7 s with the whole unit suite running three times at once, on 12
+ * cores. Under a heavier load it passed Vitest's default of 5 s, which cut
+ * it off in three runs out of three, though no input missed its own limit.
+ */
+const SLOW = 30_000;
+
 const FIXTURES: Record<string, Uint8Array<ArrayBuffer>> = {
   "MP3, stereo": mp3File({ frames: 6 }),
   "MP3 after ID3v2, with an Info tag": mp3File({
@@ -61,7 +73,7 @@ async function outcome(bytes: Uint8Array<ArrayBuffer>): Promise<Outcome> {
 
 const SETTLED = ["probed", "INVALID_AUDIO", "UNSUPPORTED_FORMAT"];
 
-describe("the MP3 and ADTS walkers on hostile input", () => {
+describe("the MP3 and ADTS walkers on hostile input", { timeout: SLOW }, () => {
   it.each(Object.entries(FIXTURES))("probe every fixture: %s", async (_, bytes) => {
     expect(await outcome(bytes)).toBe("probed");
   });
