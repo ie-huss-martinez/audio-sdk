@@ -158,6 +158,15 @@
     --hm-timeline-clip-selected-bg: transparent;
   }
 
+  /* Its title keeps ui's clip background, so the text never sits on the waveform. */
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-clip-title {
+    background: var(--hm-color-control);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) [aria-selected="true"] > .hm-audio-editor-clip-title {
+    background: var(--hm-color-accent-subtle);
+  }
+
   .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-timeline {
     display: grid;
     gap: var(--hm-gap-tight);

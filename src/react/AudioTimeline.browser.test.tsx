@@ -155,6 +155,45 @@ describe("the timeline", () => {
     await step(() => new Promise((resolve) => requestAnimationFrame(resolve)));
   });
 
+  it.each(["light", "dark"] as const)(
+    "keeps a clip's title and outline legible over a loud waveform, %s",
+    async (theme) => {
+      const events = sessionEvents();
+      const opened = events.nextLoad();
+      const samples = Array.from({ length: 16_000 }, (_, i) => Math.sin(i / 9) * 0.95);
+      const loud = new File([wavFile([samples])], "take.wav", { type: "audio/wav" });
+      const container = await mount(
+        <AudioEditor initialFile={loud} onEvent={events.onEvent} theme={theme} />,
+      );
+      await opened();
+      const clip = await waitFor(() => {
+        const found = container.querySelector<HTMLElement>('[role="option"]');
+        expect(found?.textContent).toBe("take.wav");
+        return found as HTMLElement;
+      });
+      // Its title, over the waveform's loudest lines, passes axe's contrast check.
+      const contrast = await axe.run(clip, { runOnly: ["color-contrast"] });
+      expect(contrast.violations).toEqual([]);
+      // Its outline against what's behind it: at least 3:1 (WCAG 1.4.11).
+      let behind = clip.parentElement;
+      while (behind && rgba(getComputedStyle(behind).backgroundColor)[3] === 0) {
+        behind = behind.parentElement;
+      }
+      const outline = ratio(
+        rgba(getComputedStyle(clip).borderTopColor),
+        rgba(getComputedStyle(behind as Element).backgroundColor),
+      );
+      expect(outline).toBeGreaterThanOrEqual(3);
+      // Selected is more than a colour: its outline is wider (WCAG 1.4.1).
+      const width = () => Number.parseFloat(getComputedStyle(clip).borderTopWidth);
+      const unselected = width();
+      await step(() => clip.focus());
+      await waitFor(() => expect(clip.getAttribute("aria-selected")).toBe("true"));
+      expect(width()).toBeGreaterThan(unselected);
+      await step(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    },
+  );
+
   it("draws each lane's waveform from the peaks, never reading samples", async () => {
     const events = sessionEvents();
     const opened = events.nextLoad();
@@ -183,3 +222,28 @@ describe("the timeline", () => {
     read.mockRestore();
   });
 });
+
+/** A CSS colour as sRGB bytes and alpha, as a canvas paints it. */
+function rgba(color: string): [number, number, number, number] {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 1;
+  const context = canvas.getContext("2d") as CanvasRenderingContext2D;
+  context.fillStyle = color;
+  context.fillRect(0, 0, 1, 1);
+  const [r = 0, g = 0, b = 0, a = 0] = context.getImageData(0, 0, 1, 1).data;
+  return [r, g, b, a];
+}
+
+/** WCAG's contrast ratio of two opaque colours. */
+function ratio(a: readonly number[], b: readonly number[]): number {
+  const luminance = (color: readonly number[]) => {
+    const [r, g, b] = color.slice(0, 3).map((value) => {
+      const c = value / 255;
+      return c <= 0.040_45 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    }) as [number, number, number];
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (light + 0.05) / (dark + 0.05);
+}

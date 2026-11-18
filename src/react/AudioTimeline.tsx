@@ -287,6 +287,8 @@ export function EditorTimeline({
                 // A clip moves by its title strip: a press elsewhere on it
                 // reaches the range layer beneath (docs/adr/0006).
                 moveHandle="title"
+                // The title keeps a solid background over the waveform.
+                classNames={{ content: "hm-audio-editor-clip-title" }}
                 onMove={(keys, direction) => moveClips(tools.context(), keys, direction * nudge)}
                 onMoveLane={(keys, direction) => moveClipsToTrack(tools.context(), keys, direction)}
                 canDrop={(keys, drop) => canPlace(plan, keys, drop.by, drop.lane)}
