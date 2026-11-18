@@ -1,5 +1,12 @@
 import { AnnouncerProvider, UiMessagesProvider, useAnnounce } from "@hussmartinez/ui/react";
-import { forwardRef, type ReactNode, useEffect, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import type { AudioPlan } from "../core/model/plan.js";
 import type { AudioRenderResult } from "../core/ports/audio-processor.js";
 import type { AudioInsertOptions, AudioSessionExportOptions } from "../core/session/session.js";
@@ -16,6 +23,7 @@ import {
   useAudioEditorContext,
   useAudioSession,
 } from "./context.js";
+import { ElementListenersContext } from "./element/listeners.js";
 import { type AudioEditorPart, classes, type PartClassNames } from "./parts.js";
 import { useAudioTools } from "./tools.js";
 
@@ -177,6 +185,13 @@ function Root({
   useEffect(() => {
     if (plan) change.current?.(plan);
   }, [plan]);
+
+  // A failure the editor shows is reported once, for the element's `error` event.
+  const { onError } = useContext(ElementListenersContext);
+  const { error } = snapshot;
+  useEffect(() => {
+    if (error) onError?.({ code: error.code, details: error.details ?? {} });
+  }, [error, onError]);
 
   // A recording that opens, or one that's added, is announced; after an
   // open, focus goes to the timeline's playhead, so it never falls back to
