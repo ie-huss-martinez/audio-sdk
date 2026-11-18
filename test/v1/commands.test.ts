@@ -18,6 +18,15 @@ import {
   planLength,
 } from "./commands.js";
 
+/**
+ * A timeout for the tests that run thousands of generated cases. Measured
+ * on a 12-core machine: alone, and with the whole unit suite running three
+ * times at once. Under a heavier load still, with other repositories'
+ * suites running beside them, these took longer than the default 5 seconds. The run
+ * counts aren't lowered to fit a timeout.
+ */
+const SLOW = 30_000;
+
 const SOURCES: Record<string, number> = { s1: 1_000, s2: 500 };
 const reduce = createPlanReducer((id) => SOURCES[id]);
 
@@ -354,48 +363,56 @@ describe("the clip plan reducer", () => {
 });
 
 describe("the clip plan reducer on arbitrary commands", () => {
-  it("either refuse a command with INVALID_COMMAND, or keep the plan valid and undo exactly", () => {
-    fc.assert(
-      fc.property(
-        planArb.chain((state) =>
-          fc.tuple(fc.constant(state), fc.array(commandFor(state), { minLength: 1, maxLength: 6 })),
+  it(
+    "either refuse a command with INVALID_COMMAND, or keep the plan valid and undo exactly",
+    () => {
+      fc.assert(
+        fc.property(
+          planArb.chain((state) =>
+            fc.tuple(
+              fc.constant(state),
+              fc.array(commandFor(state), { minLength: 1, maxLength: 6 }),
+            ),
+          ),
+          ([start, commands]) => {
+            let state = start;
+            const applied: AudioCommand[] = [];
+            for (const next of commands) {
+              let result: ReturnType<typeof reduce> | undefined;
+              try {
+                result = reduce(state, next);
+              } catch (error) {
+                expect(isAudioError(error, "INVALID_COMMAND")).toBe(true);
+                expect(error).toHaveProperty(
+                  "details.reason",
+                  expect.stringMatching(/^[a-z]+(-[a-z]+)*$/),
+                );
+                continue;
+              }
+              expectValid(result.state);
+              expect(reduce(result.state, result.inverse).state).toEqual(state);
+              const length = planLength(result.state);
+              if (next.type === "audio.deleteRange")
+                expect(length).toBe(planLength(state) - (next.end - next.start));
+              if (next.type === "audio.splitClip" || next.type === "audio.moveClips") {
+                expect(length).toBe(planLength(state));
+              }
+              if (next.type === "audio.insertClips") {
+                const added = next.clips.reduce((sum, entry) => sum + clipLength(entry), 0);
+                expect(length).toBe(planLength(state) + added);
+              }
+              state = result.state;
+              applied.push(next);
+            }
+            // Undoing the whole sequence, as one history step, restores the start.
+            const { inverses } = applyCommands(reduce, start, applied);
+            expect(applyCommands(reduce, state, inverses).state).toEqual(start);
+          },
         ),
-        ([start, commands]) => {
-          let state = start;
-          const applied: AudioCommand[] = [];
-          for (const next of commands) {
-            let result: ReturnType<typeof reduce> | undefined;
-            try {
-              result = reduce(state, next);
-            } catch (error) {
-              expect(isAudioError(error, "INVALID_COMMAND")).toBe(true);
-              expect(error).toHaveProperty(
-                "details.reason",
-                expect.stringMatching(/^[a-z]+(-[a-z]+)*$/),
-              );
-              continue;
-            }
-            expectValid(result.state);
-            expect(reduce(result.state, result.inverse).state).toEqual(state);
-            const length = planLength(result.state);
-            if (next.type === "audio.deleteRange")
-              expect(length).toBe(planLength(state) - (next.end - next.start));
-            if (next.type === "audio.splitClip" || next.type === "audio.moveClips") {
-              expect(length).toBe(planLength(state));
-            }
-            if (next.type === "audio.insertClips") {
-              const added = next.clips.reduce((sum, entry) => sum + clipLength(entry), 0);
-              expect(length).toBe(planLength(state) + added);
-            }
-            state = result.state;
-            applied.push(next);
-          }
-          // Undoing the whole sequence, as one history step, restores the start.
-          const { inverses } = applyCommands(reduce, start, applied);
-          expect(applyCommands(reduce, state, inverses).state).toEqual(start);
-        },
-      ),
-      { numRuns: 1_000 },
-    );
-  });
+        { numRuns: 1_000 },
+      );
+      // 0.50 s alone, 3.4 s busy.
+    },
+    SLOW,
+  );
 });
