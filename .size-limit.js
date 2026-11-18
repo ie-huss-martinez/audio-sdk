@@ -73,13 +73,16 @@ export default [
   },
   {
     disablePlugins: ["@size-limit/esbuild"],
-    // Measured at 35.63 kB with range edits (docs/adr/0006, step 14b): the
-    // provider, hooks, stage, notices, transport, toolbar, track headers,
-    // rename dialog, the timeline and its waveforms, the clip, range and
-    // fade tools, the inspector, and the core's shared chunk they use. It
-    // was 34.69 kB with the inspector, 32.95 kB with range selection,
-    // 30.91 kB with the clip tools, 28.70 kB with the track tools, 25.22 kB
-    // with the timeline, and 22.64 kB with the shell. React and ui are the host's, so not counted.
+    // Measured at 38.29 kB with the export dialog (docs/adr/0006, step 15),
+    // 29.87 kB minified (it was 35.63 kB, 27.76 kB minified):
+    // the provider, hooks, stage, notices, transport, toolbar, track
+    // headers, rename dialog, the timeline and its waveforms, the clip,
+    // range and fade tools, the inspector, the export dialog with the WAV
+    // layout it sizes files by (not the writer), and the core's shared chunk
+    // they use. It was 35.63 kB with range edits, 34.69 kB with the
+    // inspector, 32.95 kB with range selection, 30.91 kB with the clip tools,
+    // 28.70 kB with the track tools, 25.22 kB with the timeline, and
+    // 22.64 kB with the shell. React and ui are the host's, so not counted.
     name: "React entry (./react), with the shared code it loads",
     path: loadedFiles("react.js"),
     brotli: true,
@@ -105,12 +108,16 @@ export default [
   {
     disablePlugins: ["@size-limit/esbuild"],
     // The audio worker, inlined as a minified string and loaded on the first
-    // call (docs/adr/0002): the WAV and AIFF readers and the peaks. It
-    // measures about 5 kB; the compressed formats' readers will join it.
+    // call (docs/adr/0002): the readers of every format, the peaks, the
+    // mix and the WAV writer. Measured 15.05 kB with the export dialog
+    // (docs/adr/0006, step 15), 14.85 kB minified, whose file sizes share
+    // the writer's layout of a WAV file: that moved the layout into its own
+    // module, which the worker now calls rather than inlining. It was
+    // 14.90 kB, 14.72 kB minified. The limit is the next 0.5 kB.
     name: "Audio worker, inlined (lazy)",
     path: "dist/lazy/inline-worker-*.js",
     brotli: true,
-    limit: "15 kB",
+    limit: "15.5 kB",
   },
   {
     disablePlugins: ["@size-limit/esbuild"],

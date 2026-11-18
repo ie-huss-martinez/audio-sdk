@@ -12,7 +12,7 @@ import type {
 } from "../core/ports/audio-processor.js";
 import type { AudioWorkerContract } from "./audio-worker/contract.js";
 import { type AudioWorkerSource, audioWorkerSource } from "./audio-worker/loader.js";
-import { dataSize } from "./wav/wav-writer.js";
+import { dataSize } from "./wav/wav-data.js";
 
 /**
  * Frames per output block between the page and the worker: at most 2¹⁶ per

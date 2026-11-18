@@ -18,6 +18,9 @@ export const AudioEditor: ForwardRefExoticComponent<AudioEditorProps & RefAttrib
 
 // @public
 export interface AudioEditorHandle {
+    // Warning: (ae-forgotten-export) The symbol "AudioSessionExportOptions" needs to be exported by the entry point react.d.ts
+    // Warning: (ae-forgotten-export) The symbol "AudioRenderResult" needs to be exported by the entry point react.d.ts
+    export(options?: AudioSessionExportOptions): Promise<AudioRenderResult>;
     // Warning: (ae-forgotten-export) The symbol "AudioInsertOptions" needs to be exported by the entry point react.d.ts
     insert(file: Blob, options?: AudioInsertOptions): Promise<void>;
     open(file: Blob): Promise<void>;
@@ -91,6 +94,7 @@ export const audioEditorMessages: {
     readonly "toolbar.withKeys": "{label} ({keys})";
     readonly "tools.open": "Open";
     readonly "tools.insert": "Add recording";
+    readonly "tools.export": "Export";
     readonly "tools.undo": "Undo";
     readonly "tools.redo": "Redo";
     readonly "tools.addTrack": "Add track";
@@ -184,6 +188,32 @@ export const audioEditorMessages: {
     readonly "metadata.album": "Album";
     readonly "metadata.year": "Year";
     readonly "metadata.comment": "Comment";
+    readonly "export.title": "Export";
+    readonly "export.description": "Write the recording to a WAV file on your device.";
+    readonly "export.summary": "What will be written";
+    readonly "export.audio": "{length} long, at {rate, number} Hz, {channels}.";
+    readonly "export.muted": "{track} is muted, so it won't be in the file.";
+    readonly "export.silenced": "{track} isn't soloed, so it won't be in the file.";
+    readonly "export.silent": "{track} won't be heard in the file.";
+    readonly "export.nothingHeard": "Every track with audio is muted or silenced by a solo, so there's nothing to export.";
+    readonly "export.metadata": "Written to the file: {fields}.";
+    readonly "export.noMetadata": "No metadata is written to the file.";
+    readonly "export.private": "Only the mix and this metadata are written. Nothing leaves your device.";
+    readonly "export.format": "Format";
+    readonly "export.formats.pcm16": "16-bit, {size, fileSize}";
+    readonly "export.formats.pcm24": "24-bit, {size, fileSize}";
+    readonly "export.formats.float32": "32-bit float, {size, fileSize}";
+    readonly "export.cancel": "Cancel";
+    readonly "export.confirm": "Export";
+    readonly "export.progress": "Exporting";
+    readonly "export.stop": "Stop";
+    readonly "export.done": "Done";
+    readonly "export.download": "Download";
+    readonly "export.ready": "The WAV file is ready: {size, fileSize}.";
+    readonly "export.cancelled": "Export stopped.";
+    readonly "export.clipped": "The mix went {db, number} dB over full scale, so {frames, number} frames were clipped.";
+    readonly "export.lower": "Lower the master gain by {db, number} dB and export again";
+    readonly "export.unavailable": "This editor has nothing to export with.";
     readonly "transport.label": "Playback";
     readonly "transport.play": "Play";
     readonly "transport.pause": "Pause";
@@ -294,10 +324,12 @@ export type AudioEditorPart = "root" | "toolbar" | "notices" | "stage" | "timeli
 export interface AudioEditorProps extends Omit<AudioEditorProviderProps, "children"> {
     readonly className?: string;
     readonly classNames?: Readonly<Partial<Record<AudioEditorPart, string>>>;
+    readonly fileName?: string;
     readonly headingLevel?: AudioHeadingLevel;
     readonly initialFile?: Blob;
     // Warning: (ae-forgotten-export) The symbol "AudioPlan" needs to be exported by the entry point react.d.ts
     readonly onChange?: (plan: AudioPlan) => void;
+    readonly onExport?: (blob: Blob, result: AudioRenderResult) => void;
     readonly theme?: "light" | "dark" | "system";
     readonly unstyled?: boolean;
 }
@@ -324,6 +356,17 @@ export interface AudioEditorProviderProps {
     readonly processor?: AudioProcessor;
     readonly toolbar?: readonly (readonly string[])[];
     readonly tools?: readonly string[];
+}
+
+// @public
+export function AudioExportDialog(props: AudioExportDialogProps): ReactNode;
+
+// @public
+export interface AudioExportDialogProps {
+    // (undocumented)
+    readonly className?: string;
+    readonly fileName?: string;
+    readonly onExport?: (blob: Blob, result: AudioRenderResult) => void;
 }
 
 // @public

@@ -44,6 +44,15 @@ export const audioTools: readonly AudioTool[] = [
     run: (context: AudioToolContext) => context.chooseFile("insert"),
   }),
   defineTool({
+    id: "audio.export",
+    label: "tools.export",
+    icon: "download",
+    group: "file",
+    // No shortcut (docs/adr/0005): it opens a dialog that says what will be written.
+    isEnabled: (state: AudioToolState) => editable(state) && length(state) > 0,
+    run: (context: AudioToolContext) => context.openDialog("export"),
+  }),
+  defineTool({
     id: "audio.undo",
     label: "tools.undo",
     icon: "undo",
@@ -218,7 +227,7 @@ export const audioTools: readonly AudioTool[] = [
  * @internal
  */
 export const defaultAudioToolbar: readonly (readonly string[])[] = [
-  ["audio.open", "audio.insert"],
+  ["audio.open", "audio.insert", "audio.export"],
   ["audio.undo", "audio.redo"],
   ["audio.add-track", "audio.remove-track", "audio.move-track-up", "audio.move-track-down"],
   [

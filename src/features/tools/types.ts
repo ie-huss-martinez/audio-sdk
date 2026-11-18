@@ -120,6 +120,8 @@ export interface AudioToolContext {
   setRipple(on: boolean): void;
   /** Moves focus to the playhead, as after deleting a range. */
   focusPlayhead(): void;
+  /** Opens one of the editor's dialogs. */
+  openDialog(dialog: AudioEditorDialog): void;
   /** A source's length in frames, or 0 for one the session doesn't hold. */
   sourceFrames(source: string): number;
   setZoom(zoom: number): void;
@@ -134,6 +136,13 @@ export interface AudioToolContext {
   /** Says something politely, through the editor's announcer. */
   announce(message: AudioToolAnnouncement): void;
 }
+
+/**
+ * A dialog the editor shows, besides renaming a track.
+ *
+ * @internal
+ */
+export type AudioEditorDialog = "export";
 
 /**
  * One of the editor's tools.

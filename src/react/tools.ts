@@ -121,6 +121,7 @@ export function useAudioTools(): AudioTools {
       select: (range) => session.select(range),
       setRipple: editor.setRipple,
       focusPlayhead: () => editor.playhead.current?.focus(),
+      openDialog: (dialog) => editor.setDialog(dialog),
       sourceFrames: (source) => frames.get(source) ?? 0,
       setZoom,
       chooseFile: (purpose) => editor.fileChooser.current?.(purpose),

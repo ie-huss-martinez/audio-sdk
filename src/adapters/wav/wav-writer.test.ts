@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readInfo, riffChunks } from "../../../test/adapters/wav-reader.js";
 import { EMPTY_METADATA } from "../../core/model/plan.js";
 import { probeWav } from "../pcm/wav.js";
+import { wavFileSize } from "./wav-layout.js";
 import { encodeSamples, quantise, type WavSpec, wavHeader } from "./wav-writer.js";
 
 const spec = (changes: Partial<WavSpec> = {}): WavSpec => ({
@@ -126,5 +127,21 @@ describe("wavHeader", () => {
 
   it("stays RIFF just below the 32-bit limit", () => {
     expect(fourCc(wavHeader(spec({ frames: 1_000_000_000 })), 0)).toBe("RIFF");
+  });
+});
+
+describe("wavFileSize", () => {
+  it("is the header, the samples and their pad byte, as the RIFF size says", () => {
+    for (const changes of [
+      {},
+      { channels: 1, frames: 1, sampleFormat: "pcm24" as const },
+      { channels: 6, sampleFormat: "float32" as const },
+      { metadata: { ...EMPTY_METADATA, title: "Interview", artist: "Someone" } },
+    ]) {
+      const header = wavHeader(spec(changes));
+      const riffSize = new DataView(header.buffer).getUint32(4, true);
+      // A RIFF file is its 8-byte chunk header and the size it declares.
+      expect(wavFileSize(spec(changes))).toBe(8 + riffSize);
+    }
   });
 });

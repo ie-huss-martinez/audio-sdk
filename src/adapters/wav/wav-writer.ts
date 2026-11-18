@@ -1,5 +1,7 @@
-import type { AudioMetadata } from "../../core/model/plan.js";
 import type { AudioSampleFormat } from "../../core/ports/audio-processor.js";
+import { bytesPerSample, infoFields, infoSize, type WavSpec, wavLayout } from "./wav-layout.js";
+
+export { bytesPerSample, dataSize, type WavSpec } from "./wav-layout.js";
 
 /**
  * Writes WAV files for export (docs/adr/0001): the header, which the plan
@@ -20,7 +22,6 @@ import type { AudioSampleFormat } from "../../core/ports/audio-processor.js";
  *   `ds64` chunk.
  */
 
-const BYTES: Record<AudioSampleFormat, number> = { pcm16: 2, pcm24: 3, float32: 4 };
 const WAVE_FORMAT_PCM = 0x0001;
 const WAVE_FORMAT_IEEE_FLOAT = 0x0003;
 const WAVE_FORMAT_EXTENSIBLE = 0xfffe;
@@ -31,33 +32,6 @@ const SUBTYPE_TAIL = [
 /** Speaker masks for the layouts Web Audio's speaker rules know. */
 const SPEAKERS: Readonly<Record<number, number>> = { 1: 0x4, 2: 0x3, 4: 0x33, 6: 0x3f };
 const MAX_32 = 0xffffffff;
-/** The INFO ids of each metadata field, in the order they're written. */
-const INFO_IDS: readonly [keyof AudioMetadata, string][] = [
-  ["title", "INAM"],
-  ["artist", "IART"],
-  ["album", "IPRD"],
-  ["year", "ICRD"],
-  ["comment", "ICMT"],
-];
-
-/** What the header describes. */
-export interface WavSpec {
-  readonly sampleRate: number;
-  readonly channels: number;
-  readonly frames: number;
-  readonly sampleFormat: AudioSampleFormat;
-  readonly metadata: AudioMetadata;
-}
-
-/** Bytes per sample of a format. */
-export function bytesPerSample(format: AudioSampleFormat): number {
-  return BYTES[format];
-}
-
-/** The size of the samples, without the pad byte an odd size needs. */
-export function dataSize(spec: Pick<WavSpec, "channels" | "frames" | "sampleFormat">): number {
-  return spec.frames * spec.channels * BYTES[spec.sampleFormat];
-}
 
 class Writer {
   readonly bytes: Uint8Array<ArrayBuffer>;
@@ -96,17 +70,9 @@ class Writer {
 }
 
 /** The `LIST`/`INFO` chunk's body, or nothing when every field is empty. */
-function infoBody(metadata: AudioMetadata): Uint8Array | undefined {
-  const encoder = new TextEncoder();
-  const fields = INFO_IDS.flatMap(([field, id]) => {
-    const text = metadata[field];
-    // UTF-8, NUL-terminated, and padded to an even size.
-    return text === "" ? [] : [{ id, value: encoder.encode(`${text}\0`) }];
-  });
+function infoBody(fields: readonly { readonly id: string; readonly value: Uint8Array }[]) {
   if (fields.length === 0) return undefined;
-  const size =
-    4 + fields.reduce((sum, { value }) => sum + 8 + value.length + (value.length % 2), 0);
-  const writer = new Writer(size);
+  const writer = new Writer(infoSize(fields));
   writer.text("INFO");
   for (const { id, value } of fields) {
     writer.text(id);
@@ -122,18 +88,13 @@ function infoBody(metadata: AudioMetadata): Uint8Array | undefined {
  * directly, and an odd number of sample bytes then needs one pad byte.
  */
 export function wavHeader(spec: WavSpec): Uint8Array<ArrayBuffer> {
-  const { sampleRate, channels, frames, sampleFormat, metadata } = spec;
-  const bytes = BYTES[sampleFormat];
-  const float = sampleFormat === "float32";
-  const extensible = channels > 2 || bytes > 2;
-  const fmtSize = extensible ? 40 : float ? 18 : 16;
-  const info = infoBody(metadata);
-  const data = dataSize(spec);
-  const pad = data % 2;
-  const chunks = 8 + fmtSize + (float ? 12 : 0) + (info ? 8 + info.length : 0) + 8 + data + pad;
-  const riffSize = 4 + chunks;
-  const rf64 = riffSize > MAX_32 || data > MAX_32 || frames > MAX_32;
-  const headerSize = 12 + (rf64 ? 36 : 0) + chunks - data - pad;
+  const { sampleRate, channels, frames, metadata } = spec;
+  const fields = infoFields(metadata);
+  const { bytes, float, extensible, fmtSize, data, riffSize, rf64, headerSize } = wavLayout(
+    spec,
+    fields,
+  );
+  const info = infoBody(fields);
 
   const writer = new Writer(headerSize);
   writer.text(rf64 ? "RF64" : "RIFF");
@@ -205,7 +166,7 @@ export function encodeSamples(
   frames: number,
   format: AudioSampleFormat,
 ): Uint8Array<ArrayBuffer> {
-  const bytes = BYTES[format];
+  const bytes = bytesPerSample(format);
   const out = new Uint8Array(frames * channels.length * bytes);
   const view = new DataView(out.buffer);
   let at = 0;
