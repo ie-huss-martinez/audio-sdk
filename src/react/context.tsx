@@ -2,6 +2,7 @@ import { createMessages } from "@hussmartinez/sdk-core";
 import {
   createContext,
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
   useEffect,
@@ -84,6 +85,17 @@ interface EditorContext {
   readonly insert: (file: Blob, options?: AudioInsertOptions) => Promise<void>;
   /** Stops the open or insert in progress. */
   readonly cancelLoad: () => void;
+  /** The timeline's zoom, as a multiple of fitting the whole plan. */
+  readonly zoom: number;
+  readonly setZoom: (zoom: number) => void;
+  /** The closest zoom the timeline allows at its width. */
+  readonly maxZoom: number;
+  readonly setMaxZoom: (zoom: number) => void;
+  /** The selected clip's key: the one the clip tools and the inspector act on. */
+  readonly selectedClip: string | undefined;
+  readonly setSelectedClip: (key: string | undefined) => void;
+  /** The timeline's playhead slider, where focus goes after a recording opens. */
+  readonly playhead: RefObject<HTMLInputElement | null>;
 }
 
 const Context = createContext<EditorContext | null>(null);
@@ -220,9 +232,29 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
   );
   const cancelLoad = useCallback(() => controller.current?.abort(), []);
 
+  const [zoom, setZoom] = useState(1);
+  const [maxZoom, setMaxZoom] = useState(1);
+  const [selectedClip, setSelectedClip] = useState<string>();
+  const playhead = useRef<HTMLInputElement>(null);
+
   const value = useMemo<EditorContext>(
-    () => ({ session, output, messages, load, open, insert, cancelLoad }),
-    [session, output, messages, load, open, insert, cancelLoad],
+    () => ({
+      session,
+      output,
+      messages,
+      load,
+      open,
+      insert,
+      cancelLoad,
+      zoom,
+      setZoom,
+      maxZoom,
+      setMaxZoom,
+      selectedClip,
+      setSelectedClip,
+      playhead,
+    }),
+    [session, output, messages, load, open, insert, cancelLoad, zoom, maxZoom, selectedClip],
   );
   return <Context.Provider value={value}>{props.children}</Context.Provider>;
 }

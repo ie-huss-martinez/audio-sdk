@@ -81,16 +81,58 @@
     color: var(--hm-color-danger-text);
   }
 
-  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-timeline {
-    padding: var(--hm-gap-normal);
-    border: var(--hm-border-width) solid var(--hm-color-border);
-    border-radius: var(--hm-radius-surface);
-    background: var(--hm-color-surface);
-  }
-
-  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-timeline p {
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-summary {
     margin: 0;
     color: var(--hm-color-text-muted);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-timeline {
+    display: grid;
+    gap: var(--hm-gap-tight);
+    min-inline-size: 0;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-zoom {
+    justify-self: end;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-track-name {
+    overflow: hidden;
+    min-inline-size: 0;
+    font-size: var(--hm-font-size-small);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /*
+   * The waveform: a canvas as wide as the view, placed over the part of the
+   * track in view by the CSSOM. Layout, not paint, so in any mode.
+   */
+  .hm-audio-editor-wave-layer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hm-audio-editor-waveform {
+    position: absolute;
+    inset-block: 0;
+    block-size: 100%;
+    pointer-events: none;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-waveform {
+    color: var(--hm-color-accent);
+  }
+
+  /* A muted track, or one a solo leaves out, is drawn dim; its name says so. */
+  .hm-audio-editor:not([data-hm-unstyled]) [data-hm-silent] .hm-audio-editor-waveform {
+    color: var(--hm-color-text-disabled);
+  }
+
+  @media (forced-colors: active) {
+    .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-waveform {
+      color: CanvasText;
+    }
   }
 
   .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-transport {

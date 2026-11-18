@@ -20,6 +20,8 @@ export type { AudioNoticesProps } from "./react/AudioNotices.js";
 export { AudioNotices } from "./react/AudioNotices.js";
 export type { AudioStageProps } from "./react/AudioStage.js";
 export { AudioStage } from "./react/AudioStage.js";
+export type { AudioTimelineProps } from "./react/AudioTimeline.js";
+export { AudioTimeline } from "./react/AudioTimeline.js";
 export type { AudioTransportProps } from "./react/AudioTransport.js";
 export { AudioTransport } from "./react/AudioTransport.js";
 export type {

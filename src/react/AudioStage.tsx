@@ -4,6 +4,7 @@ import { isAudioError } from "../core/errors/audio-error.js";
 import { planLength } from "../core/model/plan.js";
 import { formatTimecode } from "../core/model/time.js";
 import { audioErrorText } from "../messages/text.js";
+import { EditorTimeline } from "./AudioTimeline.js";
 import { useAudioEditorContext, useAudioSession } from "./context.js";
 import { classes, type PartClassNames } from "./parts.js";
 
@@ -27,7 +28,8 @@ export interface AudioStageProps {
  * The editor's stage (docs/adr/0005): the empty state, a drop zone with a
  * button to choose a file, so dropping is never the only way; an open or an
  * insert in progress, with a Cancel button; a failed one, by its error's
- * text; and, once a recording is open, the timeline. Inside an
+ * text; and, once a recording is open, a line saying how many tracks and
+ * how long, and the timeline. Inside an
  * {@link AudioEditorProvider}.
  *
  * @public
@@ -75,15 +77,13 @@ export function Stage({
       {plan ? (
         <>
           {failure}
-          {/* The timeline's place; until it arrives, what it would show, as text. */}
-          <section className="hm-audio-editor-timeline" aria-label={messages.t("timeline.label")}>
-            <p>
-              {messages.t("timeline.summary", {
-                count: plan.tracks.length,
-                duration: formatTimecode(planLength(plan), plan.sampleRate),
-              })}
-            </p>
-          </section>
+          <p className="hm-audio-editor-summary">
+            {messages.t("timeline.summary", {
+              count: plan.tracks.length,
+              duration: formatTimecode(planLength(plan), plan.sampleRate),
+            })}
+          </p>
+          <EditorTimeline classNames={classNames} />
         </>
       ) : load ? null : (
         <FileDropZone
