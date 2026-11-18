@@ -1,5 +1,8 @@
 import {
   AddIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DeleteIcon,
   FitIcon,
   IconButton,
   type IconComponent,
@@ -12,9 +15,12 @@ import {
   RemoveIcon,
   SkipBackIcon,
   SkipForwardIcon,
+  SplitIcon,
   ToggleButton,
   Toolbar,
   ToolbarGroup,
+  TrimEndIcon,
+  TrimStartIcon,
   UndoIcon,
   UploadIcon,
   ZoomInIcon,
@@ -43,6 +49,12 @@ const ICONS: Readonly<Record<string, IconComponent>> = {
   play: PlayIcon,
   "skip-back": SkipBackIcon,
   "skip-forward": SkipForwardIcon,
+  split: SplitIcon,
+  delete: DeleteIcon,
+  "trim-start": TrimStartIcon,
+  "trim-end": TrimEndIcon,
+  "chevron-left": ChevronLeftIcon,
+  "chevron-right": ChevronRightIcon,
 };
 
 /** The message key that names each default toolbar group. */
@@ -50,6 +62,7 @@ const GROUP_LABELS = {
   file: "toolbar.file",
   history: "toolbar.history",
   tracks: "toolbar.tracks",
+  clips: "toolbar.clips",
   view: "toolbar.view",
 } as const;
 

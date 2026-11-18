@@ -1,77 +1,14 @@
-import { defineTool, type Tool } from "@hussmartinez/sdk-core";
-import { type AudioPlan, type AudioTrack, planLength } from "../../core/model/plan.js";
-import type { AudioCommand } from "../../core/operations/commands.js";
+import { defineTool } from "@hussmartinez/sdk-core";
+import { planLength } from "../../core/model/plan.js";
+import { clipTools } from "../clips/clips.js";
+import type { AudioTool, AudioToolContext, AudioToolState } from "./types.js";
 
-/**
- * What the editor's tools read to decide whether they're enabled or on
- * (docs/adr/0005, docs/adr/0006). It's derived from the session, the output
- * and the editor's view state, and rebuilt when any of them changes.
- *
- * @internal
- */
-export interface AudioToolState {
-  readonly plan: AudioPlan | undefined;
-  /** The track the track tools act on: the one focus was last in, or the first. */
-  readonly track: AudioTrack | undefined;
-  readonly playing: boolean;
-  readonly canUndo: boolean;
-  readonly canRedo: boolean;
-  /** Whether a recording is being opened or added. */
-  readonly busy: boolean;
-  /** The timeline's zoom, as a multiple of fitting the whole plan: 1 fits it. */
-  readonly zoom: number;
-  /** The closest zoom the timeline allows now. */
-  readonly maxZoom: number;
-}
-
-/**
- * What a tool's `run` receives: the state it was enabled for, and the
- * editor's actions.
- *
- * @internal
- */
-export interface AudioToolContext {
-  readonly state: AudioToolState;
-  /** Runs commands as one undoable step. A refused edit shows by its error's text. */
-  execute(commands: AudioCommand | readonly AudioCommand[]): void;
-  undo(): void;
-  redo(): void;
-  play(): void;
-  pause(): void;
-  seek(frame: number): void;
-  setZoom(zoom: number): void;
-  /** Opens the file chooser, to open a recording or to add one on a track of its own. */
-  chooseFile(purpose: "open" | "insert"): void;
-  /** A key for a new track, from the session. */
-  newKey(): string;
-  /** Moves focus to a track's header once it renders, as after adding one. */
-  focusTrack(key: string): void;
-  /** Says something politely, through the editor's announcer. */
-  announce(message: AudioToolAnnouncement): void;
-}
-
-/**
- * What a tool says when it's done, by message key: the editor words it.
- *
- * @internal
- */
-export type AudioToolAnnouncement =
-  | { readonly key: "announce.undone" | "announce.redone" | "announce.trackAdded" }
-  | {
-      readonly key:
-        | "announce.trackRemoved"
-        | "announce.muted"
-        | "announce.unmuted"
-        | "announce.trackMoved";
-      readonly track: AudioTrack;
-    };
-
-/**
- * One of the editor's tools.
- *
- * @internal
- */
-export type AudioTool = Tool<AudioToolState, AudioToolContext>;
+export type {
+  AudioTool,
+  AudioToolAnnouncement,
+  AudioToolContext,
+  AudioToolState,
+} from "./types.js";
 
 /** Each zoom step multiplies or divides the timeline's zoom by this. */
 export const ZOOM_STEP = 2;
@@ -138,7 +75,7 @@ export const audioTools: readonly AudioTool[] = [
       const key = context.newKey();
       // Below the current track, or at the bottom.
       const index = trackIndex(context.state) + 1 || (context.state.plan?.tracks.length ?? 0);
-      context.execute({ type: "audio.addTrack", key, index });
+      if (context.execute({ type: "audio.addTrack", key, index })) return;
       context.focusTrack(key);
       context.announce({ key: "announce.trackAdded" });
     },
@@ -155,7 +92,7 @@ export const audioTools: readonly AudioTool[] = [
       const { plan, track } = context.state;
       if (!plan || !track) return;
       const index = plan.tracks.indexOf(track);
-      context.execute({ type: "audio.removeTracks", keys: [track.key] });
+      if (context.execute({ type: "audio.removeTracks", keys: [track.key] })) return;
       // The track that took its place, or the one above (docs/adr/0006).
       const next = plan.tracks[index + 1] ?? plan.tracks[index - 1];
       if (next) context.focusTrack(next.key);
@@ -171,11 +108,8 @@ export const audioTools: readonly AudioTool[] = [
     run: (context: AudioToolContext) => {
       const { track } = context.state;
       if (!track) return;
-      context.execute({
-        type: "audio.moveTrack",
-        key: track.key,
-        to: trackIndex(context.state) - 1,
-      });
+      const to = trackIndex(context.state) - 1;
+      if (context.execute({ type: "audio.moveTrack", key: track.key, to })) return;
       context.focusTrack(track.key);
       context.announce({ key: "announce.trackMoved", track });
     },
@@ -192,11 +126,8 @@ export const audioTools: readonly AudioTool[] = [
     run: (context: AudioToolContext) => {
       const { track } = context.state;
       if (!track) return;
-      context.execute({
-        type: "audio.moveTrack",
-        key: track.key,
-        to: trackIndex(context.state) + 1,
-      });
+      const to = trackIndex(context.state) + 1;
+      if (context.execute({ type: "audio.moveTrack", key: track.key, to })) return;
       context.focusTrack(track.key);
       context.announce({ key: "announce.trackMoved", track });
     },
@@ -212,7 +143,7 @@ export const audioTools: readonly AudioTool[] = [
     run: (context: AudioToolContext) => {
       const { track } = context.state;
       if (!track) return;
-      context.execute({ type: "audio.setTrack", key: track.key, muted: !track.muted });
+      if (context.execute({ type: "audio.setTrack", key: track.key, muted: !track.muted })) return;
       context.announce({ key: track.muted ? "announce.unmuted" : "announce.muted", track });
     },
   }),
@@ -245,6 +176,7 @@ export const audioTools: readonly AudioTool[] = [
     isEnabled: (state: AudioToolState) => state.plan !== undefined && state.zoom !== 1,
     run: (context: AudioToolContext) => context.setZoom(1),
   }),
+  ...clipTools,
   // The transport's, with keys: not in the toolbar.
   defineTool({
     id: "audio.play-pause",
@@ -276,8 +208,8 @@ export const audioTools: readonly AudioTool[] = [
 ];
 
 /**
- * The toolbar's groups by default, by tool id: files, history, tracks and
- * zoom. The transport has playback, and track headers have Mute.
+ * The toolbar's groups by default, by tool id: files, history, tracks,
+ * clips and zoom. The transport has playback, and track headers have Mute.
  *
  * @internal
  */
@@ -285,5 +217,15 @@ export const defaultAudioToolbar: readonly (readonly string[])[] = [
   ["audio.open", "audio.insert"],
   ["audio.undo", "audio.redo"],
   ["audio.add-track", "audio.remove-track", "audio.move-track-up", "audio.move-track-down"],
+  [
+    "audio.split",
+    "audio.delete",
+    "audio.trim-start",
+    "audio.trim-end",
+    "audio.move-earlier",
+    "audio.move-later",
+    "audio.move-to-track-above",
+    "audio.move-to-track-below",
+  ],
   ["audio.zoom-out", "audio.zoom-in", "audio.zoom-fit"],
 ];

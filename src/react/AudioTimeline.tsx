@@ -1,11 +1,12 @@
 import {
   Timeline,
   TimelineClips,
+  type TimelineClipsHandle,
   TimelineLane,
   TimelineLayer,
   TimelinePlayhead,
 } from "@hussmartinez/ui/react";
-import { type ReactNode, useCallback, useRef } from "react";
+import { type ReactNode, useCallback, useEffect, useRef } from "react";
 import {
   type AudioPlan,
   type AudioTrack,
@@ -14,6 +15,15 @@ import {
   planLength,
 } from "../core/model/plan.js";
 import { formatTimecode } from "../core/model/time.js";
+import {
+  canPlace,
+  moveClips,
+  moveClipsToTrack,
+  nudgeFrames,
+  trimClip,
+  trimClipToPlayhead,
+  trimLimits,
+} from "../features/clips/clips.js";
 import { AudioTrackHeader } from "./AudioTrackHeader.js";
 import { AudioWaveform } from "./AudioWaveform.js";
 import {
@@ -25,6 +35,7 @@ import {
 import type { AudioEditorMessages } from "./editor-messages.js";
 import { trackName } from "./names.js";
 import { classes, type PartClassNames } from "./parts.js";
+import { useAudioTools } from "./tools.js";
 
 /** A lane's accessible name: the track's, and whether it's heard. */
 function laneLabel(
@@ -77,6 +88,22 @@ export function EditorTimeline({
   const { snapshot } = useAudioSession();
   const { snapshot: playback } = useAudioOutput();
   const position = useAudioPlayhead();
+  const tools = useAudioTools();
+
+  // Each lane's clip track, to move focus to a clip after it changes lanes
+  // or is split (docs/adr/0005, docs/adr/0006).
+  const clipTracks = useRef(new Map<string, TimelineClipsHandle>());
+  const { pendingClipFocus } = context;
+  useEffect(() => {
+    const key = pendingClipFocus.current;
+    if (key === undefined) return;
+    for (const handle of clipTracks.current.values()) {
+      if (handle.focusClip(key)) {
+        pendingClipFocus.current = undefined;
+        return;
+      }
+    }
+  });
 
   // Scrolling and zooming redraw the waveforms, without rendering anything.
   const listeners = useRef(new Set<() => void>());
@@ -95,6 +122,9 @@ export function EditorTimeline({
   const time = (frame: number) => formatTimecode(frame, rate);
   const audible = new Set(audibleTracks(plan));
   const names = new Map(sources.map((source) => [source.id, source.name]));
+  const frames = new Map(sources.map((source) => [source.id, source.frames]));
+  const sourceFrames = (source: string) => frames.get(source) ?? 0;
+  const nudge = nudgeFrames(plan);
 
   return (
     <div className={classes("hm-audio-editor-timeline", classNames?.timeline, className)}>
@@ -126,13 +156,25 @@ export function EditorTimeline({
               label={laneLabel(messages, plan, track, name, audible)}
               header={<AudioTrackHeader track={track} index={index} />}
               data-hm-silent={audible.has(track) ? undefined : ""}
-              // The track tools act on the track focus was last in.
-              onFocus={() => setCurrentTrack(track.key)}
+              // The track tools act on the track focus was last in, and the
+              // clip tools on the clip: selection follows focus, by Tab too
+              // (docs/adr/0005), where ui's clip track selects on arrows and clicks.
+              onFocus={(event) => {
+                setCurrentTrack(track.key);
+                const key = (event.target as HTMLElement).dataset["hmKey"];
+                if (key !== undefined && track.clips.some((clip) => clip.key === key)) {
+                  context.setSelectedClip(key);
+                }
+              }}
             >
               <TimelineLayer className="hm-audio-editor-wave-layer" aria-hidden="true">
                 <AudioWaveform track={track} peaksOf={peaksOf} subscribeRange={subscribeRange} />
               </TimelineLayer>
               <TimelineClips
+                ref={(handle) => {
+                  if (handle) clipTracks.current.set(track.key, handle);
+                  else clipTracks.current.delete(track.key);
+                }}
                 label={messages.t("timeline.clips", { track: name })}
                 clips={track.clips.map((clip, at) => {
                   const shown = names.get(clip.source);
@@ -171,6 +213,23 @@ export function EditorTimeline({
                     : []
                 }
                 onSelectedKeysChange={(keys) => context.setSelectedClip(keys[0])}
+                // A clip moves by its title strip: a press elsewhere on it
+                // reaches the range layer beneath (docs/adr/0006).
+                moveHandle="title"
+                onMove={(keys, direction) => moveClips(tools.context(), keys, direction * nudge)}
+                onMoveLane={(keys, direction) => moveClipsToTrack(tools.context(), keys, direction)}
+                canDrop={(keys, drop) => canPlace(plan, keys, drop.by, drop.lane)}
+                onDrop={(keys, drop) => {
+                  const edit = tools.context();
+                  if (moveClips(edit, keys, drop.by, drop.lane) && drop.lane !== undefined) {
+                    const first = keys[0];
+                    if (first !== undefined) edit.focusClip(first);
+                  }
+                }}
+                trimStep={nudge}
+                trimLimits={(key, edge) => trimLimits(plan, sourceFrames, key, edge)}
+                onTrim={(key, edge, delta) => trimClip(tools.context(), key, edge, delta)}
+                onTrimToPlayhead={(key, edge) => trimClipToPlayhead(tools.context(), key, edge)}
               />
             </TimelineLane>
           );
