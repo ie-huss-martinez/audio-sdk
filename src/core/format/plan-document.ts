@@ -122,7 +122,8 @@ function malformed(message: string): never {
   return invalid("malformed-command", message);
 }
 
-const isCount = (value: unknown, min: number): value is number =>
+/** @internal */
+export const isCount = (value: unknown, min: number): value is number =>
   Number.isSafeInteger(value) && (value as number) >= min;
 
 function readAsset(value: unknown): AudioAssetReference {
@@ -137,7 +138,8 @@ function readAsset(value: unknown): AudioAssetReference {
   return { asset, mediaType, size };
 }
 
-function readSources(value: unknown): Record<string, AudioPlanDocumentSource> {
+/** @internal */
+export function readSources(value: unknown): Record<string, AudioPlanDocumentSource> {
   if (!isRecord<Record<string, unknown>>(value) || Array.isArray(value)) {
     malformed("sources is an object");
   }
@@ -156,7 +158,8 @@ function readSources(value: unknown): Record<string, AudioPlanDocumentSource> {
   );
 }
 
-function readMetadata(value: unknown): AudioMetadata {
+/** @internal */
+export function readMetadata(value: unknown): AudioMetadata {
   if (!isRecord<AudioMetadata>(value)) malformed("metadata is an object");
   onlyFields(value, METADATA_FIELDS, "metadata");
   const fields = METADATA_FIELDS.map((field) => {

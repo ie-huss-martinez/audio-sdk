@@ -79,14 +79,14 @@ const PROTOTYPE_NAMED = JSON.parse(
   }).replaceAll('"PROTO"', '"__proto__"'),
 ) as typeof BASE;
 
-type Outcome = { readonly ok: true } | { readonly code: string; readonly reason: string };
+export type Outcome = { readonly ok: true } | { readonly code: string; readonly reason: string };
 
 /**
  * A case whose expected result is what the runner gives. For a hand-written
  * case, `outcome` is what the case is meant to show, and a runner that
  * disagrees fails here, before any file is written.
  */
-function make(
+export function make(
   name: string,
   input: unknown,
   run: (input: never) => unknown,
@@ -112,8 +112,8 @@ function make(
   return { name, input: json, expected };
 }
 
-const applied: Outcome = { ok: true };
-const refused = (reason: string, code = "INVALID_COMMAND"): Outcome => ({ code, reason });
+export const applied: Outcome = { ok: true };
+export const refused = (reason: string, code = "INVALID_COMMAND"): Outcome => ({ code, reason });
 
 /** `hm-audio-commands`: a user-level command applied to a plan document. */
 export function commandCases(): ConformanceFile {

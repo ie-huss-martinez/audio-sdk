@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ie-huss-martinez/audio-sdk/blob/main/formats/hm-audio-plan/v2.schema.json",
+  "title": "hm-audio-plan, version 2",
+  "description": "An audio-sdk multitrack plan: tracks of clips positioned in time over immutable sources, mixed on playback and export, with the metadata export writes (docs/formats/hm-audio-plan.md, docs/adr/0006, sdk-core ADR 0045). Every position and length is a whole number of frames at sampleRate. Beyond this schema, readers check that every clip lies within a source the document lists, that its fades fit it, that each track's clips are in time order and don't overlap, and that keys are unique across tracks and clips.",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "sampleRate",
+    "channels",
+    "gainDb",
+    "sources",
+    "tracks",
+    "metadata"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "hm-audio-plan"
+    },
+    "version": {
+      "const": 2
+    },
+    "sampleRate": {
+      "description": "Frames per second.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "channels": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "gainDb": {
+      "description": "The master gain, applied to the mix.",
+      "$ref": "#/$defs/gainDb"
+    },
+    "sources": {
+      "description": "The sources the clips play, by the ids the clips use.",
+      "type": "object",
+      "propertyNames": {
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "tracks": {
+      "description": "The tracks, from top to bottom. A plan has at least one.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/track"
+      }
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    }
+  },
+  "$defs": {
+    "frames": {
+      "description": "A whole number of frames.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "key": {
+      "description": "A track's or a clip's key, stable across edits. Tracks and clips share one namespace.",
+      "type": "string",
+      "minLength": 1
+    },
+    "gainDb": {
+      "description": "A gain in decibels. Copied, never computed, so it compares exactly.",
+      "type": "number",
+      "minimum": -120,
+      "maximum": 120
+    },
+    "fade": {
+      "type": "object",
+      "required": ["frames", "curve"],
+      "additionalProperties": false,
+      "properties": {
+        "frames": {
+          "$ref": "#/$defs/frames"
+        },
+        "curve": {
+          "enum": ["linear", "equalPower"]
+        }
+      }
+    },
+    "clip": {
+      "description": "A range of a source, from start inclusive to end exclusive, placed on the timeline frame at, with its gain and fades.",
+      "type": "object",
+      "required": ["key", "at", "source", "start", "end", "gainDb", "fadeIn", "fadeOut"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "at": {
+          "description": "The timeline frame the clip starts on.",
+          "$ref": "#/$defs/frames"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start": {
+          "$ref": "#/$defs/frames"
+        },
+        "end": {
+          "$ref": "#/$defs/frames"
+        },
+        "gainDb": {
+          "$ref": "#/$defs/gainDb"
+        },
+        "fadeIn": {
+          "$ref": "#/$defs/fade"
+        },
+        "fadeOut": {
+          "$ref": "#/$defs/fade"
+        }
+      }
+    },
+    "trackName": {
+      "description": "A track's name, in Unicode code points. Empty means none. It's untrusted text.",
+      "type": "string",
+      "maxLength": 100
+    },
+    "track": {
+      "description": "Clips in time order that never overlap, with the track's name, gain, mute and solo.",
+      "type": "object",
+      "required": ["key", "name", "gainDb", "muted", "soloed", "clips"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/key"
+        },
+        "name": {
+          "$ref": "#/$defs/trackName"
+        },
+        "gainDb": {
+          "$ref": "#/$defs/gainDb"
+        },
+        "muted": {
+          "type": "boolean"
+        },
+        "soloed": {
+          "type": "boolean"
+        },
+        "clips": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/clip"
+          }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": ["frames"],
+      "additionalProperties": false,
+      "properties": {
+        "frames": {
+          "description": "The source's length in frames.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "asset": {
+          "$ref": "#/$defs/asset"
+        }
+      }
+    },
+    "asset": {
+      "description": "A content-addressed reference to the source's bytes (sdk-core ADR 0045, section 2).",
+      "type": "object",
+      "required": ["asset", "mediaType", "size"],
+      "additionalProperties": false,
+      "properties": {
+        "asset": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "mediaType": {
+          "type": "string",
+          "maxLength": 255,
+          "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]*/[a-z0-9][a-z0-9!#$&^_.+-]*$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "metadataText": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["title", "artist", "album", "year", "comment"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/metadataText"
+        },
+        "artist": {
+          "$ref": "#/$defs/metadataText"
+        },
+        "album": {
+          "$ref": "#/$defs/metadataText"
+        },
+        "year": {
+          "$ref": "#/$defs/metadataText"
+        },
+        "comment": {
+          "$ref": "#/$defs/metadataText"
+        }
+      }
+    }
+  }
+}
