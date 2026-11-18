@@ -1,7 +1,8 @@
 # 0006. Multitrack: tracks of positioned clips, mixed on playback and export
 
-- **Status:** Accepted
+- **Status:** Accepted. The editor's timeline depends on an amendment to [ui ADR 0011](https://github.com/ie-huss-martinez/ui/blob/main/docs/adr/0011-timeline.md), below; the headless core doesn't
 - **Date:** 2026-11-18
+- **Amended:** 2026-11-18, with the review's rulings: Ripple shows the tracks it will move, the model's step is two pull requests, and `ui`'s amendment is designed with video-sdk's needs.
 - **Supersedes in part:** [ADR 0003](0003-clip-plan-document-model.md) (the plan's shape, derived positions, the command table and version 1 of the formats) and [ADR 0005](0005-editor-shell.md) (the timeline, the selection and the order of the work). **Extends:** [ADR 0004](0004-audio-limits.md), with two limits.
 
 ## Context
@@ -177,6 +178,8 @@ ADR 0005's regions stay: toolbar, timeline, transport, inspector. The root also 
   2. **clips with a start,** so a lane can have silence between clips;
   3. **moving a clip by dragging its body,** along time and to another lane, reported once when the drag ends.
 
+  `ui` designs them together with video-sdk's needs, whose detached audio tracks are lanes too.
+
   The editor's timeline work waits for that release. Building a second timeline here, as ADR 0005 allowed when `ui` had none, is no longer an option: `ui`'s exists, and two would drift.
 
 **Keys,** besides ADR 0005's, which stay:
@@ -192,6 +195,7 @@ ADR 0005's regions stay: toolbar, timeline, transport, inspector. The root also 
 | Delete | With a range | Deletes it from its tracks, closing the gap when Ripple is on |
 
 - **Ripple is a toolbar toggle,** on by default, like snapping. With it on, deleting a range closes the gap on the range's tracks; with it off, silence stays. One recording on one track behaves as it does today.
+- **Ripple shows what it will move.** It closes the gap only on the range's tracks, so a range on some tracks pulls them out of step with the others. While Ripple is on and a range covers only some tracks, those tracks' lanes are highlighted, and their headers say so in text, not by colour alone. The announcement after the deletion names them: "Deleted 0:04.00 to 0:09.20 from Voice. Later clips on Voice moved earlier."
 - **A move that would overlap is refused,** and announced: nothing is pushed aside.
 - **Solo has no key.** `S` is split, and solo is a button in each header.
 - **Every drag and key has a button** (WCAG 2.5.7, and `ui`'s condition for its clip track): zoom in, zoom out and fit; trim start and trim end; move earlier, move later, to the track above and to the track below; move track up and down; add and remove track. The inspector's **Start** field sets a clip's position exactly, as a timecode.
@@ -212,25 +216,26 @@ One pull request at a time, in this order. Each code change has a changeset.
 1. This record.
 2. The README's playback section, and its status (point 10).
 3. Resampling on insert, to the session's rate. Independent of tracks, and needed before them.
-4. The model: tracks and `at`, the reducer and its commands, version 2 of both formats with their migrations and vectors, the session's selection and insert, and the mix in the worker's renderer with its vectors and report. One change, because the plan's type runs through all of them. It's the largest of the series.
-5. Playback of tracks: the graph, and gain, mute and solo without rescheduling.
-6. The limits: `maxTracks` and the plan's length.
-7. The session's points from #54: 1, 2, 4, 5, 6, 7 and 14.
-8. The playhead and formatting points: 8, 9, 11, 12 and 13.
+4. The model, behind an internal module that nothing exports: tracks and `at`, the reducer and its commands, and version 2 of both formats with their migrations and vectors. The session, the worker and the public API still run on version 1.
+5. The switch: the session's plan, selection and insert, and the mix in the worker's renderer with its vectors and report, exporting the new API. This is the breaking change.
+6. Playback of tracks: the graph, and gain, mute and solo without rescheduling.
+7. The limits: `maxTracks` and the plan's length.
+8. The session's points from #54: 1, 2, 4, 5, 6, 7 and 14.
+9. The playhead and formatting points: 8, 9, 11, 12 and 13.
 
-**In `ui`, meanwhile:** lanes, clips with a start and dragging a clip's body, in its own pull requests and release.
+**In `ui`, meanwhile:** lanes, clips with a start and dragging a clip's body, in its own pull requests and release. Release 0.6.0 doesn't wait for it; the timeline's steps below do.
 
 **Release 0.7.0: the editor.** Nothing ships from `./react` or `./element` before every step is merged ([ADR 0005](0005-editor-shell.md), [sdk-core ADR 0039](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0039-test-applications-in-each-repository.md)).
 
-9. The provider, the hooks and the shell: the root with `hm-text`, the empty, opening and error states, and the transport.
-10. The timeline: lanes, waveforms and the playhead, with zoom and its buttons.
-11. Track headers and the track tools: add, remove, reorder, rename, gain, mute and solo.
-12. The clip tools: range selection, delete and ripple, split, trim, move, fades, with their buttons, keys and focus rules.
-13. The inspector.
-14. The export dialog, with the summary and the clipping report.
-15. The element.
-16. `examples/vite` and `examples/next`, with keyboard-only end-to-end tests.
-17. Screenshot tests of each designed state ([sdk-core ADR 0048](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0048-visual-regression-for-sdk-editors.md)).
+10. The provider, the hooks and the shell: the root with `hm-text`, the empty, opening and error states, and the transport.
+11. The timeline: lanes, waveforms and the playhead, with zoom and its buttons.
+12. Track headers and the track tools: add, remove, reorder, rename, gain, mute and solo.
+13. The clip tools: range selection, delete and ripple, split, trim, move, fades, with their buttons, keys and focus rules.
+14. The inspector.
+15. The export dialog, with the summary and the clipping report.
+16. The element.
+17. `examples/vite` and `examples/next`, with keyboard-only end-to-end tests.
+18. Screenshot tests of each designed state ([sdk-core ADR 0048](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0048-visual-regression-for-sdk-editors.md)).
 
 Then the app deletes its temporary editor and renders `AudioEditor`.
 
