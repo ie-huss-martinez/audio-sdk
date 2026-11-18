@@ -30,6 +30,8 @@ describe("the clip tools", () => {
       "audio.delete",
       "audio.trim-start",
       "audio.trim-end",
+      "audio.fade-in",
+      "audio.fade-out",
       "audio.move-earlier",
       "audio.move-later",
       "audio.move-to-track-above",

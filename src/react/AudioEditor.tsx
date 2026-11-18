@@ -2,7 +2,7 @@ import { AnnouncerProvider, UiMessagesProvider, useAnnounce } from "@hussmartine
 import { forwardRef, type ReactNode, useEffect, useImperativeHandle, useRef } from "react";
 import type { AudioPlan } from "../core/model/plan.js";
 import type { AudioInsertOptions } from "../core/session/session.js";
-import { EditorInspector } from "./AudioInspector.js";
+import { type AudioHeadingLevel, EditorInspector } from "./AudioInspector.js";
 import { Notices } from "./AudioNotices.js";
 import { AudioRenameDialog } from "./AudioRenameDialog.js";
 import { Stage } from "./AudioStage.js";
@@ -48,6 +48,11 @@ export interface AudioEditorProps extends Omit<AudioEditorProviderProps, "childr
    * page's theme.
    */
   readonly theme?: "light" | "dark" | "system";
+  /**
+   * The level of the editor's headings, from 2 to 6, so they fit the
+   * host's outline: the inspector's, for now. Defaults to 2.
+   */
+  readonly headingLevel?: AudioHeadingLevel;
   /** Extra classes on the root. */
   readonly className?: string;
   /** Extra classes on the editor's parts. */
@@ -81,6 +86,7 @@ interface ShellProps {
   readonly initialFile: Blob | undefined;
   readonly onChange: ((plan: AudioPlan) => void) | undefined;
   readonly theme: AudioEditorProps["theme"];
+  readonly headingLevel: AudioHeadingLevel | undefined;
   readonly className: string | undefined;
   readonly classNames: PartClassNames | undefined;
   readonly unstyled: boolean;
@@ -122,7 +128,14 @@ const Shell = forwardRef<AudioEditorHandle, ShellProps>(function Shell(props, re
 });
 
 /** The editor's root, its regions in tab order, and what it says and where focus goes. */
-function Root({ onChange, theme, className, classNames, unstyled }: ShellProps): ReactNode {
+function Root({
+  onChange,
+  theme,
+  headingLevel,
+  className,
+  classNames,
+  unstyled,
+}: ShellProps): ReactNode {
   const { messages, playhead, shortcuts } = useAudioEditorContext();
   const { run } = useAudioTools();
   const { snapshot } = useAudioSession();
@@ -185,7 +198,7 @@ function Root({ onChange, theme, className, classNames, unstyled }: ShellProps):
           <Stage classNames={classNames} />
           <Transport ref={play} classNames={classNames} />
         </div>
-        <EditorInspector classNames={classNames} />
+        <EditorInspector classNames={classNames} headingLevel={headingLevel} />
       </div>
       <AudioRenameDialog />
     </section>
@@ -213,7 +226,16 @@ function Root({ onChange, theme, className, classNames, unstyled }: ShellProps):
  */
 export const AudioEditor = /* @__PURE__ */ forwardRef<AudioEditorHandle, AudioEditorProps>(
   function AudioEditor(
-    { initialFile, onChange, theme, className, classNames, unstyled = false, ...provider },
+    {
+      initialFile,
+      onChange,
+      theme,
+      headingLevel,
+      className,
+      classNames,
+      unstyled = false,
+      ...provider
+    },
     ref,
   ): ReactNode {
     return (
@@ -223,6 +245,7 @@ export const AudioEditor = /* @__PURE__ */ forwardRef<AudioEditorHandle, AudioEd
           initialFile={initialFile}
           onChange={onChange}
           theme={theme}
+          headingLevel={headingLevel}
           className={className}
           classNames={classNames}
           unstyled={unstyled}

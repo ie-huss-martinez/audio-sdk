@@ -110,6 +110,8 @@ export const audioEditorMessages: {
     readonly "tools.setEnd": "End the selection at the playhead";
     readonly "tools.clearSelection": "Clear the selection";
     readonly "tools.ripple": "Ripple";
+    readonly "tools.fadeIn": "Fade in";
+    readonly "tools.fadeOut": "Fade out";
     readonly "tools.zoomIn": "Zoom in";
     readonly "tools.zoomOut": "Zoom out";
     readonly "tools.zoomFit": "Fit to width";
@@ -147,8 +149,17 @@ export const audioEditorMessages: {
     readonly "announce.rangeDeleted.ripple": "Deleted {time} to {end} from {tracks}. Later clips there moved earlier.";
     readonly "announce.rippleOn": "Ripple on: deleting a range closes the gap.";
     readonly "announce.rippleOff": "Ripple off: deleting a range leaves silence.";
+    readonly "announce.nothingInRange": "There's no audio in the selection to change.";
+    readonly "announce.rangeGain": "{time} to {end} on {tracks} set to {gain, number} dB.";
+    readonly "announce.fadedIn": "Fade in from {time} to {end} on {tracks}.";
+    readonly "announce.fadedOut": "Fade out from {time} to {end} on {tracks}.";
+    readonly "announce.noRoomForFade": "The clip has no room for that fade: shorten its other fade first.";
+    readonly "announce.clipFadedIn": "The clip fades in over {time}. Set its length in the inspector.";
+    readonly "announce.clipFadedOut": "The clip fades out over {time}. Set its length in the inspector.";
     readonly "inspector.clip": "Clip on {track}";
     readonly "inspector.recording": "Recording";
+    readonly "inspector.selection": "Selection";
+    readonly "inspector.selectionGain": "Gain of the selection, in decibels";
     readonly "inspector.start": "Start";
     readonly "inspector.gain": "Gain";
     readonly "inspector.gainExact": "Gain, in decibels";
@@ -283,6 +294,7 @@ export type AudioEditorPart = "root" | "toolbar" | "notices" | "stage" | "timeli
 export interface AudioEditorProps extends Omit<AudioEditorProviderProps, "children"> {
     readonly className?: string;
     readonly classNames?: Readonly<Partial<Record<AudioEditorPart, string>>>;
+    readonly headingLevel?: AudioHeadingLevel;
     readonly initialFile?: Blob;
     // Warning: (ae-forgotten-export) The symbol "AudioPlan" needs to be exported by the entry point react.d.ts
     readonly onChange?: (plan: AudioPlan) => void;
@@ -315,12 +327,16 @@ export interface AudioEditorProviderProps {
 }
 
 // @public
+export type AudioHeadingLevel = 2 | 3 | 4 | 5 | 6;
+
+// @public
 export function AudioInspector(input: AudioInspectorProps): ReactNode;
 
 // @public
 export interface AudioInspectorProps {
     // (undocumented)
     readonly className?: string;
+    readonly headingLevel?: AudioHeadingLevel;
 }
 
 // @public

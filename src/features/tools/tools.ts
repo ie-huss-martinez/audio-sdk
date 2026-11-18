@@ -1,6 +1,7 @@
 import { defineTool } from "@hussmartinez/sdk-core";
 import { planLength } from "../../core/model/plan.js";
 import { clipTools } from "../clips/clips.js";
+import { fadeTools } from "../range/edits.js";
 import { rangeTools } from "../range/range.js";
 import type { AudioTool, AudioToolContext, AudioToolState } from "./types.js";
 
@@ -178,6 +179,7 @@ export const audioTools: readonly AudioTool[] = [
     run: (context: AudioToolContext) => context.setZoom(1),
   }),
   ...clipTools,
+  ...fadeTools,
   ...rangeTools,
   // The transport's, with keys: not in the toolbar.
   defineTool({
@@ -224,6 +226,8 @@ export const defaultAudioToolbar: readonly (readonly string[])[] = [
     "audio.delete",
     "audio.trim-start",
     "audio.trim-end",
+    "audio.fade-in",
+    "audio.fade-out",
     "audio.move-earlier",
     "audio.move-later",
     "audio.move-to-track-above",

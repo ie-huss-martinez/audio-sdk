@@ -144,7 +144,6 @@ export function EditorTimeline({
     slider.addEventListener("keydown", onKeyDown, true);
     return () => slider.removeEventListener("keydown", onKeyDown, true);
   });
-  const timeline = useRef<HTMLElement>(null);
 
   // Scrolling and zooming redraw the waveforms, without rendering anything.
   const listeners = useRef(new Set<() => void>());
@@ -176,7 +175,6 @@ export function EditorTimeline({
   return (
     <div className={classes("hm-audio-editor-timeline", classNames?.timeline, className)}>
       <Timeline
-        ref={timeline}
         label={messages.t("timeline.label")}
         length={length}
         zoom={zoom}
@@ -204,7 +202,8 @@ export function EditorTimeline({
           formatValue={time}
           following={playback.state === "playing"}
         />
-        <RangeGestures timeline={timeline} />
+        {/* Under the lanes, which let presses through to it (ui 0.14). */}
+        <RangeGestures />
         {plan.tracks.map((track, index) => {
           const name = trackName(messages, track, index);
           return (

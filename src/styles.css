@@ -201,6 +201,11 @@
    * The selected range: a band on each of its lanes, under the clips. A
    * press passes through it to the track, which selects and seeks.
    */
+  /* Takes the presses the lanes let through, to select and seek. */
+  .hm-audio-editor-press-layer {
+    touch-action: pan-x pan-y;
+  }
+
   .hm-audio-editor-range-layer {
     position: relative;
     pointer-events: none;

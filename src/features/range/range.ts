@@ -60,7 +60,7 @@ export const rangeTools: readonly AudioTool[] = [
   defineTool({
     id: "audio.set-start",
     label: "tools.setStart",
-    icon: "skip-back",
+    icon: "range-start",
     group: "range",
     shortcuts: ["I"],
     isEnabled: hasLength,
@@ -76,7 +76,7 @@ export const rangeTools: readonly AudioTool[] = [
   defineTool({
     id: "audio.set-end",
     label: "tools.setEnd",
-    icon: "skip-forward",
+    icon: "range-end",
     group: "range",
     shortcuts: ["O"],
     isEnabled: hasLength,
@@ -104,7 +104,7 @@ export const rangeTools: readonly AudioTool[] = [
   defineTool({
     id: "audio.ripple",
     label: "tools.ripple",
-    icon: "pan",
+    icon: "ripple",
     group: "range",
     isEnabled: (state: AudioToolState) => state.plan !== undefined,
     isActive: (state: AudioToolState) => state.ripple,

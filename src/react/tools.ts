@@ -90,7 +90,8 @@ export function useAudioTools(): AudioTools {
             time: message.frame === undefined ? "" : formatTimecode(message.frame, rate),
             end: message.end === undefined ? "" : formatTimecode(message.end, rate),
             tracks: message.tracks ? tracksText(messages, plan, message.tracks) : "",
-          } as { time: string; end: string; tracks: string },
+            gain: message.gain ?? 0,
+          } as { time: string; end: string; tracks: string; gain: number },
         ),
       );
     };

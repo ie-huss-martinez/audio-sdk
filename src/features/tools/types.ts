@@ -70,7 +70,14 @@ export interface AudioToolAnnouncement {
     | "announce.rangeDeleted"
     | "announce.rangeDeleted.ripple"
     | "announce.rippleOn"
-    | "announce.rippleOff";
+    | "announce.rippleOff"
+    | "announce.nothingInRange"
+    | "announce.rangeGain"
+    | "announce.fadedIn"
+    | "announce.fadedOut"
+    | "announce.noRoomForFade"
+    | "announce.clipFadedIn"
+    | "announce.clipFadedOut";
   readonly track?: AudioTrack;
   /** Tracks, said by name, or as every track. */
   readonly tracks?: readonly AudioTrack[];
@@ -78,6 +85,8 @@ export interface AudioToolAnnouncement {
   readonly frame?: number;
   /** A second frame, for a range. */
   readonly end?: number;
+  /** A gain, in decibels. */
+  readonly gain?: number;
 }
 
 /**

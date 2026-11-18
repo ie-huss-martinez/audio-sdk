@@ -12,11 +12,13 @@ import {
 import { formatTimecode } from "../core/model/time.js";
 import { MAX_METADATA_LENGTH } from "../core/operations/checks.js";
 import type { AudioCommand } from "../core/operations/commands.js";
+import type { AudioSelection } from "../core/session/session.js";
 import { findClip, moveClips, nudgeFrames } from "../features/clips/clips.js";
+import { clipsInRange, setRangeGain } from "../features/range/edits.js";
 import { useAudioEditorContext, useAudioSession } from "./context.js";
 import { useDraft, useFollowing } from "./draft.js";
 import type { AudioEditorMessages } from "./editor-messages.js";
-import { trackName } from "./names.js";
+import { trackName, tracksText } from "./names.js";
 import { classes, type PartClassNames } from "./parts.js";
 import { parseTimecode } from "./timecode.js";
 import { useAudioTools } from "./tools.js";
@@ -39,29 +41,46 @@ const METADATA_FIELDS: readonly (keyof AudioMetadata)[] = [
  */
 export interface AudioInspectorProps {
   readonly className?: string;
+  /**
+   * The level of the inspector's heading, from 2 to 6, so it fits the
+   * host's outline. Defaults to 2.
+   */
+  readonly headingLevel?: AudioHeadingLevel;
 }
 
 /**
- * The editor's inspector (docs/adr/0005, docs/adr/0006): the selected
- * clip's start, gain and fades, set exactly; with no clip selected, the
- * recording's facts, its master gain, its channels and its metadata. Each
+ * A heading level for the editor's headings, below the page's own `h1`.
+ *
+ * @public
+ */
+export type AudioHeadingLevel = 2 | 3 | 4 | 5 | 6;
+
+/**
+ * The editor's inspector (docs/adr/0005, docs/adr/0006): with a range
+ * selected, its gain; otherwise the selected clip's start, gain and fades,
+ * set exactly; with neither, the recording's facts, its master gain, its
+ * channels and its metadata. Each
  * change is one undo step: a field's when it's committed, with Enter or by
  * leaving it, and a slider's when it's let go. Inside an
  * {@link AudioEditorProvider}.
  *
  * @public
  */
-export function AudioInspector({ className }: AudioInspectorProps): ReactNode {
-  return <EditorInspector className={className} classNames={undefined} />;
+export function AudioInspector({ className, headingLevel }: AudioInspectorProps): ReactNode {
+  return (
+    <EditorInspector className={className} classNames={undefined} headingLevel={headingLevel} />
+  );
 }
 
 /** The inspector, with the editor's part classes. */
 export function EditorInspector({
   className,
   classNames,
+  headingLevel = 2,
 }: {
   readonly className?: string | undefined;
   readonly classNames: PartClassNames | undefined;
+  readonly headingLevel?: AudioHeadingLevel | undefined;
 }): ReactNode {
   const { messages, selectedClip } = useAudioEditorContext();
   const { snapshot } = useAudioSession();
@@ -69,7 +88,9 @@ export function EditorInspector({
   const title = useId();
   const { plan } = snapshot;
   if (!plan) return null;
+  const { selection } = snapshot;
   const placed = selectedClip === undefined ? undefined : findClip(plan, selectedClip);
+  const Heading = `h${headingLevel}` as "h2";
 
   // Every edit here goes through the tools' context, so a refusal is said
   // as the toolbar's are.
@@ -83,13 +104,26 @@ export function EditorInspector({
       className={classes("hm-audio-editor-inspector", classNames?.inspector, className)}
       aria-labelledby={title}
     >
-      {placed ? (
+      {selection ? (
+        // A range comes first, as it does for Delete (docs/adr/0005).
         <>
-          <p id={title} className="hm-audio-editor-inspector-title">
+          <Heading id={title} className="hm-audio-editor-inspector-title">
+            {messages.t("inspector.selection")}
+          </Heading>
+          <SelectionFields
+            plan={plan}
+            selection={selection}
+            messages={messages}
+            setGain={(gainDb) => setRangeGain(tools.context(), gainDb)}
+          />
+        </>
+      ) : placed ? (
+        <>
+          <Heading id={title} className="hm-audio-editor-inspector-title">
             {messages.t("inspector.clip", {
               track: trackName(messages, placed.track, plan.tracks.indexOf(placed.track)),
             })}
-          </p>
+          </Heading>
           <ClipFields
             key={placed.clip.key}
             plan={plan}
@@ -101,9 +135,9 @@ export function EditorInspector({
         </>
       ) : (
         <>
-          <p id={title} className="hm-audio-editor-inspector-title">
+          <Heading id={title} className="hm-audio-editor-inspector-title">
             {messages.t("inspector.recording")}
-          </p>
+          </Heading>
           <RecordingFields plan={plan} messages={messages} run={run} />
         </>
       )}
@@ -244,6 +278,56 @@ function ClipFields({
       />
       <Fade edge="in" clip={clip} plan={plan} messages={messages} run={run} />
       <Fade edge="out" clip={clip} plan={plan} messages={messages} run={run} />
+    </>
+  );
+}
+
+/**
+ * The selected range, said as text, and its gain: setting it splits the
+ * range's clips at its edges and sets what's between, as one undo step.
+ * The field starts at the gain the range's clips share, or the first one's.
+ */
+function SelectionFields({
+  plan,
+  selection,
+  messages,
+  setGain,
+}: {
+  readonly plan: AudioPlan;
+  readonly selection: AudioSelection;
+  readonly messages: AudioEditorMessages;
+  readonly setGain: (gainDb: number) => void;
+}): ReactNode {
+  const rate = plan.sampleRate;
+  const clips = clipsInRange(plan, selection);
+  const gain = clips[0]?.gainDb ?? 0;
+  return (
+    <>
+      <p className="hm-audio-editor-inspector-range">
+        {messages.t("timeline.selection", {
+          start: formatTimecode(selection.start, rate),
+          end: formatTimecode(selection.end, rate),
+          tracks: tracksText(
+            messages,
+            plan,
+            plan.tracks.filter((track) => selection.tracks.includes(track.key)),
+          ),
+        })}
+      </p>
+      <Field label={messages.t("inspector.selectionGain")}>
+        <NumberField
+          value={gain}
+          min={MIN_GAIN_DB}
+          max={MAX_GAIN_DB}
+          step={0.5}
+          largeStep={6}
+          locale={messages.locale}
+          disabled={clips.length === 0}
+          onValueChange={(gainDb) => {
+            if (clips.some((clip) => clip.gainDb !== gainDb)) setGain(gainDb);
+          }}
+        />
+      </Field>
     </>
   );
 }
