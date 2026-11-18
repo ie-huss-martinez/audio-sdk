@@ -2,6 +2,7 @@ import { AnnouncerProvider, UiMessagesProvider, useAnnounce } from "@hussmartine
 import { forwardRef, type ReactNode, useEffect, useImperativeHandle, useRef } from "react";
 import type { AudioPlan } from "../core/model/plan.js";
 import type { AudioInsertOptions } from "../core/session/session.js";
+import { EditorInspector } from "./AudioInspector.js";
 import { Notices } from "./AudioNotices.js";
 import { AudioRenameDialog } from "./AudioRenameDialog.js";
 import { Stage } from "./AudioStage.js";
@@ -178,8 +179,14 @@ function Root({ onChange, theme, className, classNames, unstyled }: ShellProps):
     >
       <EditorToolbar classNames={classNames} />
       <Notices classNames={classNames} />
-      <Stage classNames={classNames} />
-      <Transport ref={play} classNames={classNames} />
+      {/* The inspector sits beside the stage and transport where there's room, and below them otherwise. */}
+      <div className="hm-audio-editor-main">
+        <div className="hm-audio-editor-work">
+          <Stage classNames={classNames} />
+          <Transport ref={play} classNames={classNames} />
+        </div>
+        <EditorInspector classNames={classNames} />
+      </div>
       <AudioRenameDialog />
     </section>
   );

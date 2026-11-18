@@ -52,6 +52,63 @@
     margin: 0;
   }
 
+  /*
+   * The stage and transport, then the inspector: side by side where the
+   * editor leaves the timeline its full layout, 720px, beside the
+   * inspector, and the inspector below them otherwise.
+   */
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-main {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--hm-gap-normal);
+    min-block-size: 0;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-work {
+    display: flex;
+    flex-direction: column;
+    gap: var(--hm-gap-normal);
+    min-block-size: 0;
+  }
+
+  @container (inline-size >= 1080px) {
+    .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-main {
+      grid-template-columns: minmax(0, 1fr) calc(var(--hm-space-12) * 3);
+    }
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-inspector {
+    display: flex;
+    flex-direction: column;
+    gap: var(--hm-gap-normal);
+    align-self: start;
+    min-inline-size: 0;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-inspector-title {
+    margin: 0;
+    font-weight: var(--hm-font-weight-strong);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-inspector-gain,
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-inspector-fade {
+    display: grid;
+    gap: var(--hm-gap-tight);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-facts {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--hm-gap-tight) var(--hm-gap-normal);
+    margin: 0;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-facts dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
   .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-stage {
     flex: 1 1 auto;
     display: grid;

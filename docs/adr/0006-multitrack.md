@@ -12,7 +12,7 @@
 - **Amended:** 2026-11-18, with the playhead and text points from #54 as built: the output notifies when the playhead jumps, and two text helpers stand in for sdk-core until it looks texts up by reason.
 - **Amended:** 2026-11-18, with the first editor step: a clip moves by its title strip only (`ui`'s `moveHandle="title"`), and the provider as built.
 - **Amended:** 2026-11-18, with the timeline as built (step 11).
-- **Amended:** 2026-11-18, with the track tools as built (step 12), the clip tools (step 13a), and range selection (step 13b).
+- **Amended:** 2026-11-18, with the track tools as built (step 12), the clip tools (step 13a), range selection (step 13b), and the inspector (step 14a).
 - **Supersedes in part:** [ADR 0003](0003-clip-plan-document-model.md) (the plan's shape, derived positions, the command table and version 1 of the formats) and [ADR 0005](0005-editor-shell.md) (the timeline, the selection and the order of the work). **Extends:** [ADR 0004](0004-audio-limits.md), with two limits.
 
 ## Context
@@ -200,6 +200,8 @@ From [#54](https://github.com/ie-huss-martinez/audio-sdk/issues/54), by its numb
 
 **Range selection, as built (step 13b).** The range tools are in `src/features/range/`, in a Selection group of the toolbar: Set start (`I`), Set end (`O`), Clear (Escape, enabled only with a selection, so Escape is free otherwise) and the Ripple toggle, on by default. `I` keeps the selection's end when it's after the playhead, and runs to the end of the plan otherwise; `O` keeps its start when it's before, and starts at the beginning otherwise. Both keep the selection's tracks, or take every track. Shift with the playhead's keys selects from where it was to where it goes, or moves the edge it's on. With a pointer, the playhead's `seekOnPress` is off and the editor listens on the timeline's track, because `ui`'s lanes take presses themselves, so a layer under them never sees one: a drag selects on the lanes it crosses, snapping unless Alt is held, and a click seeks and clears the selection. A press on a clip's title, its edges, a header or the slider stays theirs; on a touch screen a drag scrolls, and only a tap seeks. Each lane in the selection draws it under its clips. Delete deletes the range before a selected clip, with Ripple as set, then puts the playhead and focus at its start and says what went from where. While Ripple is on and the range leaves some tracks out, its lanes have a warning edge, their headers say "Ripple" in text, and their names say that later clips will move. The transport shows the selection as text. Selections made by keys are announced; a drag shows itself, and the transport's text says the same.
 
+**The inspector, as built (step 14a).** Step 14 is split too: 14a is the inspector, and 14b the Fade in, Fade out and gain tools over a range, which split at its edges and change what's between as one step ([ADR 0005](0005-editor-shell.md)). The inspector, `AudioInspector`, is a region after the transport in the tab order, beside the stage and transport where the editor is at least 1080 px wide, which leaves the timeline the 720 px its headers need beside the lanes, and below them otherwise. With a clip selected, it has the clip's Start as a timecode field, which reads `0:04.20`, `1:02:05.00` or plain seconds and nudges by 10 ms with the arrows and a second with Page Up and Page Down, its gain as a slider from −60 to +12 dB beside a field for the whole range, and each fade's length in seconds, within what the other fade leaves, with its curve. A start that would overlap is refused and announced, as a move is. With no clip selected, it has the recording's length, sample rate and tracks, its master gain, its channels and its metadata. Fields commit with Enter or by leaving them, sliders when they're let go, and each commit is one undo step; Escape in a metadata field throws the typing away, as `ui`'s number fields do.
+
 ### The editor
 
 ADR 0005's regions stay: toolbar, timeline, transport, inspector. The root also takes `ui`'s `hm-text` class. What changes is the timeline.
@@ -268,7 +270,7 @@ One pull request at a time, in this order. Each code change has a changeset.
 11. The timeline: lanes, waveforms and the playhead, with zoom and its buttons.
 12. Track headers and the track tools: add, remove, reorder, rename, gain, mute and solo.
 13. The clip tools, in two pull requests: (a) split, delete, trim and move, with their buttons, keys and focus rules; (b) range selection, with delete and ripple.
-14. The inspector, with fades.
+14. The inspector, in two pull requests: (a) the inspector, with the clip's start, gain and fades and the recording's; (b) the fade and gain tools over a range.
 15. The export dialog, with the summary and the clipping report.
 16. The element.
 17. `examples/vite` and `examples/next`, with keyboard-only end-to-end tests.

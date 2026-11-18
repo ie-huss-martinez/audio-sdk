@@ -23,13 +23,18 @@ export const disabled = (element: Element): boolean =>
   element.getAttribute("aria-disabled") === "true";
 
 /** An editor with these recordings open, each on a track of its own, and its latest plan. */
-export async function editor(...files: File[]) {
+export function editor(...files: File[]) {
+  return editorSized(900, ...files);
+}
+
+/** {@link editor}, `width` CSS pixels wide. */
+export async function editorSized(width: number, ...files: File[]) {
   const events = sessionEvents();
   const ref = createRef<AudioEditorHandle>();
   const latest: { plan?: AudioPlan } = {};
   const container = await mount(
     <AudioEditor ref={ref} onEvent={events.onEvent} onChange={(plan) => (latest.plan = plan)} />,
-    "width: 900px; height: 600px; display: grid; grid-template-rows: minmax(0, 1fr);",
+    `width: ${width}px; height: 600px; display: grid; grid-template-rows: minmax(0, 1fr);`,
   );
   const [first, ...rest] = files;
   if (first) await step(() => ref.current?.open(first));

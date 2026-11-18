@@ -147,6 +147,32 @@ export const audioEditorMessages: {
     readonly "announce.rangeDeleted.ripple": "Deleted {time} to {end} from {tracks}. Later clips there moved earlier.";
     readonly "announce.rippleOn": "Ripple on: deleting a range closes the gap.";
     readonly "announce.rippleOff": "Ripple off: deleting a range leaves silence.";
+    readonly "inspector.clip": "Clip on {track}";
+    readonly "inspector.recording": "Recording";
+    readonly "inspector.start": "Start";
+    readonly "inspector.gain": "Gain";
+    readonly "inspector.gainExact": "Gain, in decibels";
+    readonly "inspector.fadeIn": "Fade in, in seconds";
+    readonly "inspector.fadeOut": "Fade out, in seconds";
+    readonly "inspector.fadeInCurve": "Fade in curve";
+    readonly "inspector.fadeOutCurve": "Fade out curve";
+    readonly "inspector.curve.linear": "Linear";
+    readonly "inspector.curve.equalPower": "Equal power";
+    readonly "inspector.length": "Length";
+    readonly "inspector.sampleRate": "Sample rate";
+    readonly "inspector.sampleRateValue": "{rate, number} Hz";
+    readonly "inspector.tracks": "Tracks";
+    readonly "inspector.masterGain": "Master gain";
+    readonly "inspector.masterGainExact": "Master gain, in decibels";
+    readonly "inspector.channels": "Channels";
+    readonly "inspector.mono": "Mono";
+    readonly "inspector.stereo": "Stereo";
+    readonly "inspector.channelCount": "{count} channels";
+    readonly "metadata.title": "Title";
+    readonly "metadata.artist": "Artist";
+    readonly "metadata.album": "Album";
+    readonly "metadata.year": "Year";
+    readonly "metadata.comment": "Comment";
     readonly "transport.label": "Playback";
     readonly "transport.play": "Play";
     readonly "transport.pause": "Pause";
@@ -251,7 +277,7 @@ export const audioEditorMessages: {
 };
 
 // @public
-export type AudioEditorPart = "root" | "toolbar" | "notices" | "stage" | "timeline" | "transport";
+export type AudioEditorPart = "root" | "toolbar" | "notices" | "stage" | "timeline" | "transport" | "inspector";
 
 // @public
 export interface AudioEditorProps extends Omit<AudioEditorProviderProps, "children"> {
@@ -286,6 +312,15 @@ export interface AudioEditorProviderProps {
     readonly processor?: AudioProcessor;
     readonly toolbar?: readonly (readonly string[])[];
     readonly tools?: readonly string[];
+}
+
+// @public
+export function AudioInspector(input: AudioInspectorProps): ReactNode;
+
+// @public
+export interface AudioInspectorProps {
+    // (undocumented)
+    readonly className?: string;
 }
 
 // @public

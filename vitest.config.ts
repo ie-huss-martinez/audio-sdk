@@ -45,6 +45,8 @@ export default defineConfig(({ mode }) => {
           test: {
             name: "browser",
             include: ["src/**/*.browser.test.{ts,tsx}", "test/**/*.browser.test.{ts,tsx}"],
+            // Firefox crashes when two worlds read ariaLabelledByElements (#76).
+            setupFiles: ["./test/firefox-labelled-by-guard.ts"],
             browser: {
               enabled: true,
               headless: true,

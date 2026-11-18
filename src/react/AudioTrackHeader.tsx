@@ -1,8 +1,9 @@
 import { Button, MutedIcon, Slider, ToggleButton, useAnnounce } from "@hussmartinez/ui/react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import type { AudioTrack } from "../core/model/plan.js";
 import type { AudioCommand } from "../core/operations/commands.js";
 import { useAudioEditorContext } from "./context.js";
+import { useDraft } from "./draft.js";
 import { trackName } from "./names.js";
 import { useAudioTools } from "./tools.js";
 
@@ -49,11 +50,9 @@ export function AudioTrackHeader({
     }
   };
 
-  const [gain, setGain] = useState(track.gainDb);
-  useEffect(() => setGain(track.gainDb), [track.gainDb]);
-  const commitGain = () => {
-    if (gain !== track.gainDb) execute({ type: "audio.setTrack", key: track.key, gainDb: gain });
-  };
+  const [gain, setGain, commitGain] = useDraft(track.gainDb, (gainDb) =>
+    execute({ type: "audio.setTrack", key: track.key, gainDb }),
+  );
 
   return (
     <>
