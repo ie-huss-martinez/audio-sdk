@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { wavFile } from "../../test/fixtures/pcm-files.js";
 import { cleanUp, mount, waitFor } from "../../test/react.js";
+import { sessionEvents } from "../../test/session-events.js";
 import type { AudioSession } from "../core/session/session.js";
 import { AudioEditor } from "./AudioEditor.js";
 import { AudioStage } from "./AudioStage.js";
@@ -96,13 +97,14 @@ describe("the timeline", () => {
   });
 
   it("moves the playhead by 10 ms with the arrow keys and by a second with Page Down", async () => {
-    const container = await mount(<AudioEditor initialFile={recording("take.wav", 3)} />);
-    const slider = await waitFor(() => {
-      const found = container.querySelector<HTMLInputElement>('input[aria-label="Playhead"]');
-      expect(found).not.toBeNull();
-      return found as HTMLInputElement;
-    });
-    await waitFor(() => expect(document.activeElement).toBe(slider));
+    const events = sessionEvents();
+    const opened = events.nextLoad();
+    const container = await mount(
+      <AudioEditor initialFile={recording("take.wav", 3)} onEvent={events.onEvent} />,
+    );
+    await opened();
+    const slider = container.querySelector('input[aria-label="Playhead"]') as HTMLInputElement;
+    expect(document.activeElement).toBe(slider);
     expect(slider.getAttribute("aria-valuetext")).toBe("0:00.00");
     await step(() => userEvent.keyboard("{ArrowRight}{ArrowRight}"));
     await waitFor(() => expect(slider.getAttribute("aria-valuetext")).toBe("0:00.02"));
@@ -112,10 +114,14 @@ describe("the timeline", () => {
   });
 
   it("zooms in and out with its buttons, from fitting the whole recording", async () => {
-    const container = await mount(<AudioEditor initialFile={recording("take.wav", 2)} />);
+    const events = sessionEvents();
+    const opened = events.nextLoad();
+    const container = await mount(
+      <AudioEditor initialFile={recording("take.wav", 2)} onEvent={events.onEvent} />,
+    );
+    await opened();
     const button = (label: string) =>
       container.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement;
-    await waitFor(() => expect(button("Zoom in")).not.toBeNull());
     expect(button("Zoom out").getAttribute("aria-disabled")).toBe("true");
     expect(button("Fit to width").getAttribute("aria-disabled")).toBe("true");
     const track = () =>
@@ -129,7 +135,12 @@ describe("the timeline", () => {
   });
 
   it("draws each lane's waveform from the peaks, never reading samples", async () => {
-    const container = await mount(<AudioEditor initialFile={recording("take.wav", 2)} />);
+    const events = sessionEvents();
+    const opened = events.nextLoad();
+    const container = await mount(
+      <AudioEditor initialFile={recording("take.wav", 2)} onEvent={events.onEvent} />,
+    );
+    await opened();
     const canvas = await waitFor(() => {
       const found = container.querySelector<HTMLCanvasElement>("canvas.hm-audio-editor-waveform");
       expect(found?.width).toBeGreaterThan(0);

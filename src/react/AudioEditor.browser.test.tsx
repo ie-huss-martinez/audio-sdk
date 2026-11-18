@@ -5,6 +5,7 @@ import { userEvent } from "vitest/browser";
 import { createFakeEngine } from "../../test/fakes/fake-engine.js";
 import { wavFile } from "../../test/fixtures/pcm-files.js";
 import { cleanUp, mount, waitFor } from "../../test/react.js";
+import { sessionEvents } from "../../test/session-events.js";
 import { createAudioEngine } from "../adapters/audio-engine.js";
 import { abortError } from "../core/errors/abort.js";
 import type { AudioPlan } from "../core/model/plan.js";
@@ -63,9 +64,12 @@ describe("AudioEditor", () => {
   });
 
   it("opens a chosen file: shows it, puts focus on the playhead, and announces it", async () => {
-    const container = await mount(<AudioEditor />);
+    const events = sessionEvents();
+    const container = await mount(<AudioEditor onEvent={events.onEvent} />);
+    const opened = events.nextLoad();
     await choose(container, recording());
-    await waitFor(() => expect(text(container)).toContain("1 track, 0:01.00 long."));
+    expect((await opened()).type).toBe("recording_opened");
+    expect(text(container)).toContain("1 track, 0:01.00 long.");
     expect(text(container)).toContain("0:00.00 / 0:01.00");
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Playhead");
     await waitFor(() => expect(text(document.body)).toContain("Recording opened."));
@@ -74,12 +78,13 @@ describe("AudioEditor", () => {
   });
 
   it("shows a failed open by its error's text, where the action was", async () => {
-    const container = await mount(<AudioEditor />);
+    const events = sessionEvents();
+    const container = await mount(<AudioEditor onEvent={events.onEvent} />);
+    const failed = events.nextLoad();
     await choose(container, new File(["not audio at all"], "notes.wav"));
-    await waitFor(() =>
-      expect(container.querySelector('.hm-audio-editor-error[role="alert"]')?.textContent).toBe(
-        "This audio format isn't supported. Try converting the file to WAV, then open it again.",
-      ),
+    expect(await failed()).toMatchObject({ type: "failed", operation: "open" });
+    expect(container.querySelector('.hm-audio-editor-error[role="alert"]')?.textContent).toBe(
+      "This audio format isn't supported. Try converting the file to WAV, then open it again.",
     );
     // Still empty, so another file can be chosen.
     expect(container.querySelector(".hm-audio-editor input[type=file]")).not.toBeNull();
@@ -115,14 +120,18 @@ describe("AudioEditor", () => {
   });
 
   it("shows warnings in one notice, and keeps a dismissed one away", async () => {
+    const events = sessionEvents();
     const container = await mount(
-      <AudioEditor filePolicy={{ maxDuration: { maximum: 3_600_000, warning: 500 } }} />,
+      <AudioEditor
+        onEvent={events.onEvent}
+        filePolicy={{ maxDuration: { maximum: 3_600_000, warning: 500 } }}
+      />,
     );
+    const opened = events.nextLoad();
     await choose(container, recording());
+    await opened();
     const notices = () => container.querySelector(".hm-audio-editor-notices");
-    await waitFor(() =>
-      expect(notices()?.textContent).toMatch(/^This recording is .+ long, and may be slow/),
-    );
+    expect(notices()?.textContent).toMatch(/^This recording is .+ long, and may be slow/);
     expect(notices()?.getAttribute("aria-label")).toBe("Notices");
     expect(await violations(container.querySelector(".hm-audio-editor") as Element)).toEqual([]);
     await step(() =>
@@ -150,12 +159,15 @@ describe("AudioEditor", () => {
   it("opens an initial file, through StrictMode's second mount, and never destroys what it's given", async () => {
     const engine = createAudioEngine();
     const destroy = vi.spyOn(engine, "destroy");
+    const events = sessionEvents();
+    const opened = events.nextLoad();
     const container = await mount(
       <StrictMode>
-        <AudioEditor engine={engine} initialFile={recording()} />
+        <AudioEditor engine={engine} initialFile={recording()} onEvent={events.onEvent} />
       </StrictMode>,
     );
-    await waitFor(() => expect(text(container)).toContain("1 track, 0:01.00 long."));
+    expect((await opened()).type).toBe("recording_opened");
+    expect(text(container)).toContain("1 track, 0:01.00 long.");
     // One recording, opened once.
     expect(container.querySelectorAll(".hm-audio-editor")).toHaveLength(1);
     await cleanUp();
