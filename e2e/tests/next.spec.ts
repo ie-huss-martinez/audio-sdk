@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures.js";
 import { openByKeyboard, watch } from "./helpers.js";
 
 const url = "http://localhost:4311/";
