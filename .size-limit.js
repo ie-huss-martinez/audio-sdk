@@ -2,8 +2,8 @@
  * Size budgets (ADR 0015), of two kinds.
  *
  * - **Entry ceilings,** the first entries: the brotli size of each built
- *   entry, with the shared chunks it loads, measured as files in dist
- *   (with the esbuild plugin disabled). They're an upper bound on what any application can
+ *   entry, with the shared chunks it loads and only those, measured as files
+ *   in dist (with the esbuild plugin disabled). They're an upper bound on what any application can
  *   ship from an entry. A ceiling is raised in the pull request that needs
  *   it, to the next whole kB, with the measured number.
  * - **Import budgets,** after them: what an application ships when it
@@ -13,6 +13,30 @@
  *   worker, which loads lazily on the first call and has its own budget.
  *   Each is set a little above its measured size, so growth is noticed.
  */
+
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, normalize } from "node:path";
+
+/**
+ * The built files an entry loads up front: the entry, and every chunk it
+ * imports statically, directly or through other chunks. Counting only these,
+ * rather than every shared chunk, keeps one entry's budget from paying for
+ * code that only another entry loads. Chunks loaded with `import()`, in
+ * `lazy/`, have budgets of their own. video-sdk's, unchanged.
+ */
+function loadedFiles(file) {
+  const seen = new Set();
+  const visit = (path) => {
+    if (seen.has(path) || !existsSync(path)) return;
+    seen.add(path);
+    const code = readFileSync(path, "utf8");
+    for (const [, specifier] of code.matchAll(/(?:from\s*|import\s+)"(\.{1,2}\/[^"]+\.js)"/g)) {
+      visit(normalize(join(dirname(path), specifier)));
+    }
+  };
+  visit(join("dist", file));
+  return [...seen];
+}
 
 /** An application's import from the core entry, without sdk-core and the lazy worker. */
 const coreImport = (name, imports, limit) => ({
@@ -43,7 +67,7 @@ export default [
     // React entry it was 21.81 kB, 16.67 kB minified. Before tracks it was 15.06 kB,
     // and 11.53 kB minified.
     name: "Server-safe core (.), with the shared code it loads",
-    path: ["dist/index.js", "dist/shared/*.js"],
+    path: loadedFiles("index.js"),
     brotli: true,
     limit: "24 kB",
   },
@@ -53,16 +77,19 @@ export default [
     // the provider, hooks, stage, notices and transport, and the core's
     // shared chunk they use. React and ui are the host's, so not counted.
     name: "React entry (./react), with the shared code it loads",
-    path: ["dist/react.js", "dist/shared/*.js"],
+    path: loadedFiles("react.js"),
     brotli: true,
     limit: "40 kB",
   },
   {
     disablePlugins: ["@size-limit/esbuild"],
+    // Empty until the element arrives (docs/adr/0006, step 16), which sets
+    // its budget from what it measures. Counted with every shared chunk, as
+    // before this measured only what it loads, it read 19.13 kB.
     name: "Element entry (./element), with the shared code it loads",
-    path: ["dist/element.js", "dist/shared/*.js"],
+    path: loadedFiles("element.js"),
     brotli: true,
-    limit: "40 kB",
+    limit: "1 kB",
   },
   {
     disablePlugins: ["@size-limit/esbuild"],
