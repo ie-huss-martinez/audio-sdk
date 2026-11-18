@@ -21,15 +21,29 @@ import { applyToDocument, readAndWrite } from "./run.js";
 const COMMANDS = new URL("../../conformance/hm-audio-commands.json", import.meta.url);
 const PLANS = new URL("../../conformance/hm-audio-plan.json", import.meta.url);
 
+/**
+ * A timeout for the tests that run thousands of generated cases. Measured
+ * on a 12-core machine: alone, and with the whole unit suite running three
+ * times at once. Under a heavier load still, with other repositories'
+ * suites running beside them, these took longer than the default 5 seconds. The run
+ * counts aren't lowered to fit a timeout.
+ */
+const SLOW = 30_000;
+
 const text = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 
-it("keeps the checked-in cases up to date with their generator", async () => {
-  // `pnpm conformance:update` rewrites them.
-  await expect(text(planCases())).toMatchFileSnapshot("../../conformance/hm-audio-plan.json");
-  await expect(text(commandCases())).toMatchFileSnapshot(
-    "../../conformance/hm-audio-commands.json",
-  );
-});
+it(
+  "keeps the checked-in cases up to date with their generator",
+  async () => {
+    // `pnpm conformance:update` rewrites them.
+    await expect(text(planCases())).toMatchFileSnapshot("../../conformance/hm-audio-plan.json");
+    await expect(text(commandCases())).toMatchFileSnapshot(
+      "../../conformance/hm-audio-commands.json",
+    );
+    // Generating samples two thousand commands: 0.24 s alone, 2.7 s busy.
+  },
+  SLOW,
+);
 
 describeConformance(PLANS, readAndWrite);
 describeConformance(COMMANDS, applyToDocument);
@@ -113,49 +127,59 @@ describe("the format schemas agree with the readers", () => {
     Object.entries(SOURCES).map(([id, frames]) => [id, { frames }]),
   );
 
-  it("never let the reducer apply a command the schema refuses", () => {
-    fc.assert(
-      fc.property(
-        planArb.chain((state) => fc.tuple(fc.constant(state), mutated(commandFor(state)))),
-        ([state, command]) => {
-          const plan = toAudioPlanDocument(state, sources);
-          let applied = true;
-          try {
-            applyToDocument({ plan, command });
-          } catch {
-            applied = false;
-          }
-          if (applied) expect(commandValid(command)).toBe(true);
-        },
-      ),
-      { numRuns: 2_000 },
-    );
-  });
-
-  it("never let the reader accept a document the schema refuses", () => {
-    const document = planArb.map((state) => toAudioPlanDocument(state, sources));
-    fc.assert(
-      fc.property(
-        fc.oneof(
-          mutated(document),
-          document.map((value) => ({
-            ...value,
-            clips: value.clips.map((clip, index) =>
-              index === 0 ? { ...clip, gainDb: 1.5 } : clip,
-            ),
-          })),
+  it(
+    "never let the reducer apply a command the schema refuses",
+    () => {
+      fc.assert(
+        fc.property(
+          planArb.chain((state) => fc.tuple(fc.constant(state), mutated(commandFor(state)))),
+          ([state, command]) => {
+            const plan = toAudioPlanDocument(state, sources);
+            let applied = true;
+            try {
+              applyToDocument({ plan, command });
+            } catch {
+              applied = false;
+            }
+            if (applied) expect(commandValid(command)).toBe(true);
+          },
         ),
-        (value) => {
-          let accepted = true;
-          try {
-            readAndWrite(value);
-          } catch {
-            accepted = false;
-          }
-          if (accepted) expect(planValid(value)).toBe(true);
-        },
-      ),
-      { numRuns: 2_000 },
-    );
-  });
+        { numRuns: 2_000 },
+      );
+      // 0.20 s alone, 2.3 s busy.
+    },
+    SLOW,
+  );
+
+  it(
+    "never let the reader accept a document the schema refuses",
+    () => {
+      const document = planArb.map((state) => toAudioPlanDocument(state, sources));
+      fc.assert(
+        fc.property(
+          fc.oneof(
+            mutated(document),
+            document.map((value) => ({
+              ...value,
+              clips: value.clips.map((clip, index) =>
+                index === 0 ? { ...clip, gainDb: 1.5 } : clip,
+              ),
+            })),
+          ),
+          (value) => {
+            let accepted = true;
+            try {
+              readAndWrite(value);
+            } catch {
+              accepted = false;
+            }
+            if (accepted) expect(planValid(value)).toBe(true);
+          },
+        ),
+        { numRuns: 2_000 },
+      );
+      // 0.06 s alone, 0.84 s busy.
+    },
+    SLOW,
+  );
 });
