@@ -22,12 +22,7 @@ import {
   NO_FADE,
   planLength,
 } from "../model/plan.js";
-import {
-  type AudioPeaks,
-  type AudioSourceInfo,
-  cleanSourceName,
-  type DecodedAudio,
-} from "../model/source.js";
+import type { AudioPeaks, AudioSourceInfo, DecodedAudio } from "../model/source.js";
 import { framesToSeconds } from "../model/time.js";
 import { type AudioCommand, createPlanReducer } from "../operations/commands.js";
 import type { AudioEngine } from "../ports/audio-engine.js";
@@ -38,6 +33,7 @@ import type {
   AudioSampleFormat,
 } from "../ports/audio-processor.js";
 import type { AudioProgressOptions } from "../ports/options.js";
+import { cleanFileName } from "./source-name.js";
 
 /** Bytes per decoded sample: sources are held as 32-bit floats (docs/adr/0004). */
 const BYTES_PER_SAMPLE = 4;
@@ -213,11 +209,10 @@ export interface AudioSessionExportOptions extends AudioProgressOptions {
  */
 export interface AudioOpenOptions extends AudioProgressOptions {
   /**
-   * A name for the recording, to show people, such as its file's. Defaults
-   * to the file's own name when it's a `File`. It's cleaned of control and
-   * bidirectional formatting characters, cut to 255 code points, and kept
-   * on the source in `snapshot.sources`, never in events, the plan or a
-   * document.
+   * A name for the recording, to show people, such as its file's. It wins
+   * over a `File`'s own name, which is used without it. It's cleaned as
+   * pdf-sdk ADR 0009 decides, and kept on the source in `snapshot.sources`,
+   * never in events, the plan or a document.
    */
   readonly name?: string;
 }
@@ -583,7 +578,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     givenName: string | undefined,
   ): Promise<Source> {
     if (!(file instanceof Blob)) throw new TypeError("A recording must be a Blob or a File.");
-    const name = cleanSourceName(
+    const name = cleanFileName(
       givenName ?? (typeof File === "function" && file instanceof File ? file.name : undefined),
     );
     nextSource += 1;

@@ -909,7 +909,7 @@ export const MAX_GAIN_DB = 120;
 export const MAX_METADATA_LENGTH = 1000;
 
 // @public
-export const MAX_SOURCE_NAME_LENGTH = 255;
+export const MAX_SOURCE_NAME_LENGTH = 128;
 
 // @public
 export const MAX_TRACK_NAME_LENGTH = 100;

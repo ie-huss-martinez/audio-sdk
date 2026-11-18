@@ -166,7 +166,7 @@ From [#54](https://github.com/ie-huss-martinez/audio-sdk/issues/54), by its numb
 
 | # | Point | Ruling |
 |---|---|---|
-| 1 | No file name on a source | **Accepted.** `open` and `insert` take an optional `name`, kept on `AudioSourceInfo`, at most 255 code points, with control and bidirectional formatting characters removed. Without one, a `File`'s own name is used. It never goes into events, the plan or a document |
+| 1 | No file name on a source | **Accepted.** `open` and `insert` take an optional `name`, kept on `AudioSourceInfo`. Without one, a `File`'s own name is used. It's cleaned as [pdf-sdk ADR 0009](https://github.com/ie-huss-martinez/pdf-sdk/blob/main/docs/adr/0009-saving-the-document.md) decides, with the same code and tests: the last path segment, without control, bidirectional formatting or Windows-refused characters, in NFC, without leading dots or surrounding space, and at most 128 code points. The same name may become a download's in either editor, so the family cleans it one way, until sdk-core has it. It never goes into events, the plan or a document |
 | 2 | `newKey` is required only sometimes | **Accepted.** The session creates the keys a command needs when they're absent, before executing, so the recorded command carries them and the reducer stays pure |
 | 3 | No trim-to-range command | **Accepted,** as `audio.keepRange` |
 | 4 | A gain already set is refused with `empty-change` | **Accepted.** A valid command that changes nothing succeeds, with no history step. `audio.setMasterGain` covers the whole recording |

@@ -414,9 +414,12 @@ describe("the audio session", () => {
     await session.insert(recording(10), { name: "\u200E\u0000 " });
     expect(snapshot().sources[2]).not.toHaveProperty("name");
     await session.insert(recording(10), { name: "\u{1F399}".repeat(300) });
-    expect([...(snapshot().sources[3]?.name ?? "")]).toHaveLength(255);
+    expect([...(snapshot().sources[3]?.name ?? "")]).toHaveLength(128);
+    // Only the last segment of a path, as pdf-sdk keeps it.
+    await session.insert(recording(10), { name: "C:\\Users\\me\\take<2>.wav" });
+    expect(snapshot().sources[4]?.name).toBe("take2.wav");
     await session.insert(recording(10));
-    expect(snapshot().sources[4]).not.toHaveProperty("name");
+    expect(snapshot().sources[5]).not.toHaveProperty("name");
     expect(JSON.stringify(events)).not.toContain("interview");
     expect(JSON.stringify(events)).not.toContain("Music");
     expect(JSON.stringify(snapshot().plan)).not.toContain("interview");
