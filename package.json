@@ -62,7 +62,7 @@
     "test": "vitest run --project unit",
     "test:browser": "hm-in-image vitest run --project browser",
     "test:browser:all": "hm-in-image vitest run --project browser --mode all-browsers",
-    "build:examples": "pnpm --filter @hussmartinez/audio-sdk-example-vite build",
+    "build:examples": "pnpm --filter \"./examples/*\" build",
     "test:e2e": "pnpm --filter @hussmartinez/audio-sdk-e2e test:e2e",
     "check:size": "size-limit",
     "check:api": "tsc -p tsconfig.build.json && api-extractor run && api-extractor run -c api-extractor.react.json && api-extractor run -c api-extractor.element.json",

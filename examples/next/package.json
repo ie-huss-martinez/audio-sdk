@@ -1,0 +1,25 @@
+{
+  "name": "@hussmartinez/audio-sdk-example-next",
+  "private": true,
+  "description": "A Next.js App Router application that renders the built @hussmartinez/audio-sdk editor on the server, for the end-to-end server-rendering and keyboard tests.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "NEXT_TELEMETRY_DISABLED=1 next build",
+    "start": "NEXT_TELEMETRY_DISABLED=1 next start --port 4311"
+  },
+  "dependencies": {
+    "@hussmartinez/audio-sdk": "workspace:*",
+    "@hussmartinez/ui": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "typescript": "catalog:"
+  }
+}

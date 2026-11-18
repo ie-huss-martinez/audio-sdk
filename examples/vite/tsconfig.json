@@ -2,6 +2,7 @@
   "extends": "@hussmartinez/sdk-config/tsconfig/browser",
   "compilerOptions": {
     "noEmit": true,
+    "jsx": "react-jsx",
     "types": ["vite/client"]
   },
   "include": ["src", "vite.config.ts"]

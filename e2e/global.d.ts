@@ -1,4 +1,4 @@
-// The hooks the example page exposes (examples/vite/src/main.ts).
+// The hooks the example pages expose (examples/vite/src).
 interface Window {
   audioSdk: {
     run(
@@ -14,4 +14,11 @@ interface Window {
     }>;
     readonly violations: readonly string[];
   };
+  /** The editor page's hooks (examples/vite/src/editor.tsx). */
+  audioEditor: {
+    open(bytes: ArrayBuffer): Promise<void>;
+    plan(): unknown;
+  };
+  /** The element page's events (examples/vite/src/element.ts). */
+  audioElementEvents: { name: string; json: string }[];
 }

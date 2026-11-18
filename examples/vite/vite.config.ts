@@ -27,6 +27,13 @@ export default defineConfig({
   plugins: [audioSdkAssets()],
   build: {
     target: "es2022",
-    rollupOptions: { input: { index: "index.html", strict: "strict.html" } },
+    rollupOptions: {
+      input: {
+        index: "index.html",
+        strict: "strict.html",
+        editor: "editor.html",
+        element: "element.html",
+      },
+    },
   },
 });
