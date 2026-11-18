@@ -24,3 +24,19 @@ export interface AudioProgressOptions extends AudioCallOptions {
    */
   readonly onProgress?: (fraction: number) => void;
 }
+
+/**
+ * Options for `AudioEngine.decode`.
+ *
+ * @public
+ */
+export interface AudioDecodeOptions extends AudioProgressOptions {
+  /**
+   * The sample rate to return the audio at, in hertz, when it isn't the
+   * probe's: the engine converts it, as the session asks for a recording
+   * inserted at another rate than its own (docs/adr/0006). The result then
+   * has `Math.ceil(frames × sampleRate / probe.sampleRate)` frames, which
+   * cover the same time.
+   */
+  readonly sampleRate?: number;
+}

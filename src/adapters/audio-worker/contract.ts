@@ -47,6 +47,22 @@ export interface AudioWorkerContract {
     readonly input: RenderBlockInput;
     readonly output: Uint8Array<ArrayBuffer>;
   };
+  /**
+   * Converts a block of decoded samples to another sample rate
+   * (docs/adr/0006): the output frames from `start`, from the input around
+   * them, which begins at the input frame `inputStart`.
+   */
+  readonly resample: {
+    readonly input: {
+      readonly channels: Float32Array[];
+      readonly inputStart: number;
+      readonly fromRate: number;
+      readonly toRate: number;
+      readonly start: number;
+      readonly frames: number;
+    };
+    readonly output: Float32Array<ArrayBuffer>[];
+  };
   /** The peaks of a block of decoded samples, for audio the worker didn't parse. */
   readonly peaks: {
     readonly input: { readonly channels: Float32Array[]; readonly bucket: number };

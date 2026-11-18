@@ -110,4 +110,10 @@ export interface AudioSourceInfo {
   readonly frames: number;
   readonly container: AudioContainer;
   readonly codec: AudioCodec;
+  /**
+   * The file's own sample rate, in hertz, when the source was converted to
+   * the session's as it was inserted (docs/adr/0006). `sampleRate` and
+   * `frames` describe the converted audio.
+   */
+  readonly resampledFrom?: number;
 }

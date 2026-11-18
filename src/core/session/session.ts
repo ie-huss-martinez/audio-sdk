@@ -20,7 +20,7 @@ import {
   NO_FADE,
   planLength,
 } from "../model/plan.js";
-import type { AudioPeaks, AudioProbe, AudioSourceInfo, DecodedAudio } from "../model/source.js";
+import type { AudioPeaks, AudioSourceInfo, DecodedAudio } from "../model/source.js";
 import { framesToSeconds } from "../model/time.js";
 import { type AudioCommand, createPlanReducer } from "../operations/commands.js";
 import type { AudioEngine } from "../ports/audio-engine.js";
@@ -230,8 +230,9 @@ export interface AudioSession {
    */
   open(file: Blob, options?: AudioProgressOptions): Promise<void>;
   /**
-   * Inserts another recording at a timeline frame, as one undoable step. It
-   * must have the session's sample rate; resampling comes later. If the
+   * Inserts another recording at a timeline frame, as one undoable step. A
+   * recording at another sample rate is converted to the session's, and its
+   * source says so in `resampledFrom`. If the
    * sources held would then exceed `maxSessionSize`, the session first drops
    * history steps, in sdk-core's `dropOrder`, as far as needed to release
    * sources only they refer to, and sets `historyTrimmed`. If even that
@@ -475,7 +476,8 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     file: Blob,
     signal: AbortSignal,
     onProgress: ((fraction: number) => void) | undefined,
-    beforeDecode: (probe: AudioProbe) => void,
+    /** The session's rate, for an insert: a file at another rate is converted to it. */
+    rate?: number,
   ): Promise<Source> {
     if (!(file instanceof Blob)) throw new TypeError("A recording must be a Blob or a File.");
     nextSource += 1;
@@ -501,19 +503,29 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
     warnAt("maxSampleRate", probe.sampleRate);
     warnAt("maxDuration", Math.ceil((probe.frameBound * 1_000) / probe.sampleRate));
     warnAt("maxDecodedSize", probe.frameBound * probe.channels * BYTES_PER_SAMPLE);
-    beforeDecode(probe);
+    // A file at another rate is decoded at its own, then converted, so both
+    // sizes are checked before anything is decoded (docs/adr/0004). The
+    // bound scales with the rate, as the frames do.
+    const sampleRate = rate ?? probe.sampleRate;
+    const converts = sampleRate !== probe.sampleRate;
+    const frameBound = Math.ceil((probe.frameBound * sampleRate) / probe.sampleRate);
+    if (converts) warnAt("maxDecodedSize", frameBound * probe.channels * BYTES_PER_SAMPLE);
     const audio = await withProcessingTime(
       policy,
       (limited) =>
-        engine.decode(file, probe, { signal: limited, ...(onProgress ? { onProgress } : {}) }),
+        engine.decode(file, probe, {
+          signal: limited,
+          ...(onProgress ? { onProgress } : {}),
+          ...(converts ? { sampleRate } : {}),
+        }),
       { signal },
     );
     // The source is what the decoder returned, capped at the bound, with the
     // decoder's own channel count: mono AAC probes as two channels
     // (docs/adr/0004).
-    const frames = Math.min(audio.length, probe.frameBound);
+    const frames = Math.min(audio.length, frameBound);
     const channels = audio.numberOfChannels;
-    if (audio.sampleRate !== probe.sampleRate || channels < 1 || channels > probe.channels) {
+    if (audio.sampleRate !== sampleRate || channels < 1 || channels > probe.channels) {
       throw new AudioError("INVALID_AUDIO", "The decoder's output doesn't match the probe.", {
         details: { container: probe.container, codec: probe.codec },
       });
@@ -545,6 +557,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
         frames,
         container: probe.container,
         codec: probe.codec,
+        ...(converts ? { resampledFrom: probe.sampleRate } : {}),
       }),
       audio,
       peaks,
@@ -621,7 +634,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
       error = undefined;
       try {
         const source = await track(callOptions.signal, true, (signal) =>
-          load(file, signal, callOptions.onProgress, () => {}),
+          load(file, signal, callOptions.onProgress),
         );
         const replaced = superseded(started);
         if (replaced) throw replaced;
@@ -677,16 +690,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
       try {
         const source = await track(insertOptions.signal, false, (signal) => {
           policy.check("maxFiles", sources.size + 1);
-          return load(file, signal, insertOptions.onProgress, (probe) => {
-            const rate = plan?.sampleRate;
-            if (probe.sampleRate !== rate) {
-              throw new AudioError(
-                "UNSUPPORTED_FORMAT",
-                `Recordings at ${probe.sampleRate} Hz can't be inserted into a ${rate} Hz session yet.`,
-                { details: { sampleRate: probe.sampleRate } },
-              );
-            }
-          });
+          return load(file, signal, insertOptions.onProgress, plan?.sampleRate);
         });
         const replaced = superseded(started);
         if (replaced) throw replaced;

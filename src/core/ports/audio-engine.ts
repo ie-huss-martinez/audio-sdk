@@ -1,5 +1,5 @@
 import type { AudioPeaks, AudioProbe, DecodedAudio } from "../model/source.js";
-import type { AudioCallOptions, AudioProgressOptions } from "./options.js";
+import type { AudioCallOptions, AudioDecodeOptions } from "./options.js";
 
 /**
  * The port for reading audio files: probe a file's headers, decode it, and
@@ -25,11 +25,13 @@ export interface AudioEngine {
    */
   probe(file: Blob, options?: AudioCallOptions): Promise<AudioProbe>;
   /**
-   * Decodes a probed file at the probe's sample rate and channel count. A
-   * result longer than the probe's bound plus its tolerance rejects with
-   * `INVALID_AUDIO`; a shorter one is returned as it is.
+   * Decodes a probed file at the probe's channel count, and at the probe's
+   * sample rate unless `options.sampleRate` asks for another, which the
+   * engine converts the audio to. A result longer than the probe's bound
+   * plus its tolerance rejects with `INVALID_AUDIO`; a shorter one is
+   * returned as it is.
    */
-  decode(file: Blob, probe: AudioProbe, options?: AudioProgressOptions): Promise<DecodedAudio>;
+  decode(file: Blob, probe: AudioProbe, options?: AudioDecodeOptions): Promise<DecodedAudio>;
   /**
    * Builds a waveform overview of decoded audio. The audio isn't modified or
    * kept.

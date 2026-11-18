@@ -75,12 +75,27 @@ export function createFakeEngine(): AudioEngine {
           details: { container: probe.container },
         });
       }
+      const rate = options.sampleRate ?? probe.sampleRate;
+      if (!Number.isSafeInteger(rate) || rate < 1) {
+        throw new RangeError("The sample rate must be a positive whole number of hertz.");
+      }
       options.onProgress?.(1);
       // The decoded length, capped at the bound (ADR 0004).
       const capped = Math.min(length, probe.frameBound);
+      const decoded = channels.map((channel) => channel.slice(0, capped));
+      if (rate === probe.sampleRate) return fakeDecoded(rate, decoded);
+      // Another rate: straight lines between samples, which is enough for a fake.
+      const frames = Math.ceil((capped * rate) / probe.sampleRate);
       return fakeDecoded(
-        probe.sampleRate,
-        channels.map((channel) => channel.slice(0, capped)),
+        rate,
+        decoded.map((channel) =>
+          Array.from({ length: frames }, (_, n) => {
+            const at = (n * probe.sampleRate) / rate;
+            const low = Math.floor(at);
+            const from = channel[low] ?? 0;
+            return from + ((channel[low + 1] ?? from) - from) * (at - low);
+          }),
+        ),
       );
     },
 

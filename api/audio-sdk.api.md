@@ -57,6 +57,11 @@ export type AudioCommandRejection = AudioClipProblem | "malformed-command" | "un
 export type AudioContainer = "wav" | "aiff" | "flac" | "ogg" | "mp3" | "adts" | "mp4" | "webm";
 
 // @public
+export interface AudioDecodeOptions extends AudioProgressOptions {
+    readonly sampleRate?: number;
+}
+
+// @public
 export interface AudioDeleteRangeCommand {
     readonly end: number;
     readonly newKey?: string;
@@ -70,7 +75,7 @@ export type AudioDocumentRejection = AudioClipProblem | "unknown-format" | "unkn
 
 // @public
 export interface AudioEngine {
-    decode(file: Blob, probe: AudioProbe, options?: AudioProgressOptions): Promise<DecodedAudio>;
+    decode(file: Blob, probe: AudioProbe, options?: AudioDecodeOptions): Promise<DecodedAudio>;
     destroy(): Promise<void>;
     peaks(audio: DecodedAudio, options?: AudioCallOptions): Promise<AudioPeaks>;
     probe(file: Blob, options?: AudioCallOptions): Promise<AudioProbe>;
@@ -590,6 +595,7 @@ export interface AudioSourceInfo {
     readonly container: AudioContainer;
     readonly frames: number;
     readonly id: string;
+    readonly resampledFrom?: number;
     // (undocumented)
     readonly sampleRate: number;
 }

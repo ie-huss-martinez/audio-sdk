@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createEngine, type WritableAudio } from "../../src/adapters/audio-engine.js";
 import { blockPeaks, buildPyramid } from "../../src/adapters/peaks.js";
+import { resampleBlock } from "../../src/adapters/resample/resample.js";
 import {
   type PlatformDecoder,
   webAudioDecoder,
@@ -90,6 +91,69 @@ describe("the audio engine", () => {
     const fromWorker = await engine.peaks(foreign);
     expect(fromWorker).toEqual(fromParse);
     expect(fromParse).toEqual(buildPyramid(blockPeaks([parsed.getChannelData(0)], 256)));
+    await engine.destroy();
+  });
+
+  it("converts in blocks to another rate, with the same samples as one pass", async () => {
+    const engine = nodeEngine();
+    const file = longFile();
+    const progress: number[] = [];
+    const audio = await engine.decode(file, await engine.probe(file), {
+      sampleRate: 12_000,
+      onProgress: (fraction) => progress.push(fraction),
+    });
+    expect(audio).toMatchObject({ sampleRate: 12_000, numberOfChannels: 1, length: 225_000 });
+    // Decoding is the first half of the progress, and converting the second.
+    expect(progress.slice(0, 3)).toEqual([65_536 / 300_000, 131_072 / 300_000, 0.5]);
+    expect(progress.length).toBeGreaterThan(4);
+    expect(progress).toEqual([...progress].sort((a, b) => a - b));
+    expect(progress.at(-1)).toBe(1);
+    const whole = resampleBlock({
+      input: Float32Array.from(LONG),
+      inputStart: 0,
+      fromRate: 8_000,
+      toRate: 12_000,
+      start: 0,
+      frames: 225_000,
+    });
+    expect(audio.getChannelData(0)).toEqual(whole);
+    // Its peaks are built like any other source's.
+    const { levels } = await engine.peaks(audio);
+    expect(levels[0]?.channels[0]?.max.length).toBe(Math.ceil(225_000 / 256));
+    await engine.destroy();
+  });
+
+  it("stops converting when the call is aborted", async () => {
+    const engine = nodeEngine();
+    const file = longFile();
+    const controller = new AbortController();
+    const error = await rejection(
+      engine.decode(file, await engine.probe(file), {
+        sampleRate: 12_000,
+        signal: controller.signal,
+        onProgress: (fraction) => {
+          if (fraction > 0.5) controller.abort();
+        },
+      }),
+    );
+    expect(isAudioError(error, "ABORTED")).toBe(true);
+    await engine.destroy();
+  });
+
+  it("refuses a rate the browser can't hold converted audio at", async () => {
+    const engine = nodeEngine((options) => {
+      if (options.sampleRate !== 8_000) throw new DOMException("Unsupported", "NotSupportedError");
+      return memoryBuffer(options);
+    });
+    const file = longFile();
+    const error = await rejection(
+      engine.decode(file, await engine.probe(file), { sampleRate: 1_000_000 }),
+    );
+    expect(isAudioError(error, "UNSUPPORTED_FORMAT")).toBe(true);
+    expect((error as { details?: unknown }).details).toEqual({
+      container: "wav",
+      sampleRate: 1_000_000,
+    });
     await engine.destroy();
   });
 
