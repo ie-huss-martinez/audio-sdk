@@ -60,7 +60,7 @@ describe("the export dialog", () => {
   });
 
   it("exports, then focuses Download, which saves the file under its cleaned name", async () => {
-    const { container, tool } = await editor(recording("voice.wav"));
+    const { container, tool, events } = await editor(recording("voice.wav"));
     const links: HTMLAnchorElement[] = [];
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
       this: HTMLAnchorElement,
@@ -69,7 +69,10 @@ describe("the export dialog", () => {
     });
     await step(() => userEvent.click(tool("audio.export")));
     await waitFor(() => expect(inDialog("Export")).toBeDefined());
+    // The export runs in the worker: wait for it to end, not for a fixed time.
+    const done = events.nextExport();
     await step(() => userEvent.click(inDialog("Export") as HTMLButtonElement));
+    await done();
     await waitFor(() => expect(document.activeElement?.textContent).toBe("Download"));
     await said("The WAV file is ready: 16 kB.");
     await step(() => userEvent.click(inDialog("Download") as HTMLButtonElement));
@@ -101,10 +104,12 @@ describe("the export dialog", () => {
   });
 
   it("reports clipping, and lowers the master gain by that much and exports again", async () => {
-    const { tool, plan } = await editor(loud("one.wav"), loud("two.wav"));
+    const { tool, plan, events } = await editor(loud("one.wav"), loud("two.wav"));
     await step(() => userEvent.click(tool("audio.export")));
     await waitFor(() => expect(inDialog("Export")).toBeDefined());
+    const first = events.nextExport();
     await step(() => userEvent.click(inDialog("Export") as HTMLButtonElement));
+    await first();
     const report = await waitFor(() => {
       const found = dialog().querySelector(".hm-audio-export-clipped");
       expect(found).not.toBeNull();
@@ -113,7 +118,9 @@ describe("the export dialog", () => {
     // Two tones at 0.9 sum to 1.8: about 5.1 dB over.
     expect(report.textContent).toMatch(/The mix went 5\.\d dB over full scale/);
     const lower = [...report.querySelectorAll("button")][0] as HTMLButtonElement;
+    const second = events.nextExport();
     await step(() => userEvent.click(lower));
+    await second();
     await waitFor(() => expect(plan().gainDb).toBeLessThan(-5));
     await waitFor(() => expect(document.activeElement?.textContent).toBe("Download"));
     expect(dialog().querySelector(".hm-audio-export-clipped")).toBeNull();
@@ -136,7 +143,9 @@ describe("the export dialog", () => {
     const exportTool = container.querySelector<HTMLButtonElement>('[data-hm-tool="audio.export"]');
     await step(() => userEvent.click(exportTool as HTMLButtonElement));
     await waitFor(() => expect(inDialog("Export")).toBeDefined());
+    const done = events.nextExport();
     await step(() => userEvent.click(inDialog("Export") as HTMLButtonElement));
+    await done();
     await waitFor(() => expect(exported).toHaveLength(1));
     expect(exported[0]?.[0].type).toBe("audio/wav");
     expect(exported[0]?.[1].clippedFrames).toBe(0);
