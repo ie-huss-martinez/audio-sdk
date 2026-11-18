@@ -19,7 +19,7 @@ catalog:
   "@commitlint/cli": ^21.2.4
   "@hussmartinez/sdk-config": ^0.9.0
   "@hussmartinez/sdk-core": ^0.4.4
-  "@hussmartinez/ui": ^0.14.1
+  "@hussmartinez/ui": ^0.14.2
   "@playwright/test": 1.65.0
   "@microsoft/api-extractor": ^7.60.1
   "@size-limit/file": ^14.3.0
