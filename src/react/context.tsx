@@ -36,6 +36,7 @@ import {
 } from "../core/session/session.js";
 import { watchPlayhead } from "../core/session/watch-playhead.js";
 import { type AudioTool, audioTools, defaultAudioToolbar } from "../features/tools/tools.js";
+import type { AudioEditorDialog } from "../features/tools/types.js";
 import {
   type AudioEditorMessageOverrides,
   type AudioEditorMessages,
@@ -113,6 +114,9 @@ interface EditorContext {
   /** The selected clip's key: the one the clip tools and the inspector act on. */
   readonly selectedClip: string | undefined;
   readonly setSelectedClip: (key: string | undefined) => void;
+  /** The editor's open dialog, besides renaming, if any. */
+  readonly dialog: AudioEditorDialog | undefined;
+  readonly setDialog: (dialog: AudioEditorDialog | undefined) => void;
   /** Whether deleting a range closes the gap on its tracks: on until it's turned off. */
   readonly ripple: boolean;
   readonly setRipple: (on: boolean) => void;
@@ -277,6 +281,7 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
   const [maxZoom, setMaxZoom] = useState(1);
   const [selectedClip, setSelectedClip] = useState<string>();
   const [ripple, setRipple] = useState(true);
+  const [dialog, setDialog] = useState<AudioEditorDialog>();
   const playhead = useRef<HTMLInputElement>(null);
   const [currentTrack, setCurrentTrack] = useState<string>();
   const [renaming, setRenaming] = useState<string>();
@@ -321,6 +326,8 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
       setSelectedClip,
       ripple,
       setRipple,
+      dialog,
+      setDialog,
       playhead,
       currentTrack,
       setCurrentTrack,
@@ -344,6 +351,7 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
       maxZoom,
       selectedClip,
       ripple,
+      dialog,
       currentTrack,
       tools,
       shortcuts,

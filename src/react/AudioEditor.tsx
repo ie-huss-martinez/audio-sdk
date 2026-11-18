@@ -1,7 +1,9 @@
 import { AnnouncerProvider, UiMessagesProvider, useAnnounce } from "@hussmartinez/ui/react";
 import { forwardRef, type ReactNode, useEffect, useImperativeHandle, useRef } from "react";
 import type { AudioPlan } from "../core/model/plan.js";
-import type { AudioInsertOptions } from "../core/session/session.js";
+import type { AudioRenderResult } from "../core/ports/audio-processor.js";
+import type { AudioInsertOptions, AudioSessionExportOptions } from "../core/session/session.js";
+import { AudioExportDialog, type AudioExportDialogProps } from "./AudioExportDialog.js";
 import { type AudioHeadingLevel, EditorInspector } from "./AudioInspector.js";
 import { Notices } from "./AudioNotices.js";
 import { AudioRenameDialog } from "./AudioRenameDialog.js";
@@ -53,6 +55,18 @@ export interface AudioEditorProps extends Omit<AudioEditorProviderProps, "childr
    * host's outline: the inspector's, for now. Defaults to 2.
    */
   readonly headingLevel?: AudioHeadingLevel;
+  /**
+   * The name an export is downloaded under, without its extension, such as
+   * the name of the file being edited. Without it, the recording's title is
+   * used, or else `recording`. See {@link AudioExportDialogProps.fileName}.
+   */
+  readonly fileName?: string;
+  /**
+   * Takes an export's file instead of the download, such as to upload it or
+   * save it the host's own way. The export dialog closes once it's called.
+   * See {@link AudioExportDialogProps.onExport}.
+   */
+  readonly onExport?: (blob: Blob, result: AudioRenderResult) => void;
   /** Extra classes on the root. */
   readonly className?: string;
   /** Extra classes on the editor's parts. */
@@ -80,6 +94,15 @@ export interface AudioEditorHandle {
   pause(): void;
   /** Moves the playhead to a timeline frame. */
   seek(frame: number): void;
+  /**
+   * Exports the plan as it is now, for a host's own export button, without
+   * the editor's dialog: through the editor's processor, or the host's
+   * `processor`. It resolves with the file, the mix's peak and how many
+   * frames were clamped, and never downloads anything or calls `onExport`.
+   * It fails as `session.export` does, and throws `TypeError` when there's
+   * no processor.
+   */
+  export(options?: AudioSessionExportOptions): Promise<AudioRenderResult>;
 }
 
 interface ShellProps {
@@ -87,6 +110,8 @@ interface ShellProps {
   readonly onChange: ((plan: AudioPlan) => void) | undefined;
   readonly theme: AudioEditorProps["theme"];
   readonly headingLevel: AudioHeadingLevel | undefined;
+  readonly fileName: string | undefined;
+  readonly onExport: ((blob: Blob, result: AudioRenderResult) => void) | undefined;
   readonly className: string | undefined;
   readonly classNames: PartClassNames | undefined;
   readonly unstyled: boolean;
@@ -105,6 +130,7 @@ const Shell = forwardRef<AudioEditorHandle, ShellProps>(function Shell(props, re
       play: () => output.play(),
       pause: () => output.pause(),
       seek: (frame) => output.seek(frame),
+      export: (options) => session.export(options),
     }),
     [session, output, open, insert],
   );
@@ -132,6 +158,8 @@ function Root({
   onChange,
   theme,
   headingLevel,
+  fileName,
+  onExport,
   className,
   classNames,
   unstyled,
@@ -201,6 +229,10 @@ function Root({
         <EditorInspector classNames={classNames} headingLevel={headingLevel} />
       </div>
       <AudioRenameDialog />
+      <AudioExportDialog
+        {...(fileName === undefined ? {} : { fileName })}
+        {...(onExport === undefined ? {} : { onExport })}
+      />
     </section>
   );
 }
@@ -231,6 +263,8 @@ export const AudioEditor = /* @__PURE__ */ forwardRef<AudioEditorHandle, AudioEd
       onChange,
       theme,
       headingLevel,
+      fileName,
+      onExport,
       className,
       classNames,
       unstyled = false,
@@ -246,6 +280,8 @@ export const AudioEditor = /* @__PURE__ */ forwardRef<AudioEditorHandle, AudioEd
           onChange={onChange}
           theme={theme}
           headingLevel={headingLevel}
+          fileName={fileName}
+          onExport={onExport}
           className={className}
           classNames={classNames}
           unstyled={unstyled}

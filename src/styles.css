@@ -251,6 +251,42 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* The export dialog: what will be written, then the choice, then what happened. */
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-export-summary {
+    display: grid;
+    gap: var(--hm-gap-tight);
+    margin-block-end: var(--hm-gap-normal);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-export-summary p,
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-export-result,
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-export-error,
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-export-clipped p {
+    margin: 0;
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-export-clipped {
+    display: grid;
+    gap: var(--hm-gap-tight);
+    justify-items: start;
+    margin-block-start: var(--hm-gap-normal);
+    padding: var(--hm-gap-normal);
+    border-radius: var(--hm-radius-md);
+    background: var(--hm-color-warning-subtle);
+    color: var(--hm-color-warning-text);
+  }
+
+  .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-export-error {
+    margin-block-start: var(--hm-gap-normal);
+    color: var(--hm-color-danger-text);
+  }
+
+  @media (forced-colors: active) {
+    .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-export-clipped {
+      border: var(--hm-border-width) solid CanvasText;
+    }
+  }
+
   .hm-audio-editor:not([data-hm-unstyled]) .hm-audio-editor-transport {
     display: flex;
     flex-wrap: wrap;
