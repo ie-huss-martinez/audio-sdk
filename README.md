@@ -118,6 +118,7 @@ await processor.destroy();
 - **The playhead** is a position in frames, read from the audio clock by `output.position()`. It isn't in the snapshot, because it changes on every audio frame, so subscribers aren't called as it moves: poll it on animation frames while playing. A seek, a changed plan and the end of playback move it too.
 - **At the end,** the state becomes `stopped` and the playhead stays at the end. `stop()` goes back to the start.
 - **Playback is what export renders:** the same audible tracks, track gains and master gain; each clip's gain and fades come from the same `gainAt`, and sources mix into the plan's channels by the same rules. One difference: playback isn't clamped, so the device clips at full scale where export clamps.
+- **A mute, a solo, a track's gain and the master gain are heard at once.** A plan that differs only in those is applied to what's playing over 5 ms, without rescheduling a clip, so there's no gap and no click. Any other edit reschedules from the playhead.
 - **Opening another recording, or closing,** stops the output at the start. An insert doesn't.
 - **The session doesn't own what you give it.** `session.close()` releases the recording, not the engine, the processor or the output: destroy each yourself, as above.
 - **No Content Security Policy directive** is needed for playback: it uses no worker and makes no requests.

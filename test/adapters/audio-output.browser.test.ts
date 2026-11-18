@@ -1,7 +1,8 @@
 import { audioOutput } from "@hussmartinez/sdk-config/testing/audio-output";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { userEvent } from "vitest/browser";
-import { schedulePlan } from "../../src/adapters/web-audio/play-graph.js";
+import { createOutput } from "../../src/adapters/audio-output.js";
+import { GAIN_RAMP, schedulePlan } from "../../src/adapters/web-audio/play-graph.js";
 import {
   type AudioClipBody,
   type AudioPlan,
@@ -10,6 +11,7 @@ import {
   type DecodedAudio,
   mixLength,
   NO_FADE,
+  planLength,
 } from "../../src/index.js";
 import { describeAudioOutputContract } from "../contracts/audio-output.contract.js";
 import { backToBack, singleTrack, trackOf } from "../helpers/plans.js";
@@ -56,6 +58,49 @@ describe("the Web Audio output, playing in real time", () => {
     // A real clock, read by a busy browser: 100 ms either way, plus the
     // start lead.
     positionTolerance: RATE / 10,
+  });
+
+  it("changes a track's level while playing without scheduling its clips again", async () => {
+    let scheduled = 0;
+    const output = createOutput({
+      createContext: () => {
+        const context = new AudioContext();
+        const create = context.createBufferSource.bind(context);
+        context.createBufferSource = () => {
+          scheduled += 1;
+          return create();
+        };
+        return context;
+      },
+    });
+    const body = { source: "a", gainDb: 0, fadeIn: NO_FADE, fadeOut: NO_FADE };
+    const voice = [{ ...body, key: "v", start: 0, end: RATE, at: 0 }];
+    const music = [{ ...body, key: "m", start: 0, end: RATE, at: 0 }];
+    const plan: AudioPlan = {
+      ...singleTrack([], { sampleRate: RATE }),
+      tracks: [trackOf("voice", voice), trackOf("music", music)],
+    };
+    const sources = new Map([["a", audioBuffer(RATE, [new Array(RATE).fill(0.01)])]]);
+    output.load(plan, sources);
+    await output.play();
+    expect(scheduled).toBe(2);
+    // A mute, a solo, a gain and the master gain: the same nodes, at new levels.
+    const [first, second] = plan.tracks as [AudioPlan["tracks"][0], AudioPlan["tracks"][0]];
+    output.load({ ...plan, tracks: [first, { ...second, muted: true }] }, sources);
+    output.load({ ...plan, tracks: [{ ...first, soloed: true, gainDb: -6 }, second] }, sources);
+    output.load({ ...plan, gainDb: -3 }, sources);
+    expect(scheduled).toBe(2);
+    expect(output.getSnapshot().state).toBe("playing");
+    // A clip that moves is scheduled again, from the playhead.
+    output.load(
+      {
+        ...plan,
+        tracks: [first, trackOf("music", [{ ...(music[0] as (typeof music)[0]), at: 10 }])],
+      },
+      sources,
+    );
+    expect(scheduled).toBe(4);
+    await output.destroy();
   });
 });
 
@@ -179,6 +224,95 @@ describe("the playback graph", () => {
       expect(worst, `channel ${c}, worst at frame ${where}`).toBeLessThan(1e-3);
     }
   }
+
+  describe("changing levels while it plays", () => {
+    const sources = new Map<string, DecodedAudio>([
+      ["mono", audioBuffer(RATE, [tone(800, 0)])],
+      ["stereo", audioBuffer(RATE, [tone(800, 3), tone(800, 7)])],
+    ]);
+    const base: AudioPlan = {
+      ...singleTrack([], { sampleRate: RATE, channels: 2 }),
+      tracks: [
+        trackOf("voice", [
+          { ...clip("a", "mono", 0, 300, { gainDb: -2 }), at: 20 },
+          { ...clip("b", "mono", 300, 600), at: 380 },
+        ]),
+        trackOf("music", [{ ...clip("m", "stereo", 0, 700, { gainDb: -4 }), at: 0 }], {
+          gainDb: -3,
+        }),
+        trackOf("scratch", backToBack([clip("s", "mono", 0, 790)]), { muted: true }),
+      ],
+    };
+    const [voice, music, scratch] = base.tracks as [
+      AudioPlan["tracks"][0],
+      AudioPlan["tracks"][0],
+      AudioPlan["tracks"][0],
+    ];
+    const exported = async (plan: AudioPlan) => {
+      const { blob } = await createAudioProcessor().render({
+        plan,
+        sources,
+        format: { container: "wav", sampleFormat: "float32" },
+      });
+      return (await inspectWav(blob)).channels;
+    };
+
+    it.each<[string, AudioPlan]>([
+      ["muting a track", { ...base, tracks: [voice, { ...music, muted: true }, scratch] }],
+      ["soloing a track", { ...base, tracks: [{ ...voice, soloed: true }, music, scratch] }],
+      ["unmuting a track", { ...base, tracks: [voice, music, { ...scratch, muted: false }] }],
+      // Both down: the two ramps multiply, and a product of ramps that go
+      // the same way stays between where it starts and where it ends.
+      [
+        "a track's gain and the master gain",
+        { ...base, gainDb: -5, tracks: [{ ...voice, gainDb: -4 }, music, scratch] },
+      ],
+      ["reordering tracks", { ...base, tracks: [scratch, music, voice] }],
+    ])(
+      "plays the plan before %s, and the new one from 5 ms after, without scheduling a clip again",
+      async (_, next) => {
+        const frames = planLength(base);
+        const change = 300;
+        const context = new OfflineAudioContext(2, frames, RATE);
+        const created = vi.spyOn(context, "createBufferSource");
+        const scheduled = schedulePlan(
+          context,
+          context.destination,
+          base,
+          (id) => sources.get(id) as AudioBuffer,
+          0,
+          0,
+        );
+        // Every track with clips is scheduled, muted or not.
+        expect(created).toHaveBeenCalledTimes(4);
+        scheduled.setLevels(next, change / RATE);
+        expect(created).toHaveBeenCalledTimes(4);
+        const rendered = await context.startRendering();
+        const [before, after] = [await exported(base), await exported(next)];
+        const settled = change + Math.ceil(GAIN_RAMP * RATE);
+        for (let c = 0; c < 2; c += 1) {
+          const played = rendered.getChannelData(c);
+          // Past an export's end, there's silence.
+          const old = (frame: number) => before[c]?.[frame] ?? 0;
+          const fresh = (frame: number) => after[c]?.[frame] ?? 0;
+          let worst = 0;
+          for (let frame = 0; frame < frames; frame += 1) {
+            const sample = Math.max(-1, Math.min(1, played[frame] as number));
+            if (frame < change) worst = Math.max(worst, Math.abs(sample - old(frame)));
+            else if (frame >= settled) worst = Math.max(worst, Math.abs(sample - fresh(frame)));
+            else {
+              // Within the ramp, it's between the two.
+              const low = Math.min(old(frame), fresh(frame)) - 1e-3;
+              const high = Math.max(old(frame), fresh(frame)) + 1e-3;
+              expect(sample, `frame ${frame} of the ramp`).toBeGreaterThanOrEqual(low);
+              expect(sample, `frame ${frame} of the ramp`).toBeLessThanOrEqual(high);
+            }
+          }
+          expect(worst, `channel ${c}`).toBeLessThan(1e-3);
+        }
+      },
+    );
+  });
 
   it("renders from the middle of a fade as from the start", async () => {
     const sources = new Map<string, DecodedAudio>([["mono", audioBuffer(RATE, [tone(800, 0)])]]);
