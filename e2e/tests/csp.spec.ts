@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { wavFile } from "../../test/fixtures/pcm-files.js";
+import { expect, test } from "../fixtures.js";
 
 /**
  * The self-hosted worker under a Content Security Policy with
