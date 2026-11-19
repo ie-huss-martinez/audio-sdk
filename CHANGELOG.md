@@ -1,5 +1,15 @@
 # @hussmartinez/audio-sdk
 
+## 0.7.4
+
+### Patch Changes
+
+- [#95](https://github.com/ie-huss-martinez/audio-sdk/pull/95) [`69fc7cd`](https://github.com/ie-huss-martinez/audio-sdk/commit/69fc7cd5c34d6c4adc8eef080af8c323cf2baeb6) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The editor now depends on `@hussmartinez/ui` ^0.14.2, whose announcer says messages raised in the same frame together. A file warning and "Recording opened." are still both announced when a recording opens, now by `ui` instead of the editor's own workaround. Nothing changes in the API.
+
+- [#97](https://github.com/ie-huss-martinez/audio-sdk/pull/97) [`67841b2`](https://github.com/ie-huss-martinez/audio-sdk/commit/67841b23ac9a7bd9795744366e9d77e23918f029) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The editor now depends on `@hussmartinez/ui` ^0.14.3, which marks the icons that point along time (undo and redo, move earlier and later, trim, fade, range and skip) to mirror in right-to-left text. Nothing changes in left-to-right text or in the API.
+
+- [#98](https://github.com/ie-huss-martinez/audio-sdk/pull/98) [`b08aa18`](https://github.com/ie-huss-martinez/audio-sdk/commit/b08aa188f1e83f1e042054f1cfe8e18a484a2a03) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The editor now depends on `@hussmartinez/ui` ^0.14.4. In right-to-left text, the icons that point along time now mirror (undo and redo, move earlier and later, trim, fade, range and back to the start), also when your build tool rewrites `:dir(rtl)` for older browsers. Nothing changes in left-to-right text or in the API.
+
 ## 0.7.3
 
 ### Patch Changes
