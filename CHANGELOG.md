@@ -1,5 +1,11 @@
 # @hussmartinez/audio-sdk
 
+## 0.7.6
+
+### Patch Changes
+
+- [#105](https://github.com/ie-huss-martinez/audio-sdk/pull/105) [`2f987fb`](https://github.com/ie-huss-martinez/audio-sdk/commit/2f987fb67ba6b9d6e10d8f1c77776c96cd5890dd) Thanks [@hussmartinez](https://github.com/hussmartinez)! - `<hm-audio-editor>`'s `open()`, `insert()`, `export()` and `play()` no longer wait forever when the element is removed before its editor has rendered. They now reject with an `AudioError` whose code is `ABORTED` and whose `details.reason` is `"removed"`. Before, a call made right after connecting the element and followed by its removal, such as on a quick route change, never settled.
+
 ## 0.7.5
 
 ### Patch Changes
