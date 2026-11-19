@@ -1,5 +1,6 @@
 import uiStylesUrl from "@hussmartinez/ui/styles.css?url";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { createFakeOutput } from "../../../test/fakes/fake-output.js";
 import { wavFile } from "../../../test/fixtures/pcm-files.js";
 import type { AudioPlan } from "../../core/model/plan.js";
 import { defineAudioEditorElement } from "../../element.js";
@@ -156,6 +157,22 @@ describe("<hm-audio-editor> (docs/adr/0005, sdk-core ADR 0040)", () => {
         details: { reason: "removed" },
       });
     }
+  });
+
+  it("calls a rendered editor at once, so calls in one task keep their order", async () => {
+    const { output } = createFakeOutput();
+    const editor = create();
+    const events = record(editor);
+    editor.output = output;
+    document.body.append(editor);
+    editor.file = recording();
+    await until(() => (lastPlan(events)?.tracks.length ?? 0) === 1, "the open");
+    // play() then pause() in the same task: a play() that waited first would
+    // run after the pause and leave it playing.
+    const playing = editor.play();
+    editor.pause();
+    await playing;
+    expect(output.getSnapshot().state).toBe("paused");
   });
 
   it("takes theme, locale and tools from attributes, and follows their changes", async () => {

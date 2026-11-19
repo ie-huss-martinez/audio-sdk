@@ -44,7 +44,8 @@ export interface AudioEditorElementProps {
 /**
  * The `<hm-audio-editor>` element's methods: the React editor's ref handle.
  * `open()`, `insert()`, `export()` and `play()` wait for the editor's first
- * render; the others act on the editor there is, and do nothing before it.
+ * render, and call it at once after that; the others act on the editor there
+ * is, and do nothing before it.
  * If the element is removed before its first render, the waiting calls
  * reject with `ABORTED` and `details.reason: "removed"`.
  *
@@ -160,13 +161,17 @@ export function mountAudioEditor(
   render(initial);
 
   const now = (): AudioEditorHandle | null => handle.current;
-  // The editor there is once the first render is in, which a removal since
-  // may have taken away.
-  const rendered = async (): Promise<AudioEditorHandle> => {
-    await ready;
+  // Runs a method on the editor there is: at once once it has rendered, so
+  // calls made in one task keep their order, and after the first render
+  // before then. It calls the editor in the same step as it finds it, so a
+  // removal can't come between them.
+  const call = async <Result,>(
+    method: (editor: AudioEditorHandle) => Result,
+  ): Promise<Awaited<Result>> => {
+    if (!now()) await ready;
     const editor = now();
     if (!editor) throw removed();
-    return editor;
+    return await method(editor);
   };
   return {
     update: render,
@@ -178,12 +183,12 @@ export function mountAudioEditor(
       host.removeAttribute("data-hm-theme");
     },
     handle: {
-      open: async (file) => (await rendered()).open(file),
-      insert: async (file, options) => (await rendered()).insert(file, options),
-      export: async (options) => (await rendered()).export(options),
+      open: (file) => call((editor) => editor.open(file)),
+      insert: (file, options) => call((editor) => editor.insert(file, options)),
+      export: (options) => call((editor) => editor.export(options)),
       undo: () => now()?.undo(),
       redo: () => now()?.redo(),
-      play: async () => (await rendered()).play(),
+      play: () => call((editor) => editor.play()),
       pause: () => now()?.pause(),
       seek: (frame) => now()?.seek(frame),
     },
