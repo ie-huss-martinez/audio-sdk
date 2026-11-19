@@ -133,6 +133,31 @@ describe("a track's gain", () => {
     await step(() => ref.current?.undo());
     await waitFor(() => expect(plan().tracks[0]?.gainDb).toBe(0));
   });
+
+  it("puts a held key's change back with Escape, without an undo step or clearing the selection", async () => {
+    const { container, plan, ref, tool } = await editor(recording("voice.wav", 2));
+    const selection = () =>
+      container.querySelector(".hm-audio-editor-selection")?.textContent ?? undefined;
+    // A selection, which Escape would clear if the slider let it through.
+    await step(() => ref.current?.seek(4_000));
+    await step(() =>
+      container.querySelector<HTMLInputElement>('input[aria-label="Playhead"]')?.focus(),
+    );
+    await step(() => userEvent.keyboard("i"));
+    await waitFor(() => expect(selection()).toBeDefined());
+    const gain = container.querySelector<HTMLInputElement>(
+      'input[aria-label="Gain"]',
+    ) as HTMLInputElement;
+    await step(() => gain.focus());
+    await step(() => userEvent.keyboard("{ArrowLeft>}"));
+    await waitFor(() => expect(gain.getAttribute("aria-valuetext")).toBe("-1 dB"));
+    await step(() => userEvent.keyboard("{Escape}"));
+    await step(() => userEvent.keyboard("{/ArrowLeft}"));
+    await waitFor(() => expect(gain.getAttribute("aria-valuetext")).toBe("0 dB"));
+    expect(plan().tracks[0]?.gainDb).toBe(0);
+    expect(disabled(tool("audio.undo"))).toBe(true);
+    expect(selection()).toBeDefined();
+  });
 });
 
 describe("the editor's keys", () => {

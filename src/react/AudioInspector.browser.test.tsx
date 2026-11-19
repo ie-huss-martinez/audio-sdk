@@ -75,6 +75,23 @@ describe("the inspector, with no clip selected", () => {
   });
 });
 
+describe("the inspector's gain slider", () => {
+  it("puts a held key's change back with Escape, committing nothing", async () => {
+    const { container, plan } = await editor(recording("take.wav", 2));
+    const slider = control(container, "Master gain");
+    await step(() => slider.focus());
+    await step(() => userEvent.keyboard("{ArrowRight>}"));
+    await waitFor(() => expect(slider.value).toBe("1"));
+    await step(() => userEvent.keyboard("{Escape}"));
+    await step(() => userEvent.keyboard("{/ArrowRight}"));
+    await waitFor(() => expect(slider.value).toBe("0"));
+    expect(plan().gainDb).toBe(0);
+    // A later gesture still commits.
+    await step(() => userEvent.keyboard("{ArrowRight}"));
+    await waitFor(() => expect(plan().gainDb).toBe(1));
+  });
+});
+
 describe("the inspector, with a clip selected", () => {
   it("sets the clip's start exactly, as a timecode, and refuses an overlap", async () => {
     const { container, plan, ref } = await editor(recording("voice.wav"));
