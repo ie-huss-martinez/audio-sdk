@@ -16,9 +16,11 @@ You need Node 24 (see [`.node-version`](.node-version)) and pnpm. pnpm switches 
 
 ```sh
 pnpm install       # also installs the git hooks
-pnpm verify        # everything CI runs
-pnpm verify:fast   # the subset the pre-push hook runs
+pnpm verify:fast   # the subset the pre-push hook runs, all you run before pushing
+pnpm verify        # everything CI runs, for diagnosing a failure
 ```
+
+CI is the gate: it runs `pnpm verify` on every pull request, and a pull request merges on green CI (Huss's decision of 2026-11-19; the repository is public, so GitHub Actions is free). Run the browser, end-to-end and screenshot suites locally only to diagnose a failure, or to capture screenshot baselines.
 
 Browser and end-to-end tests run in the browser test image that CI uses, through `hm-in-image` ([sdk-core ADR 0049](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0049-local-browser-tests-in-the-pinned-image.md)), so they need Docker. `pnpm test:browser` runs Chromium, and `pnpm test:browser:all` runs all three engines, as CI does. To run some files, pass them on: `pnpm test:browser src/react/AudioRange.browser.test.tsx`. Don't run Vitest's browser project directly on your machine: there, Chromium aborts requests whenever Docker changes a network interface, and tests fail at random with a worker that "failed to load" or an iframe that "did not become ready" (#73).
 
@@ -61,21 +63,21 @@ The git hooks run on their own: a secret scan and lint of staged files on commit
 ## Open a pull request
 
 - **Title:** a Conventional Commit of at most 65 characters, because it becomes the commit title on `main`, followed by ` (#NNN)`, and that must fit in 72. Put explanations in the description. The `pr-title` check enforces both.
-- **Description:** fill in the template: what changed, why, and how you tested it, including the result of `pnpm verify`. Be as detailed as is useful; the description doesn't go into git history.
+- **Description:** fill in the template: what changed, why, and how you tested it, with a link to the pull request's CI run. Be as detailed as is useful; the description doesn't go into git history.
 - **Changeset:** add one if the pull request changes what the package publishes. See [Changesets](#changesets).
 - **Checks:** `verify`, `changeset` and `pr-title` must pass, and the branch must be up to date with `main`.
 
-Mark the pull request ready once `pnpm verify` passes locally. CI is the final gate, not a substitute for running it yourself.
+Push once `pnpm verify:fast` passes; the pre-push hook runs it. Mark the pull request ready once CI is green. A CI failure is investigated, and an unexplained one blocks a release.
 
 ## How pull requests are reviewed
 
 **The author of a pull request never merges it.** A separate reviewer does, after reviewing it:
 
 - **The diff:** the reviewer reads the full diff and checks it against `STANDARDS.md` and the ADRs.
-- **The checks:** CI must be green. For any change to code, the reviewer also runs `pnpm verify` independently, rather than relying on the author's result.
+- **The checks:** CI must be green. CI runs `pnpm verify` on all three engines, so the reviewer doesn't run it again locally.
 - **Not "almost right":** if the scope, title or quality isn't right, the pull request is fixed before it's merged.
 
-**Coding agents** open one pull request at a time. After opening it, they stop and report the link, a short summary and their `pnpm verify` result. They start the next change only after the pull request is merged, from an up-to-date `main`. An agent never reviews or merges a pull request it wrote; author and reviewer are always different sessions.
+**Coding agents** open one pull request at a time. After opening it, they stop and report the link, a short summary and its CI run. They start the next change only after the pull request is merged, from an up-to-date `main`. An agent never reviews or merges a pull request it wrote; author and reviewer are always different sessions.
 
 ## How pull requests are merged
 
