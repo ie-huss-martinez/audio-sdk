@@ -20,10 +20,9 @@ import { tone } from "../tests/helpers.js";
  * | `error` | A file that isn't audio, and the catalogue's text for it |
  * | `element-empty`, `element-open` | `<hm-audio-editor>`, whose styles arrive through the host's imports |
  * | `long-text`, `long-text-rename`, `long-text-export` | A host's longer text, as a translation can be: two tracks with a clip selected, the rename dialog and the export dialog wrap it |
+ * | `rtl`, `rtl-selection` | A Hebrew host, right to left: two tracks, the second muted, with a clip of the first selected, and a range on the first. Time runs from the right, and the icons that point along time are mirrored |
+ * | `rtl-dir-only` | `tracks` on a page that sets only `dir="rtl"`, with English text, so a rule keyed on a right-to-left `lang` can't stand in for one keyed on direction |
  *
- * Right-to-left joins once ui mirrors the icons that point along time
- * (ui backlog item 22), so no baseline records them pointing the wrong way;
- * the example's `?dir=rtl` is ready for it.
  * No state is masked: every one renders generated tones at a fixed time,
  * the waveform is drawn from their peaks, and the editor shows no time or
  * random value that varies between runs.
@@ -55,6 +54,14 @@ const muteSecond = async (page: Page) => {
   await expect(page.getByRole("group", { name: "Track 2, muted" })).toBeAttached();
 };
 
+/** Two tracks, the second muted, with a clip of the first selected. */
+const tracks: State = async (page) => {
+  await twoTracks(page);
+  await muteSecond(page);
+  await page.getByRole("option").first().focus();
+  await expect(page.getByText("Clip on Track 1")).toBeVisible();
+};
+
 const EDITOR: Readonly<Record<string, State>> = {
   empty: async (page) => {
     await expect(page.getByRole("button", { name: "Choose a file" })).toBeVisible();
@@ -63,12 +70,7 @@ const EDITOR: Readonly<Record<string, State>> = {
     await open(page, tone(2));
     await expect(page.getByRole("slider", { name: "Playhead" })).toBeFocused({ timeout: 20_000 });
   },
-  tracks: async (page) => {
-    await twoTracks(page);
-    await muteSecond(page);
-    await page.getByRole("option").first().focus();
-    await expect(page.getByText("Clip on Track 1")).toBeVisible();
-  },
+  tracks,
   selection: async (page) => {
     await twoTracks(page);
     // Drag across the first track's clip, from a quarter to three quarters of it.
@@ -147,9 +149,47 @@ const LONG_TEXT: Readonly<Record<string, State>> = {
   },
 };
 
+/** The example's `?lang=he`: a Hebrew host, right to left. */
+const HEBREW: Readonly<Record<string, State>> = {
+  rtl: async (page) => {
+    await expect(page.locator("html")).toHaveAttribute("lang", "he");
+    await twoTracks(page);
+    const header = page.getByRole("toolbar", { name: "רצועה 2" });
+    await header.getByRole("button", { name: "השתקה" }).click();
+    await expect(page.getByRole("group", { name: "רצועה 2, מושתקת" })).toBeAttached();
+    await page.getByRole("option").first().focus();
+    await expect(page.getByText("קטע ברצועה 1")).toBeVisible();
+  },
+  "rtl-selection": async (page) => {
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    await twoTracks(page);
+    // Across the first track's clip, from a quarter to three quarters of it.
+    const box = await page.getByRole("option").first().boundingBox();
+    if (!box) throw new Error("no clip");
+    const y = box.y + box.height - 4;
+    await page.mouse.move(box.x + box.width / 4, y);
+    await page.mouse.down();
+    await page.mouse.move(box.x + (box.width * 3) / 4, y, { steps: 4 });
+    await page.mouse.up();
+    await expect(page.locator(".hm-audio-editor-selection")).toContainText("רצועה 1");
+    await expect(page.locator(".hm-audio-editor-track-ripple")).toHaveText("Ripple");
+  },
+};
+
+/** The example's `?dir=rtl`: only `dir`, no right-to-left `lang`. */
+const DIR_ONLY: Readonly<Record<string, State>> = {
+  "rtl-dir-only": async (page) => {
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await tracks(page);
+  },
+};
+
 for (const [path, states] of [
   ["/editor.html", EDITOR],
   ["/editor.html?long-text", LONG_TEXT],
+  ["/editor.html?lang=he", HEBREW],
+  ["/editor.html?dir=rtl", DIR_ONLY],
   ["/element.html", ELEMENT],
 ] as const) {
   for (const [state, reach] of Object.entries(states)) {
