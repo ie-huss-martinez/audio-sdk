@@ -1,6 +1,7 @@
 import type { EditorElementContext, MountedEditor } from "@hussmartinez/sdk-core/element";
 import { type ReactNode, type RefCallback, useEffect, useMemo, useRef } from "react";
 import { createRoot } from "react-dom/client";
+import { AudioError } from "../../core/errors/audio-error.js";
 import type { AudioFilePolicyOverrides } from "../../core/errors/audio-limits.js";
 import type { AudioEngine } from "../../core/ports/audio-engine.js";
 import type { AudioOutput } from "../../core/ports/audio-output.js";
@@ -42,8 +43,11 @@ export interface AudioEditorElementProps {
 
 /**
  * The `<hm-audio-editor>` element's methods: the React editor's ref handle.
- * `open()`, `insert()` and `export()` wait for the editor's first render;
- * the others act on the editor there is, and do nothing before it.
+ * `open()`, `insert()`, `export()` and `play()` wait for the editor's first
+ * render, and call it at once after that; the others act on the editor there
+ * is, and do nothing before it.
+ * If the element is removed before its first render, the waiting calls
+ * reject with `ABORTED` and `details.reason: "removed"`.
  *
  * @public
  */
@@ -108,12 +112,20 @@ function ElementEditor(props: ElementEditorProps): ReactNode {
   );
 }
 
+/** What a call waiting for an editor that was removed first rejects with. */
+const removed = (): AudioError =>
+  new AudioError("ABORTED", "The element was removed before its editor was ready.", {
+    details: { reason: "removed" },
+  });
+
 /**
  * Renders `<AudioEditor>` into the element's light DOM, for
  * `createEditorElement` (sdk-core ADR 0040), as image-sdk's element does.
  * It renders without `flushSync`, since the element may connect during a
- * host's React commit; so `open()`, `insert()` and `export()` wait for the
- * first render, and the others act on the editor there is.
+ * host's React commit; so `open()`, `insert()`, `export()` and `play()` wait
+ * for the first render, and the others act on the editor there is. A removal
+ * before the first render unmounts the editor before it ever renders, so the
+ * waiting calls reject with `ABORTED` instead of waiting forever.
  */
 export function mountAudioEditor(
   host: HTMLElement,
@@ -122,13 +134,17 @@ export function mountAudioEditor(
 ): MountedEditor<Partial<AudioEditorElementProps>, AudioEditorElementMethods> {
   const root = createRoot(host);
   const handle: { current: AudioEditorHandle | null } = { current: null };
-  let resolveReady: (editor: AudioEditorHandle) => void = () => {};
-  const ready = new Promise<AudioEditorHandle>((resolve) => {
+  let resolveReady: () => void = () => {};
+  let rejectReady: (reason: AudioError) => void = () => {};
+  const ready = new Promise<void>((resolve, reject) => {
     resolveReady = resolve;
+    rejectReady = reject;
   });
+  // A removal before the first render rejects it, whether or not a call waits.
+  ready.catch(() => {});
   const setHandle: RefCallback<AudioEditorHandle> = (editor) => {
     handle.current = editor;
-    if (editor) resolveReady(editor);
+    if (editor) resolveReady();
   };
   const dispatch = context.dispatch;
 
@@ -145,19 +161,34 @@ export function mountAudioEditor(
   render(initial);
 
   const now = (): AudioEditorHandle | null => handle.current;
+  // Runs a method on the editor there is: at once once it has rendered, so
+  // calls made in one task keep their order, and after the first render
+  // before then. It calls the editor in the same step as it finds it, so a
+  // removal can't come between them.
+  const call = async <Result,>(
+    method: (editor: AudioEditorHandle) => Result,
+  ): Promise<Awaited<Result>> => {
+    if (!now()) await ready;
+    const editor = now();
+    if (!editor) throw removed();
+    return await method(editor);
+  };
   return {
     update: render,
     unmount: () => {
       root.unmount();
+      // Settles calls still waiting for a first render that won't come; after
+      // one, it does nothing.
+      rejectReady(removed());
       host.removeAttribute("data-hm-theme");
     },
     handle: {
-      open: async (file) => (await ready).open(file),
-      insert: async (file, options) => (await ready).insert(file, options),
-      export: async (options) => (await ready).export(options),
+      open: (file) => call((editor) => editor.open(file)),
+      insert: (file, options) => call((editor) => editor.insert(file, options)),
+      export: (options) => call((editor) => editor.export(options)),
       undo: () => now()?.undo(),
       redo: () => now()?.redo(),
-      play: async () => (await ready).play(),
+      play: () => call((editor) => editor.play()),
       pause: () => now()?.pause(),
       seek: (frame) => now()?.seek(frame),
     },
