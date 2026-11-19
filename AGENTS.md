@@ -24,6 +24,11 @@ It publishes `@hussmartinez/audio-sdk`: a headless core for editing audio, a Rea
 - **ADRs:** add one for any significant decision, meaning anything affecting public API, cross-package consistency or security, or that is hard to reverse.
 - **Other repositories:** don't edit them from here. If this repository needs a change elsewhere, such as a shared helper in `@hussmartinez/sdk-core` or a component in `@hussmartinez/ui`, propose it in that repository.
 
+## Task state and memory
+
+- **Task state:** keep the current task's state in `.local/HANDOFF.md`, uncommitted, with `.local/` listed in `.git/info/exclude`. It holds the goal and decisions, what's done (pull requests and commits), what's in progress with the exact next step, open questions, and where things live. Update it after every step, so that another agent, on any model or provider, can continue from it alone.
+- **Durable memory:** facts, rules and lessons that outlive a task go in the maintainer's SilverBullet knowledge base, following its `playbooks/agent-memory.md`, under the SDK family's `agent-memory/audio-sdk/`. Not in a provider's private memory, and not in this repository.
+
 ## Audio SDK rules
 
 These follow from the standards; they're repeated here because they apply to almost every change in this repository.
@@ -42,8 +47,9 @@ These follow from the standards; they're repeated here because they apply to alm
 
 - **Hooks:** they run automatically: linting and a secret scan on commit, commit message checks, and `pnpm verify:fast` on push. Never use `--no-verify`. If a hook is wrong or too slow, fix it in its own pull request.
 - **CI is the gate** (Huss's decision of 2026-11-19: the repository is public, so GitHub Actions is free). CI runs `pnpm verify` on Chromium, Firefox and WebKit, checks the pull request title, and checks for a changeset when the published package changes. All of it must pass before merging, and the reviewer merges on green CI without re-running it locally.
-- **Before pushing,** `pnpm verify:fast`, which the pre-push hook runs, is all you run. Don't run the full `pnpm verify` or the three engines locally.
+- **Before pushing,** `pnpm verify:fast`, which the pre-push hook runs, is the local bar. Don't run the full `pnpm verify` or the three engines locally before opening a pull request.
 - **Local browser runs** are only for diagnosing a failure. Visual baselines are still captured locally, with `pnpm test:visual:update` in the image.
 - **Report the CI run** in the pull request description, with a link to it, and `gh pr checks` to follow it.
 - **A CI failure** is investigated, and an unexplained one blocks a release.
+- **CodeRabbit** reviews pull requests in this public repository. Before asking for a merge, fix or answer every CodeRabbit review thread on your pull request, then resolve it; the merge waits while any is open. Its walkthrough comment needs nothing.
 - **Never weaken a check to make it pass.** That includes lint rules, size budgets, the API report, accessibility checks, file limits and the no-network assertion. Fix the cause, or propose the change in its own pull request with an ADR if the rule itself is wrong.
