@@ -132,6 +132,32 @@ describe("<hm-audio-editor> (docs/adr/0005, sdk-core ADR 0040)", () => {
     await until(() => lastPlan(events)?.tracks[0]?.clips[0]?.end === 16_000, "the open");
   });
 
+  it("rejects calls waiting for its first render with ABORTED when it's removed first", async () => {
+    const editor = create();
+    document.body.append(editor);
+    // Before the first render, which never comes: removal unmounts the editor first.
+    const waiting = [
+      editor.open(recording()),
+      editor.insert(recording()),
+      editor.export(),
+      editor.play(),
+    ];
+    editor.remove();
+    const settled = await Promise.race([
+      Promise.allSettled(waiting),
+      new Promise<"hung">((resolve) => setTimeout(() => resolve("hung"), 2_000)),
+    ]);
+    expect(settled, "the waiting calls settle").not.toBe("hung");
+    for (const result of settled as PromiseSettledResult<unknown>[]) {
+      expect(result.status).toBe("rejected");
+      expect((result as PromiseRejectedResult).reason).toMatchObject({
+        name: "AudioError",
+        code: "ABORTED",
+        details: { reason: "removed" },
+      });
+    }
+  });
+
   it("takes theme, locale and tools from attributes, and follows their changes", async () => {
     const editor = create({ theme: "dark", tools: "audio.undo audio.redo" });
     document.body.append(editor);
