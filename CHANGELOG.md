@@ -1,5 +1,11 @@
 # @hussmartinez/audio-sdk
 
+## 0.7.5
+
+### Patch Changes
+
+- [#102](https://github.com/ie-huss-martinez/audio-sdk/pull/102) [`57f22f4`](https://github.com/ie-huss-martinez/audio-sdk/commit/57f22f42429eec589faec5e9b3b5ed9ee3cc1c6a) Thanks [@hussmartinez](https://github.com/hussmartinez)! - The editor now depends on `@hussmartinez/ui` ^0.15.0. Its gain sliders, on each track and in the inspector, take Escape during a drag or while a key is held: the gain goes back to where the gesture started and nothing changes in the recording or its undo history. Escape with no gesture in progress still does what it did, such as clearing the selection. Nothing changes in the API.
+
 ## 0.7.4
 
 ### Patch Changes
