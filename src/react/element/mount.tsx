@@ -5,10 +5,10 @@ import { AudioError } from "../../core/errors/audio-error.js";
 import type { AudioFilePolicyOverrides } from "../../core/errors/audio-limits.js";
 import type { AudioEngine } from "../../core/ports/audio-engine.js";
 import type { AudioOutput } from "../../core/ports/audio-output.js";
-import type { AudioProcessor } from "../../core/ports/audio-processor.js";
+import type { AudioProcessor, AudioRenderResult } from "../../core/ports/audio-processor.js";
+import type { AudioInsertOptions, AudioSessionExportOptions } from "../../core/session/session.js";
+import type { AudioEditorMessageOverrides } from "../../messages/editor.js";
 import { AudioEditor, type AudioEditorHandle } from "../AudioEditor.js";
-import type { AudioHeadingLevel } from "../AudioInspector.js";
-import type { AudioEditorMessageOverrides } from "../editor-messages.js";
 import { type AudioExportReport, ElementListenersContext } from "./listeners.js";
 
 /**
@@ -30,7 +30,7 @@ export interface AudioEditorElementProps {
   /** The name an export is downloaded under, without its extension. */
   fileName?: string;
   /** The level of the editor's headings, from 2 to 6. Defaults to 2. */
-  headingLevel?: AudioHeadingLevel;
+  headingLevel?: 2 | 3 | 4 | 5 | 6;
   filePolicy?: AudioFilePolicyOverrides;
   /** Where the application serves the package's `dist/assets/` directory. */
   assetsUrl?: string | URL;
@@ -42,19 +42,33 @@ export interface AudioEditorElementProps {
 }
 
 /**
- * The `<hm-audio-editor>` element's methods: the React editor's ref handle.
- * `open()`, `insert()`, `export()` and `play()` wait for the editor's first
- * render, and call it at once after that; the others act on the editor there
- * is, and do nothing before it.
- * If the element is removed before its first render, the waiting calls
- * reject with `ABORTED` and `details.reason: "removed"`.
+ * The `<hm-audio-editor>` element's methods, as the React editor's ref handle
+ * has them. `open()`, `insert()`, `export()` and `play()` wait for the
+ * editor's first render, and call it at once after that; the others act on
+ * the editor there is, and do nothing before it. If the element is removed
+ * before its first render, the waiting calls reject with `ABORTED` and
+ * `details.reason: "removed"`.
  *
  * @public
  */
-export type AudioEditorElementMethods = Pick<
-  AudioEditorHandle,
-  "open" | "insert" | "export" | "undo" | "redo" | "play" | "pause" | "seek"
->;
+export interface AudioEditorElementMethods {
+  /** Opens a recording, replacing the current one once it has opened. */
+  open(file: Blob): Promise<void>;
+  /** Adds a recording on a new track, or on `options.track`. */
+  insert(file: Blob, options?: AudioInsertOptions): Promise<void>;
+  /**
+   * Exports the plan as it is now, without the editor's dialog, as the
+   * handle's `export` does: it resolves with the file, the mix's peak and
+   * how many frames were clamped, and never downloads anything.
+   */
+  export(options?: AudioSessionExportOptions): Promise<AudioRenderResult>;
+  undo(): void;
+  redo(): void;
+  play(): Promise<void>;
+  pause(): void;
+  /** Moves the playhead to a timeline frame. */
+  seek(frame: number): void;
+}
 
 /**
  * The element's events, fired as `hm-audio-editor-<name>`. None carries a

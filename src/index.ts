@@ -139,6 +139,11 @@ export type {
 export { createAudioSession } from "./core/session/session.js";
 export type { AudioFrameScheduler } from "./core/session/watch-playhead.js";
 export { watchPlayhead } from "./core/session/watch-playhead.js";
+export type {
+  AudioEditorMessageCatalogue,
+  AudioEditorMessageOverrides,
+  AudioEditorMessages,
+} from "./messages/editor.js";
 export type { AudioMessageCatalogue } from "./messages/en.js";
 export { audioMessages } from "./messages/en.js";
 export { audioErrorText, audioWarningText } from "./messages/text.js";

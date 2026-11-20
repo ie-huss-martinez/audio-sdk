@@ -43,10 +43,5 @@ export {
   useAudioPlayhead,
   useAudioSession,
 } from "./react/context.js";
-export type {
-  AudioEditorMessageCatalogue,
-  AudioEditorMessageOverrides,
-  AudioEditorMessages,
-} from "./react/editor-messages.js";
 export { audioEditorMessages } from "./react/editor-messages.js";
 export type { AudioEditorPart } from "./react/parts.js";

@@ -6,15 +6,30 @@
 
 import { EditorElementDefine } from '@hussmartinez/sdk-core/element';
 import { FilePolicyOverrides } from '@hussmartinez/sdk-core';
-import { MessageOverrides } from '@hussmartinez/sdk-core';
+import type { MessageOverrides } from '@hussmartinez/sdk-core';
+import type { uiMessages } from '@hussmartinez/ui';
 
 // @public
 export type AudioEditorElementEvent = "change" | "event" | "export" | "error";
 
-// Warning: (ae-forgotten-export) The symbol "AudioEditorHandle" needs to be exported by the entry point element.d.ts
-//
 // @public
-export type AudioEditorElementMethods = Pick<AudioEditorHandle, "open" | "insert" | "export" | "undo" | "redo" | "play" | "pause" | "seek">;
+export interface AudioEditorElementMethods {
+    // Warning: (ae-forgotten-export) The symbol "AudioSessionExportOptions" needs to be exported by the entry point element.d.ts
+    // Warning: (ae-forgotten-export) The symbol "AudioRenderResult" needs to be exported by the entry point element.d.ts
+    export(options?: AudioSessionExportOptions): Promise<AudioRenderResult>;
+    // Warning: (ae-forgotten-export) The symbol "AudioInsertOptions" needs to be exported by the entry point element.d.ts
+    insert(file: Blob, options?: AudioInsertOptions): Promise<void>;
+    open(file: Blob): Promise<void>;
+    // (undocumented)
+    pause(): void;
+    // (undocumented)
+    play(): Promise<void>;
+    // (undocumented)
+    redo(): void;
+    seek(frame: number): void;
+    // (undocumented)
+    undo(): void;
+}
 
 // @public
 export interface AudioEditorElementProps {
@@ -29,8 +44,7 @@ export interface AudioEditorElementProps {
     //
     // (undocumented)
     filePolicy?: AudioFilePolicyOverrides;
-    // Warning: (ae-forgotten-export) The symbol "AudioHeadingLevel" needs to be exported by the entry point element.d.ts
-    headingLevel?: AudioHeadingLevel;
+    headingLevel?: 2 | 3 | 4 | 5 | 6;
     locale?: string;
     // Warning: (ae-forgotten-export) The symbol "AudioEditorMessageOverrides" needs to be exported by the entry point element.d.ts
     messages?: AudioEditorMessageOverrides;

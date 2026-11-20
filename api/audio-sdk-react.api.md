@@ -6,12 +6,13 @@
 
 import { FilePolicyOverrides } from '@hussmartinez/sdk-core';
 import { ForwardRefExoticComponent } from 'react';
-import { MessageOverrides } from '@hussmartinez/sdk-core';
-import { Messages } from '@hussmartinez/sdk-core';
+import type { MessageOverrides } from '@hussmartinez/sdk-core';
+import type { Messages } from '@hussmartinez/sdk-core';
 import { ReactNode } from 'react';
 import { RefAttributes } from 'react';
 import { SdkCoreErrorCode } from '@hussmartinez/sdk-core';
 import { SdkError } from '@hussmartinez/sdk-core';
+import type { uiMessages } from '@hussmartinez/ui';
 
 // @public
 export const AudioEditor: ForwardRefExoticComponent<AudioEditorProps & RefAttributes<AudioEditorHandle>>;
@@ -35,287 +36,10 @@ export interface AudioEditorHandle {
     undo(): void;
 }
 
+// Warning: (ae-forgotten-export) The symbol "AudioEditorMessageCatalogue" needs to be exported by the entry point react.d.ts
+//
 // @public
-export type AudioEditorMessageCatalogue = typeof audioEditorMessages;
-
-// @public
-export type AudioEditorMessageOverrides = MessageOverrides<AudioEditorMessageCatalogue>;
-
-// @public
-export type AudioEditorMessages = Messages<AudioEditorMessageCatalogue>;
-
-// @public
-export const audioEditorMessages: {
-    readonly "editor.label": "Audio editor";
-    readonly "editor.empty": "Drop an audio file here, or choose one. It stays on your device.";
-    readonly "editor.opening": "Opening the recording";
-    readonly "editor.inserting": "Adding the recording";
-    readonly "editor.cancel": "Cancel";
-    readonly "editor.opened": "Recording opened.";
-    readonly "editor.inserted": "Recording added.";
-    readonly "editor.notices": "Notices";
-    readonly "editor.dismiss": "Dismiss";
-    readonly "editor.historyTrimmed": "The earliest edits can no longer be undone, to make room for the recordings.";
-    readonly "timeline.label": "Timeline";
-    readonly "timeline.summary": {
-        readonly $plural: "count";
-    } & {
-        readonly one: "{count} track, {duration} long.";
-        readonly other: "{count} tracks, {duration} long.";
-    };
-    readonly "timeline.playhead": "Playhead";
-    readonly "timeline.track": "Track {index}";
-    readonly "timeline.track.named": "Track {index}, {name}";
-    readonly "timeline.lane": "{track}";
-    readonly "timeline.lane.muted": "{track}, muted";
-    readonly "timeline.lane.silenced": "{track}, silenced by solo";
-    readonly "timeline.lane.ripple": "{lane}, later clips move when the selection is deleted";
-    readonly "timeline.selection": "Selected {start} to {end} on {tracks}";
-    readonly "track.ripple": "Ripple";
-    readonly "tracks.every": "every track";
-    readonly "tracks.count": {
-        readonly $plural: "count";
-    } & {
-        readonly one: "{count} track";
-        readonly other: "{count} tracks";
-    };
-    readonly "timeline.clips": "Clips on {track}";
-    readonly "timeline.clip": "Clip {index} of {count} on {track}, {start} to {end}";
-    readonly "timeline.clip.named": "{name}, clip {index} of {count} on {track}, {start} to {end}";
-    readonly "timeline.clip.gain": "Clip {index} of {count} on {track}, {start} to {end}, {gain, number} dB";
-    readonly "timeline.clip.named.gain": "{name}, clip {index} of {count} on {track}, {start} to {end}, {gain, number} dB";
-    readonly "toolbar.label": "Tools";
-    readonly "toolbar.file": "File";
-    readonly "toolbar.history": "History";
-    readonly "toolbar.tracks": "Tracks";
-    readonly "toolbar.clips": "Clip";
-    readonly "toolbar.range": "Selection";
-    readonly "toolbar.view": "Zoom";
-    readonly "toolbar.withKeys": "{label} ({keys})";
-    readonly "tools.open": "Open";
-    readonly "tools.insert": "Add recording";
-    readonly "tools.export": "Export";
-    readonly "tools.undo": "Undo";
-    readonly "tools.redo": "Redo";
-    readonly "tools.addTrack": "Add track";
-    readonly "tools.removeTrack": "Remove track";
-    readonly "tools.moveTrackUp": "Move track up";
-    readonly "tools.moveTrackDown": "Move track down";
-    readonly "tools.mute": "Mute track";
-    readonly "tools.split": "Split at the playhead";
-    readonly "tools.delete": "Delete";
-    readonly "tools.trimStart": "Trim the start to the playhead";
-    readonly "tools.trimEnd": "Trim the end to the playhead";
-    readonly "tools.moveEarlier": "Move the clip earlier";
-    readonly "tools.moveLater": "Move the clip later";
-    readonly "tools.moveToTrackAbove": "Move the clip to the track above";
-    readonly "tools.moveToTrackBelow": "Move the clip to the track below";
-    readonly "tools.setStart": "Start the selection at the playhead";
-    readonly "tools.setEnd": "End the selection at the playhead";
-    readonly "tools.clearSelection": "Clear the selection";
-    readonly "tools.ripple": "Ripple";
-    readonly "tools.fadeIn": "Fade in";
-    readonly "tools.fadeOut": "Fade out";
-    readonly "tools.zoomIn": "Zoom in";
-    readonly "tools.zoomOut": "Zoom out";
-    readonly "tools.zoomFit": "Fit to width";
-    readonly "tools.playPause": "Play or pause";
-    readonly "tools.start": "Go to the start";
-    readonly "tools.end": "Go to the end";
-    readonly "track.rename": "{track}, rename";
-    readonly "track.mute": "Mute";
-    readonly "track.solo": "Solo";
-    readonly "track.gain": "Gain";
-    readonly "track.gainValue": "{gain, number} dB";
-    readonly "rename.title": "Rename the track";
-    readonly "rename.name": "Name";
-    readonly "rename.description": "Leave it empty for no name.";
-    readonly "rename.save": "Rename";
-    readonly "announce.undone": "Undone.";
-    readonly "announce.redone": "Redone.";
-    readonly "announce.trackAdded": "Track added.";
-    readonly "announce.trackRemoved": "{track} removed.";
-    readonly "announce.trackMoved": "{track} moved.";
-    readonly "announce.muted": "{track} muted.";
-    readonly "announce.unmuted": "{track} unmuted.";
-    readonly "announce.soloed": "{track} soloed.";
-    readonly "announce.unsoloed": "{track} no longer soloed.";
-    readonly "announce.split": "Split at {time}.";
-    readonly "announce.noClipToSplit": "There's no clip on {track} at the playhead to split.";
-    readonly "announce.clipDeleted": "Clip deleted.";
-    readonly "announce.clipMovedTo": "Clip moved to {track}.";
-    readonly "announce.trimmed": "The clip is now {time} to {end}.";
-    readonly "announce.noRoom": "There's no room for the clip there.";
-    readonly "announce.refused": "That edit isn't possible.";
-    readonly "announce.selected": "Selected {time} to {end} on {tracks}.";
-    readonly "announce.selectionCleared": "Selection cleared.";
-    readonly "announce.rangeDeleted": "Deleted {time} to {end} from {tracks}.";
-    readonly "announce.rangeDeleted.ripple": "Deleted {time} to {end} from {tracks}. Later clips there moved earlier.";
-    readonly "announce.rippleOn": "Ripple on: deleting a range closes the gap.";
-    readonly "announce.rippleOff": "Ripple off: deleting a range leaves silence.";
-    readonly "announce.nothingInRange": "There's no audio in the selection to change.";
-    readonly "announce.rangeGain": "{time} to {end} on {tracks} set to {gain, number} dB.";
-    readonly "announce.fadedIn": "Fade in from {time} to {end} on {tracks}.";
-    readonly "announce.fadedOut": "Fade out from {time} to {end} on {tracks}.";
-    readonly "announce.noRoomForFade": "The clip has no room for that fade: shorten its other fade first.";
-    readonly "announce.clipFadedIn": "The clip fades in over {time}. Set its length in the inspector.";
-    readonly "announce.clipFadedOut": "The clip fades out over {time}. Set its length in the inspector.";
-    readonly "inspector.clip": "Clip on {track}";
-    readonly "inspector.recording": "Recording";
-    readonly "inspector.selection": "Selection";
-    readonly "inspector.selectionGain": "Gain of the selection, in decibels";
-    readonly "inspector.start": "Start";
-    readonly "inspector.gain": "Gain";
-    readonly "inspector.gainExact": "Gain, in decibels";
-    readonly "inspector.fadeIn": "Fade in, in seconds";
-    readonly "inspector.fadeOut": "Fade out, in seconds";
-    readonly "inspector.fadeInCurve": "Fade in curve";
-    readonly "inspector.fadeOutCurve": "Fade out curve";
-    readonly "inspector.curve.linear": "Linear";
-    readonly "inspector.curve.equalPower": "Equal power";
-    readonly "inspector.length": "Length";
-    readonly "inspector.sampleRate": "Sample rate";
-    readonly "inspector.sampleRateValue": "{rate, number} Hz";
-    readonly "inspector.tracks": "Tracks";
-    readonly "inspector.masterGain": "Master gain";
-    readonly "inspector.masterGainExact": "Master gain, in decibels";
-    readonly "inspector.channels": "Channels";
-    readonly "inspector.mono": "Mono";
-    readonly "inspector.stereo": "Stereo";
-    readonly "inspector.channelCount": "{count} channels";
-    readonly "metadata.title": "Title";
-    readonly "metadata.artist": "Artist";
-    readonly "metadata.album": "Album";
-    readonly "metadata.year": "Year";
-    readonly "metadata.comment": "Comment";
-    readonly "export.title": "Export";
-    readonly "export.description": "Write the recording to a WAV file on your device.";
-    readonly "export.summary": "What will be written";
-    readonly "export.audio": "{length} long, at {rate, number} Hz, {channels}.";
-    readonly "export.muted": "{track} is muted, so it won't be in the file.";
-    readonly "export.silenced": "{track} isn't soloed, so it won't be in the file.";
-    readonly "export.silent": "{track} won't be heard in the file.";
-    readonly "export.nothingHeard": "Every track with audio is muted or silenced by a solo, so there's nothing to export.";
-    readonly "export.metadata": "Written to the file: {fields}.";
-    readonly "export.noMetadata": "No metadata is written to the file.";
-    readonly "export.private": "Only the mix and this metadata are written. Nothing leaves your device.";
-    readonly "export.format": "Format";
-    readonly "export.formats.pcm16": "16-bit, {size, fileSize}";
-    readonly "export.formats.pcm24": "24-bit, {size, fileSize}";
-    readonly "export.formats.float32": "32-bit float, {size, fileSize}";
-    readonly "export.cancel": "Cancel";
-    readonly "export.confirm": "Export";
-    readonly "export.progress": "Exporting";
-    readonly "export.stop": "Stop";
-    readonly "export.done": "Done";
-    readonly "export.download": "Download";
-    readonly "export.ready": "The WAV file is ready: {size, fileSize}.";
-    readonly "export.cancelled": "Export stopped.";
-    readonly "export.clipped": "The mix went {db, number} dB over full scale, so {frames, number} frames were clipped.";
-    readonly "export.lower": "Lower the master gain by {db, number} dB and export again";
-    readonly "export.unavailable": "This editor has nothing to export with.";
-    readonly "transport.label": "Playback";
-    readonly "transport.play": "Play";
-    readonly "transport.pause": "Pause";
-    readonly "transport.start": "Back to the start";
-    readonly "transport.time": "{position} / {duration}";
-    readonly "colorField.swatches": "swatches";
-    readonly "dialog.close": "Close";
-    readonly "fileDropZone.choose": "Choose a file";
-    readonly "fileDropZone.chooseMultiple": "Choose files";
-    readonly "fileDropZone.hint": "or drop it here";
-    readonly "fileDropZone.hintMultiple": "or drop them here";
-    readonly "progress.label": "Progress";
-    readonly "reorderableList.moved": "{label} moved to position {position} of {count}";
-    readonly "spinner.label": "Loading";
-    readonly "errors.INVALID_THEME_TOKEN": "The theme setting {token} has a value that can't be used.";
-    readonly "errors.INVALID_THEME_SELECTOR": "The theme can't be applied to the selector {selector}.";
-    readonly "errors.INVALID_AUDIO": "This file isn't valid audio, or it's too damaged to open.";
-    readonly "errors.UNSUPPORTED_FORMAT": "This audio format isn't supported. Try converting the file to WAV, then open it again.";
-    readonly "errors.DECODE_FAILED": "This browser can't play this kind of audio. Try another browser, or convert the file to WAV.";
-    readonly "errors.INVALID_COMMAND": "This edit couldn't be made. Please try again.";
-    readonly "errors.INVALID_DOCUMENT": "This project is damaged, or it isn't an audio project.";
-    readonly "errors.DURATION_TOO_LONG": "This recording is {actual, duration} long, which is over the {maximum, duration} limit.";
-    readonly "errors.TOO_MANY_CHANNELS": "This recording has {actual, number} channels, which is over the {maximum, number}-channel limit.";
-    readonly "errors.SAMPLE_RATE_TOO_HIGH": "This recording's sample rate is {actual, number} Hz, which is over the {maximum, number} Hz limit.";
-    readonly "errors.SESSION_TOO_LARGE": "The open recordings would use {actual, fileSize} of memory, which is over the {maximum, fileSize} limit. Remove a recording, or clear the undo history, and try again.";
-    readonly "errors.TOO_MANY_CLIPS": {
-        readonly $plural: "maximum";
-    } & {
-        readonly one: "A recording can have {maximum} clip. Join or delete clips, and try again.";
-        readonly other: "A recording can have up to {maximum} clips. Join or delete clips, and try again.";
-    };
-    readonly "errors.TOO_MANY_TRACKS": {
-        readonly $plural: "maximum";
-    } & {
-        readonly one: "A recording can have {maximum} track. Remove a track, and try again.";
-        readonly other: "A recording can have up to {maximum} tracks. Remove a track, and try again.";
-    };
-    readonly "warnings.maxDuration": "This recording is {actual, duration} long, and may be slow to open and edit.";
-    readonly "warnings.maxChannels": "This recording has {actual, number} channels, and may be slow to edit.";
-    readonly "warnings.maxSampleRate": "This recording's sample rate is {actual, number} Hz, and it may be slow to edit.";
-    readonly "warnings.maxSessionSize": "The open recordings use {actual, fileSize} of memory. Clearing the undo history frees memory.";
-    readonly "warnings.maxClips": {
-        readonly $plural: "actual";
-    } & {
-        readonly one: "This recording has {actual} clip. Many clips may be slow to play and export.";
-        readonly other: "This recording has {actual} clips. Many clips may be slow to play and export.";
-    };
-    readonly "warnings.maxTracks": {
-        readonly $plural: "actual";
-    } & {
-        readonly one: "This recording has {actual} track. Many tracks may be slow to play and export.";
-        readonly other: "This recording has {actual} tracks. Many tracks may be slow to play and export.";
-    };
-    readonly "errors.UNSUPPORTED_ENVIRONMENT.autoplay-blocked": "The browser didn't let sound start. Press Play to start it.";
-    readonly "errors.DURATION_TOO_LONG.plan-too-long": "This would make the recording {actual, duration} long, which is over the {maximum, duration} limit.";
-    readonly "warnings.truncated": "This recording looks incomplete, perhaps from an interrupted recording or download. It opened with the audio it holds.";
-    readonly "errors.UNKNOWN": "Something went wrong. Please try again.";
-    readonly "errors.ABORTED": "The operation was cancelled.";
-    readonly "errors.TIMEOUT": "The operation took too long and was stopped.";
-    readonly "errors.WORKER_START_FAILED": "The file processor couldn't start. Reload the page and try again.";
-    readonly "errors.WORKER_PROTOCOL_MISMATCH": "The file processor is out of date. Reload the page to update it.";
-    readonly "errors.WORKER_CRASHED": "The file processor stopped unexpectedly. Please try again.";
-    readonly "errors.WORKER_TERMINATED": "The operation was stopped before it finished. Please try again.";
-    readonly "errors.WORKER_METHOD_NOT_FOUND": "This operation isn't available. Reload the page and try again.";
-    readonly "errors.WORKER_DATA_NOT_CLONEABLE": "Something went wrong while processing the file. Please try again.";
-    readonly "errors.UNSUPPORTED_ENVIRONMENT": "This browser doesn't support a feature this tool needs. Update your browser, or try another one.";
-    readonly "errors.FILE_TOO_LARGE": "This file is {actual, fileSize}, which is over the {maximum, fileSize} limit.";
-    readonly "errors.TOO_MANY_FILES": {
-        readonly $plural: "maximum";
-    } & {
-        readonly one: "You can add {maximum} file at a time.";
-        readonly other: "You can add up to {maximum} files at a time.";
-    };
-    readonly "errors.DECODED_SIZE_TOO_LARGE": "This file expands to more than {maximum, fileSize} when opened, which is over the limit.";
-    readonly "errors.PROCESSING_TIME_EXCEEDED": "Processing this file took too long and was stopped.";
-    readonly "warnings.maxFileSize": "This file is {actual, fileSize}. Large files may be slow to process.";
-    readonly "warnings.maxFiles": "Adding {actual} files at once may be slow.";
-    readonly "warnings.maxDecodedSize": "This file is very large once opened and may be slow to process.";
-    readonly "warnings.maxProcessingTime": "This is taking longer than usual.";
-    readonly "keys.control": "Ctrl";
-    readonly "keys.alt": "Alt";
-    readonly "keys.shift": "Shift";
-    readonly "keys.meta": "Meta";
-    readonly "keys.apple.control": "\u2303";
-    readonly "keys.apple.alt": "\u2325";
-    readonly "keys.apple.shift": "\u21E7";
-    readonly "keys.apple.meta": "\u2318";
-    readonly "keys.space": "Space";
-    readonly "keys.enter": "Enter";
-    readonly "keys.escape": "Esc";
-    readonly "keys.tab": "Tab";
-    readonly "keys.delete": "Delete";
-    readonly "keys.backspace": "Backspace";
-    readonly "keys.arrowUp": "\u2191";
-    readonly "keys.arrowDown": "\u2193";
-    readonly "keys.arrowLeft": "\u2190";
-    readonly "keys.arrowRight": "\u2192";
-    readonly "keys.home": "Home";
-    readonly "keys.end": "End";
-    readonly "keys.pageUp": "Page Up";
-    readonly "keys.pageDown": "Page Down";
-};
+export const audioEditorMessages: AudioEditorMessageCatalogue;
 
 // @public
 export type AudioEditorPart = "root" | "toolbar" | "notices" | "stage" | "timeline" | "transport" | "inspector";
@@ -347,6 +71,7 @@ export interface AudioEditorProviderProps {
     // Warning: (ae-forgotten-export) The symbol "AudioFilePolicyOverrides" needs to be exported by the entry point react.d.ts
     readonly filePolicy?: AudioFilePolicyOverrides;
     readonly locale?: string;
+    // Warning: (ae-forgotten-export) The symbol "AudioEditorMessageOverrides" needs to be exported by the entry point react.d.ts
     readonly messages?: AudioEditorMessageOverrides;
     // Warning: (ae-forgotten-export) The symbol "AudioSessionEvent" needs to be exported by the entry point react.d.ts
     readonly onEvent?: (event: AudioSessionEvent) => void;
@@ -434,6 +159,8 @@ export interface AudioTransportProps {
     readonly className?: string;
 }
 
+// Warning: (ae-forgotten-export) The symbol "AudioEditorMessages" needs to be exported by the entry point react.d.ts
+//
 // @public
 export function useAudioMessages(): AudioEditorMessages;
 
