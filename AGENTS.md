@@ -26,7 +26,7 @@ It publishes `@hussmartinez/audio-sdk`: a headless core for editing audio, a Rea
 
 ## Task state and memory
 
-- **Task state:** keep the current task's state in `.local/HANDOFF.md`, uncommitted, with `.local/` listed in `.git/info/exclude`. It holds the goal and decisions, what's done (pull requests and commits), what's in progress with the exact next step, open questions, and where things live. Update it after every step, so that another agent, on any model or provider, can continue from it alone.
+- **Task state:** keep the current task's state in `.local/HANDOFF.md`, uncommitted, with `.local/` listed in the repository's exclude file. That's the file `git rev-parse --git-path info/exclude` names: `.git/info/exclude` in an ordinary clone, and the shared one in a linked worktree, where `.git` is a file. It holds the goal and decisions, what's done (pull requests and commits), what's in progress with the exact next step, open questions, and where things live. Update it after every step, so that another agent, on any model or provider, can continue from it alone.
 - **Durable memory:** facts, rules and lessons that outlive a task go in the maintainer's SilverBullet knowledge base, following its `playbooks/agent-memory.md`, under the SDK family's `agent-memory/audio-sdk/`. Not in a provider's private memory, and not in this repository.
 
 ## Audio SDK rules
