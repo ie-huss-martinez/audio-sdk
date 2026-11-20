@@ -10,6 +10,7 @@ import {
 } from "../core/model/plan.js";
 import { formatTimecode } from "../core/model/time.js";
 import type { AudioRenderResult, AudioSampleFormat } from "../core/ports/audio-processor.js";
+import { exportFacts } from "../core/session/session.js";
 import { exportFileName } from "../features/export-name/export-name.js";
 import { audioErrorText } from "../messages/text.js";
 import { useAudioEditorContext, useAudioSession } from "./context.js";
@@ -47,7 +48,12 @@ export interface AudioExportDialogProps {
 type Phase =
   | { readonly kind: "choose" }
   | { readonly kind: "exporting"; readonly progress: number }
-  | { readonly kind: "done"; readonly result: AudioRenderResult };
+  | {
+      readonly kind: "done";
+      readonly result: AudioRenderResult;
+      /** What the export's events say about it, for `recording_downloaded`. */
+      readonly facts: ReturnType<typeof exportFacts>;
+    };
 
 const FORMATS: readonly AudioSampleFormat[] = ["pcm16", "pcm24", "float32"];
 const FIELDS: readonly (keyof AudioMetadata)[] = ["title", "artist", "album", "year", "comment"];
@@ -92,7 +98,7 @@ function trackLines(messages: AudioEditorMessages, plan: AudioPlan): readonly st
  */
 export function AudioExportDialog(props: AudioExportDialogProps): ReactNode {
   const { onExport, fileName } = props;
-  const { messages, dialog, setDialog } = useAudioEditorContext();
+  const { messages, dialog, setDialog, emit } = useAudioEditorContext();
   const { session, snapshot } = useAudioSession();
   const tools = useAudioTools();
   const announce = useAnnounce();
@@ -149,6 +155,8 @@ export function AudioExportDialog(props: AudioExportDialogProps): ReactNode {
     const running = new AbortController();
     controller.current = running;
     setPhase({ kind: "exporting", progress: 0 });
+    // The plan as the export starts, which the session renders, too.
+    const facts = exportFacts(plan, format);
     try {
       const result = await session.export({
         format: { container: "wav", sampleFormat: format },
@@ -171,7 +179,7 @@ export function AudioExportDialog(props: AudioExportDialogProps): ReactNode {
         close();
         return;
       }
-      setPhase({ kind: "done", result });
+      setPhase({ kind: "done", result, facts });
     } catch (reason) {
       // Closed while it ran: the reset dialog shows nothing of it.
       if (controller.current !== running) return;
@@ -206,6 +214,10 @@ export function AudioExportDialog(props: AudioExportDialogProps): ReactNode {
     link.href = objectUrl.current;
     link.download = `${exportFileName(fileName, plan.metadata.title)}.wav`;
     link.click();
+    // The browser has been asked to download the file, which is later than
+    // the file being ready, and as far as a page can follow it: whether it
+    // then saves the file isn't reported (docs/adr/0005).
+    emit({ type: "recording_downloaded", ...phase.facts });
   };
 
   const rate = plan.sampleRate;

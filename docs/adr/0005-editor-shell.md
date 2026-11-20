@@ -2,6 +2,7 @@
 
 - **Status:** Accepted; superseded in part by [0006](0006-multitrack.md): the timeline, the selection and the order of the work
 - **Date:** 2026-11-15
+- **Amended:** 2026-11-21: the export dialog's Download raises `recording_downloaded`, because `recording_exported` comes when the file is ready, before anyone asks to download it.
 
 ## Context
 
@@ -126,6 +127,12 @@ Focus always lands somewhere meaningful, and never on `<body>`:
 - **The choice:** 16-bit WAV (the default), 24-bit WAV or 32-bit float WAV, as a `ui` SegmentedControl.
 - **While it runs:** a ProgressBar from `onProgress`, and Stop, which aborts it.
 - **When it's done:** Download, which gets focus, and Done. The download is a link to an object URL that's revoked when the dialog closes. A host's `onExport` takes the `Blob` instead, and the dialog closes.
+- **Download's event:** each press of Download raises `recording_downloaded` for the host's `onEvent`, with the same facts as the export's `recording_exported` (the rounded length, sample rate, channels and sample format) and nothing more.
+  - **What it marks:** Download asked the browser to download the file, by clicking a link to it. A page can't learn whether the browser then downloaded it, which it may not do at all, such as in a sandboxed frame without `allow-downloads`, or whether the person saved it or cancelled. So it isn't a confirmed save. It's still a later signal than `recording_exported`, which comes when the file is ready, before anyone asks for it.
+  - **A guard against leaving with unsaved work,** such as editor-apps', can relax on it, knowing those limits.
+  - **The file holds the plan as its export started** ([ADR 0003](0003-clip-plan-document-model.md)). The dialog is modal, so the person can't edit during an export, but a host that changes the plan through the handle or the session meanwhile should keep its guard for those changes.
+  - **A host that needs a confirmed save** takes the file through `onExport`, saves it itself, and clears its guard once that save succeeds. With `onExport`, `recording_downloaded` never comes.
+  - video-sdk and image-sdk raise the same event, in their own vocabularies.
 - **Closing or unmounting** stops an export that's running, and a result that arrives after that is dropped.
 
 ### The React API

@@ -26,6 +26,8 @@ export function sessionEvents() {
     return () => act(async () => promise);
   };
   return {
+    /** Every event so far, in order. */
+    seen: seen as readonly AudioSessionEvent[],
     /** Pass as the editor's `onEvent`. */
     onEvent(event: AudioSessionEvent): void {
       seen.push(event);
