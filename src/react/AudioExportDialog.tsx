@@ -214,9 +214,9 @@ export function AudioExportDialog(props: AudioExportDialogProps): ReactNode {
     link.href = objectUrl.current;
     link.download = `${exportFileName(fileName, plan.metadata.title)}.wav`;
     link.click();
-    // The download has started, which is later than the file being ready,
-    // and as far as a page can follow it: whether the browser then saves
-    // the file isn't reported (docs/adr/0005).
+    // The browser has been asked to download the file, which is later than
+    // the file being ready, and as far as a page can follow it: whether it
+    // then saves the file isn't reported (docs/adr/0005).
     emit({ type: "recording_downloaded", ...phase.facts });
   };
 

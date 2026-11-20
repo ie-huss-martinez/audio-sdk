@@ -141,10 +141,10 @@ export interface AudioSessionSnapshot {
  *
  * `recording_exported` comes when an export's file is ready.
  * `recording_downloaded` comes from the editor's export dialog each time its
- * Download button starts the browser's download of that file, with the same
- * facts. A page can't learn whether the browser then saved the file or the
- * person cancelled it, so it marks the download started, not a confirmed
- * save. It never comes when the host's `onExport` takes the file, since the
+ * Download button asks the browser to download that file, with the same
+ * facts. A page can't learn whether the browser then downloaded and saved
+ * the file, or the person cancelled it, so it marks the request, not a
+ * confirmed save. It never comes when the host's `onExport` takes the file, since the
  * host saves it then (docs/adr/0005).
  *
  * @public
