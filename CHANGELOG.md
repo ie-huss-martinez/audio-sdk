@@ -1,5 +1,11 @@
 # @hussmartinez/audio-sdk
 
+## 0.9.1
+
+### Patch Changes
+
+- [#112](https://github.com/ie-huss-martinez/audio-sdk/pull/112) [`39f7be9`](https://github.com/ie-huss-martinez/audio-sdk/commit/39f7be9e31ea0de2a673c060576f88acc761a5b1) Thanks [@hussmartinez](https://github.com/hussmartinez)! - `@hussmartinez/audio-sdk/react` now tree-shakes: an application that imports only part of it ships only that part. Importing just `audioEditorMessages`, for example, used to bundle nearly the whole editor (about 17 kB brotli) and now bundles about 3 kB. The hooks and building blocks shrink the same way. Module-level calls that a bundler couldn't prove free of side effects, such as `defineTool`, `createContext`, `forwardRef` and the spread that joined the tool lists, are now marked or written so it can. Nothing changes in the API or at run time.
+
 ## 0.9.0
 
 ### Minor Changes
