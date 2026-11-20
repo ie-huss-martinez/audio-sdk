@@ -50,6 +50,29 @@ const coreImport = (name, imports, limit) => ({
   limit,
 });
 
+/**
+ * An application's import from the React entry, without React, ui and
+ * sdk-core, which are the host's or have budgets of their own, and the lazy
+ * worker (sdk-core ADR 0056).
+ */
+const reactImport = (name, imports, limit) => ({
+  name,
+  path: "dist/react.js",
+  import: imports,
+  ignore: [
+    "react",
+    "react-dom",
+    "react/jsx-runtime",
+    "@hussmartinez/ui",
+    "@hussmartinez/ui/react",
+    "@hussmartinez/sdk-core",
+    "./lazy/*",
+    "../lazy/*",
+  ],
+  brotli: true,
+  limit,
+});
+
 export default [
   {
     disablePlugins: ["@size-limit/esbuild"],
@@ -161,4 +184,10 @@ export default [
     "{ createAudioSession, createAudioEngine, createAudioProcessor, createAudioOutput, audioMessages }",
     "15 kB",
   ),
+  // Measured 2.89 kB: the editor's catalogue alone, the SDK's messages and
+  // the editor's text, ui's being the host's, with the error class and the
+  // limits' definitions the core's text keeps. Before the entry came apart
+  // (sdk-core ADR 0056) it kept nearly the whole editor: 16.64 kB here,
+  // 16.98 kB by the ADR's own measure. The limit is the next 0.5 kB.
+  reactImport("Import: audioEditorMessages (./react)", "{ audioEditorMessages }", "3 kB"),
 ];

@@ -23,11 +23,14 @@ const editable = (state: AudioToolState) => state.plan !== undefined && !state.b
 /**
  * Every tool the audio editor knows, in order (docs/adr/0005). The editor
  * builds its toolbar and its shortcuts from them, with sdk-core's registries.
+ * The lists are joined with `concat`, not spread: a bundler can't prove a
+ * spread free of side effects, and would keep every tool for any import of
+ * the React entry.
  *
  * @internal
  */
-export const audioTools: readonly AudioTool[] = [
-  defineTool({
+export const audioTools: readonly AudioTool[] = /* @__PURE__ */ [
+  /* @__PURE__ */ defineTool({
     id: "audio.open",
     label: "tools.open",
     icon: "open",
@@ -35,7 +38,7 @@ export const audioTools: readonly AudioTool[] = [
     // Mod+O is the browser's own (docs/adr/0005).
     run: (context: AudioToolContext) => context.chooseFile("open"),
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.insert",
     label: "tools.insert",
     icon: "upload",
@@ -43,7 +46,7 @@ export const audioTools: readonly AudioTool[] = [
     isEnabled: editable,
     run: (context: AudioToolContext) => context.chooseFile("insert"),
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.export",
     label: "tools.export",
     icon: "download",
@@ -52,7 +55,7 @@ export const audioTools: readonly AudioTool[] = [
     isEnabled: (state: AudioToolState) => editable(state) && length(state) > 0,
     run: (context: AudioToolContext) => context.openDialog("export"),
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.undo",
     label: "tools.undo",
     icon: "undo",
@@ -64,7 +67,7 @@ export const audioTools: readonly AudioTool[] = [
       context.announce({ key: "announce.undone" });
     },
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.redo",
     label: "tools.redo",
     icon: "redo",
@@ -76,7 +79,7 @@ export const audioTools: readonly AudioTool[] = [
       context.announce({ key: "announce.redone" });
     },
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.add-track",
     label: "tools.addTrack",
     icon: "add",
@@ -91,7 +94,7 @@ export const audioTools: readonly AudioTool[] = [
       context.announce({ key: "announce.trackAdded" });
     },
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.remove-track",
     label: "tools.removeTrack",
     icon: "remove",
@@ -110,7 +113,7 @@ export const audioTools: readonly AudioTool[] = [
       context.announce({ key: "announce.trackRemoved", track });
     },
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.move-track-up",
     label: "tools.moveTrackUp",
     icon: "move-up",
@@ -125,7 +128,7 @@ export const audioTools: readonly AudioTool[] = [
       context.announce({ key: "announce.trackMoved", track });
     },
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.move-track-down",
     label: "tools.moveTrackDown",
     icon: "move-down",
@@ -143,7 +146,7 @@ export const audioTools: readonly AudioTool[] = [
       context.announce({ key: "announce.trackMoved", track });
     },
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.mute",
     label: "tools.mute",
     icon: "muted",
@@ -158,7 +161,7 @@ export const audioTools: readonly AudioTool[] = [
       context.announce({ key: track.muted ? "announce.unmuted" : "announce.muted", track });
     },
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.zoom-out",
     label: "tools.zoomOut",
     icon: "zoom-out",
@@ -168,7 +171,7 @@ export const audioTools: readonly AudioTool[] = [
     run: (context: AudioToolContext) =>
       context.setZoom(Math.max(1, context.state.zoom / ZOOM_STEP)),
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.zoom-in",
     label: "tools.zoomIn",
     icon: "zoom-in",
@@ -178,7 +181,7 @@ export const audioTools: readonly AudioTool[] = [
     run: (context: AudioToolContext) =>
       context.setZoom(Math.min(context.state.maxZoom, context.state.zoom * ZOOM_STEP)),
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.zoom-fit",
     label: "tools.zoomFit",
     icon: "fit",
@@ -187,11 +190,9 @@ export const audioTools: readonly AudioTool[] = [
     isEnabled: (state: AudioToolState) => state.plan !== undefined && state.zoom !== 1,
     run: (context: AudioToolContext) => context.setZoom(1),
   }),
-  ...clipTools,
-  ...fadeTools,
-  ...rangeTools,
+].concat(clipTools, fadeTools, rangeTools, [
   // The transport's, with keys: not in the toolbar.
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.play-pause",
     label: "tools.playPause",
     icon: "play",
@@ -200,7 +201,7 @@ export const audioTools: readonly AudioTool[] = [
     isEnabled: (state: AudioToolState) => length(state) > 0,
     run: (context: AudioToolContext) => (context.state.playing ? context.pause() : context.play()),
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.start",
     label: "tools.start",
     icon: "skip-back",
@@ -209,7 +210,7 @@ export const audioTools: readonly AudioTool[] = [
     isEnabled: (state: AudioToolState) => length(state) > 0,
     run: (context: AudioToolContext) => context.seek(0),
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.end",
     label: "tools.end",
     icon: "skip-forward",
@@ -218,7 +219,7 @@ export const audioTools: readonly AudioTool[] = [
     isEnabled: (state: AudioToolState) => length(state) > 0,
     run: (context: AudioToolContext) => context.seek(length(context.state)),
   }),
-];
+]);
 
 /**
  * The toolbar's groups by default, by tool id: files, history, tracks,

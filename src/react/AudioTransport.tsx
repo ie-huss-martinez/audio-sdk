@@ -34,7 +34,7 @@ export function AudioTransport({ className }: AudioTransportProps): ReactNode {
 }
 
 /** The transport, with the editor's part classes. Its ref is the play button. */
-export const Transport = forwardRef<
+export const Transport = /* @__PURE__ */ forwardRef<
   HTMLButtonElement,
   { readonly className?: string | undefined; readonly classNames: PartClassNames | undefined }
 >(function Transport({ className, classNames }, ref): ReactNode {

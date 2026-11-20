@@ -189,7 +189,7 @@ const canFade = (state: AudioToolState) =>
  * @internal
  */
 export const fadeTools: readonly AudioTool[] = [
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.fade-in",
     label: "tools.fadeIn",
     icon: "fade-in",
@@ -198,7 +198,7 @@ export const fadeTools: readonly AudioTool[] = [
     run: (context: AudioToolContext) =>
       context.state.selection ? fadeRange(context, "in") : fadeClip(context, "in"),
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.fade-out",
     label: "tools.fadeOut",
     icon: "fade-out",
