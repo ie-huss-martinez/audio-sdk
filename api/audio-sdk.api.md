@@ -681,7 +681,7 @@ export interface AudioSession {
 export type AudioSessionEvent = ({
     readonly type: "recording_opened" | "recording_inserted";
 } & AudioRecordingFacts) | {
-    readonly type: "recording_exported";
+    readonly type: "recording_exported" | "recording_downloaded";
     readonly durationSeconds: number;
     readonly sampleRate: number;
     readonly channels: number;

@@ -139,12 +139,18 @@ export interface AudioSessionSnapshot {
  * seconds, rounded to two significant figures, such as 3,500 for 3,456.7,
  * so that an exact length can't fingerprint a recording.
  *
+ * `recording_exported` comes when an export's file is ready.
+ * `recording_downloaded` comes from the editor's export dialog when its
+ * Download button saves that file, with the same facts, each time it's
+ * pressed; it never comes when the host's `onExport` takes the file, since
+ * the host saves it then (docs/adr/0005).
+ *
  * @public
  */
 export type AudioSessionEvent =
   | ({ readonly type: "recording_opened" | "recording_inserted" } & AudioRecordingFacts)
   | {
-      readonly type: "recording_exported";
+      readonly type: "recording_exported" | "recording_downloaded";
       readonly durationSeconds: number;
       readonly sampleRate: number;
       readonly channels: number;
@@ -353,6 +359,29 @@ function clipsOf(command: AudioCommand): readonly AudioClip[] {
  */
 function coarseSeconds(seconds: number): number {
   return seconds > 0 ? Number(seconds.toPrecision(2)) : 0;
+}
+
+/**
+ * What `recording_exported` and `recording_downloaded` say about an export
+ * of `plan`: its rounded length, rate, channels and sample format.
+ *
+ * @internal
+ */
+export function exportFacts(
+  plan: AudioPlan,
+  sampleFormat: AudioSampleFormat,
+): {
+  readonly durationSeconds: number;
+  readonly sampleRate: number;
+  readonly channels: number;
+  readonly sampleFormat: AudioSampleFormat;
+} {
+  return {
+    durationSeconds: coarseSeconds(framesToSeconds(mixLength(plan), plan.sampleRate)),
+    sampleRate: plan.sampleRate,
+    channels: plan.channels,
+    sampleFormat,
+  };
 }
 
 /** Every key a command creates or carries: its clips', its tracks' and its new parts'. */
@@ -1053,10 +1082,7 @@ export function createAudioSession(options: AudioSessionOptions): AudioSession {
           );
           emit({
             type: "recording_exported",
-            durationSeconds: coarseSeconds(framesToSeconds(mixLength(current), current.sampleRate)),
-            sampleRate: current.sampleRate,
-            channels: current.channels,
-            sampleFormat: format.sampleFormat ?? "pcm16",
+            ...exportFacts(current, format.sampleFormat ?? "pcm16"),
           });
           return output;
         } finally {

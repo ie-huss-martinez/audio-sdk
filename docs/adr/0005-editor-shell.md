@@ -2,6 +2,7 @@
 
 - **Status:** Accepted; superseded in part by [0006](0006-multitrack.md): the timeline, the selection and the order of the work
 - **Date:** 2026-11-15
+- **Amended:** 2026-11-21: the export dialog's Download raises `recording_downloaded`, because `recording_exported` comes when the file is ready, before anything is saved.
 
 ## Context
 
@@ -126,6 +127,7 @@ Focus always lands somewhere meaningful, and never on `<body>`:
 - **The choice:** 16-bit WAV (the default), 24-bit WAV or 32-bit float WAV, as a `ui` SegmentedControl.
 - **While it runs:** a ProgressBar from `onProgress`, and Stop, which aborts it.
 - **When it's done:** Download, which gets focus, and Done. The download is a link to an object URL that's revoked when the dialog closes. A host's `onExport` takes the `Blob` instead, and the dialog closes.
+- **Download's event:** each press of Download raises `recording_downloaded` for the host's `onEvent`, with the same facts as the export's `recording_exported` (the rounded length, sample rate, channels and sample format) and nothing more. `recording_exported` comes when the file is ready, before it's saved, so a host's guard against leaving with unsaved work, such as editor-apps', waits for `recording_downloaded` instead. With `onExport`, the host saves the file itself, so `recording_downloaded` never comes; a host that guards against leaving clears its guard when it has saved the `Blob`. video-sdk and image-sdk raise the same event, in their own vocabularies.
 - **Closing or unmounting** stops an export that's running, and a result that arrives after that is dropped.
 
 ### The React API

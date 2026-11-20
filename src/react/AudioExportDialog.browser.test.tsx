@@ -75,8 +75,21 @@ describe("the export dialog", () => {
     await done();
     await waitFor(() => expect(document.activeElement?.textContent).toBe("Download"));
     await said("The WAV file is ready: 16 kB.");
+    // The file is ready, but not saved: nothing says it was downloaded yet.
+    const downloads = () => events.seen.filter((event) => event.type === "recording_downloaded");
+    expect(downloads()).toEqual([]);
     await step(() => userEvent.click(inDialog("Download") as HTMLButtonElement));
     expect(links).toHaveLength(1);
+    // Download says so, with the export's own facts and nothing more.
+    const exported = events.seen.find((event) => event.type === "recording_exported");
+    expect(downloads()).toEqual([{ ...exported, type: "recording_downloaded" }]);
+    expect(downloads()[0]).toEqual({
+      type: "recording_downloaded",
+      durationSeconds: 1,
+      sampleRate: 8_000,
+      channels: 1,
+      sampleFormat: "pcm16",
+    });
     expect(links[0]?.download).toBe("recording.wav");
     expect(links[0]?.href).toMatch(/^blob:/);
     await step(() => userEvent.click(inDialog("Done") as HTMLButtonElement));
@@ -150,6 +163,8 @@ describe("the export dialog", () => {
     expect(exported[0]?.[0].type).toBe("audio/wav");
     expect(exported[0]?.[1].clippedFrames).toBe(0);
     await waitFor(() => expect(dialog()).toBeNull());
+    // The host saves the file, so the editor never says it was downloaded.
+    expect(events.seen.map((event) => event.type)).not.toContain("recording_downloaded");
   });
 
   it("exports through the editor's handle without the dialog", async () => {

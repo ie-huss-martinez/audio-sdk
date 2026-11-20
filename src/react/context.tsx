@@ -141,6 +141,11 @@ interface EditorContext {
   /** The track being renamed, by key, while its dialog is open. */
   readonly renaming: string | undefined;
   readonly setRenaming: (key: string | undefined) => void;
+  /**
+   * Sends a usage event the editor itself raises, not the session, such as
+   * `recording_downloaded`, to the host's `onEvent`.
+   */
+  readonly emit: (event: AudioSessionEvent) => void;
 }
 
 const Context = createContext<EditorContext | null>(null);
@@ -216,6 +221,7 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
   onEvent.current = props.onEvent;
   const [owned] = useState(() => make(props, (event) => onEvent.current?.(event)));
   const { session, output } = owned;
+  const emit = useCallback((event: AudioSessionEvent) => onEvent.current?.(event), []);
 
   // Released a moment after the last unmount, which a remount cancels.
   const pending = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -338,6 +344,7 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
       fileChooser,
       renaming,
       setRenaming,
+      emit,
     }),
     [
       session,
@@ -356,6 +363,7 @@ export function AudioEditorProvider(props: AudioEditorProviderProps): ReactNode 
       tools,
       shortcuts,
       renaming,
+      emit,
     ],
   );
   return <Context.Provider value={value}>{props.children}</Context.Provider>;

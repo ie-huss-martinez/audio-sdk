@@ -45,7 +45,7 @@ It shows a toolbar, the timeline with a lane per track (its header, waveform and
 | `filePolicy` | Limits for untrusted files, as for `createAudioSession` |
 | `engine`, `processor`, `output` | Your own adapters; the editor makes the SDK's own for any you leave out, and destroys only those |
 | `messages`, `locale` | Text overrides and the locale, as above |
-| `onEvent` | Anonymous usage events, as for `createAudioSession` |
+| `onEvent` | Anonymous usage events, as for `createAudioSession`, plus `recording_downloaded` when the export dialog's Download saves the file. With `onExport`, the host saves it, and that event never comes |
 | `className`, `classNames`, `unstyled` | Classes on the root and on the editor's parts, and leaving out the editor's own look |
 
 The ref's `AudioEditorHandle` has `open(file)`, `insert(file, options)`, `export(options)`, `undo()`, `redo()`, `play()`, `pause()` and `seek(frame)`. `export()` exports the plan as it is, without the dialog, and resolves `{ blob, peakDb, clippedFrames }`.
