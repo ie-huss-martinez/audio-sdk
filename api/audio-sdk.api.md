@@ -7,9 +7,11 @@
 import { FilePolicy } from '@hussmartinez/sdk-core';
 import { FilePolicyOverrides } from '@hussmartinez/sdk-core';
 import { Limits } from '@hussmartinez/sdk-core';
+import type { MessageOverrides } from '@hussmartinez/sdk-core';
 import { Messages } from '@hussmartinez/sdk-core';
 import { SdkCoreErrorCode } from '@hussmartinez/sdk-core';
 import { SdkError } from '@hussmartinez/sdk-core';
+import type { uiMessages } from '@hussmartinez/ui';
 
 // @public
 export function audibleTracks(plan: AudioPlan): readonly AudioTrack[];
@@ -128,6 +130,17 @@ export interface AudioDeleteRangeCommand {
 
 // @public
 export type AudioDocumentRejection = AudioClipProblem | "unknown-format" | "unknown-format-version" | "malformed-document" | "unknown-source" | "duplicate-key" | "invalid-fade-curve" | "metadata-too-long" | "name-too-long" | "clips-overlap" | "clips-out-of-order" | "no-tracks";
+
+// Warning: (ae-forgotten-export) The symbol "audioEditorText" needs to be exported by the entry point index.d.ts
+//
+// @public
+export type AudioEditorMessageCatalogue = typeof audioMessages & typeof uiMessages & typeof audioEditorText;
+
+// @public
+export type AudioEditorMessageOverrides = MessageOverrides<AudioEditorMessageCatalogue>;
+
+// @public
+export type AudioEditorMessages = Messages<AudioEditorMessageCatalogue>;
 
 // @public
 export interface AudioEngine {

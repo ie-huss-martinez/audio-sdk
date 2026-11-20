@@ -1,11 +1,7 @@
 import "@hussmartinez/ui/styles.css";
 import "@hussmartinez/audio-sdk/styles.css";
-import type { AudioPlan } from "@hussmartinez/audio-sdk";
-import {
-  AudioEditor,
-  type AudioEditorHandle,
-  type AudioEditorMessageOverrides,
-} from "@hussmartinez/audio-sdk/react";
+import type { AudioEditorMessageOverrides, AudioPlan } from "@hussmartinez/audio-sdk";
+import { AudioEditor, type AudioEditorHandle } from "@hussmartinez/audio-sdk/react";
 import { createRoot } from "react-dom/client";
 
 /** The editor, as a host renders it: ui's stylesheet first, then the SDK's (sdk-core ADR 0036). */
