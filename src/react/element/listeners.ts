@@ -35,4 +35,4 @@ export interface ElementListeners {
 }
 
 /** @internal */
-export const ElementListenersContext = createContext<ElementListeners>({});
+export const ElementListenersContext = /* @__PURE__ */ createContext<ElementListeners>({});

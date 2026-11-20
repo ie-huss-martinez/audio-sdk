@@ -207,7 +207,7 @@ const trackIndex = (state: AudioToolState) =>
  * @internal
  */
 export const clipTools: readonly AudioTool[] = [
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.split",
     label: "tools.split",
     icon: "split",
@@ -219,7 +219,7 @@ export const clipTools: readonly AudioTool[] = [
       editable(state) && (state.clip ?? state.track) !== undefined,
     run: split,
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.delete",
     label: "tools.delete",
     icon: "delete",
@@ -244,7 +244,7 @@ export const clipTools: readonly AudioTool[] = [
       context.announce({ key: "announce.clipDeleted" });
     },
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.trim-start",
     label: "tools.trimStart",
     icon: "trim-start",
@@ -256,7 +256,7 @@ export const clipTools: readonly AudioTool[] = [
       if (placed) trimClipToPlayhead(context, placed.clip.key, "start");
     },
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.trim-end",
     label: "tools.trimEnd",
     icon: "trim-end",
@@ -270,7 +270,7 @@ export const clipTools: readonly AudioTool[] = [
   }),
   // Alt with the arrows moves a focused clip, through ui's clip track; these
   // are the buttons for a single pointer (WCAG 2.5.7).
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.move-earlier",
     label: "tools.moveEarlier",
     icon: "chevron-left",
@@ -281,7 +281,7 @@ export const clipTools: readonly AudioTool[] = [
       if (plan && clip) moveClips(context, [clip.clip.key], -nudgeFrames(plan));
     },
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.move-later",
     label: "tools.moveLater",
     icon: "chevron-right",
@@ -292,7 +292,7 @@ export const clipTools: readonly AudioTool[] = [
       if (plan && clip) moveClips(context, [clip.clip.key], nudgeFrames(plan));
     },
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.move-to-track-above",
     label: "tools.moveToTrackAbove",
     icon: "move-up",
@@ -303,7 +303,7 @@ export const clipTools: readonly AudioTool[] = [
       if (placed) moveClipsToTrack(context, [placed.clip.key], -1);
     },
   }),
-  defineTool({
+  /* @__PURE__ */ defineTool({
     id: "audio.move-to-track-below",
     label: "tools.moveToTrackBelow",
     icon: "move-down",

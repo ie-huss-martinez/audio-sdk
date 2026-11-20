@@ -148,7 +148,7 @@ interface EditorContext {
   readonly emit: (event: AudioSessionEvent) => void;
 }
 
-const Context = createContext<EditorContext | null>(null);
+const Context = /* @__PURE__ */ createContext<EditorContext | null>(null);
 
 /** The editor's context, or a `TypeError` naming the provider it needs. */
 export function useAudioEditorContext(): EditorContext {

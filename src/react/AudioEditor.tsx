@@ -125,41 +125,43 @@ interface ShellProps {
   readonly unstyled: boolean;
 }
 
-const Shell = forwardRef<AudioEditorHandle, ShellProps>(function Shell(props, ref): ReactNode {
-  const { session, output, messages, open, insert } = useAudioEditorContext();
+const Shell = /* @__PURE__ */ forwardRef<AudioEditorHandle, ShellProps>(
+  function Shell(props, ref): ReactNode {
+    const { session, output, messages, open, insert } = useAudioEditorContext();
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      open,
-      insert,
-      undo: () => session.undo(),
-      redo: () => session.redo(),
-      play: () => output.play(),
-      pause: () => output.pause(),
-      seek: (frame) => output.seek(frame),
-      export: (options) => session.export(options),
-    }),
-    [session, output, open, insert],
-  );
+    useImperativeHandle(
+      ref,
+      () => ({
+        open,
+        insert,
+        undo: () => session.undo(),
+        redo: () => session.redo(),
+        play: () => output.play(),
+        pause: () => output.pause(),
+        seek: (frame) => output.seek(frame),
+        export: (options) => session.export(options),
+      }),
+      [session, output, open, insert],
+    );
 
-  const opened = useRef(false);
-  useEffect(() => {
-    if (opened.current || !props.initialFile) return;
-    opened.current = true;
-    // A failure is in the snapshot, which the stage shows.
-    open(props.initialFile).catch(() => {});
-  }, [props.initialFile, open]);
+    const opened = useRef(false);
+    useEffect(() => {
+      if (opened.current || !props.initialFile) return;
+      opened.current = true;
+      // A failure is in the snapshot, which the stage shows.
+      open(props.initialFile).catch(() => {});
+    }, [props.initialFile, open]);
 
-  return (
-    // One Messages object for the SDK's text and ui's (sdk-core ADR 0046).
-    <UiMessagesProvider messages={messages}>
-      <AnnouncerProvider>
-        <Root {...props} />
-      </AnnouncerProvider>
-    </UiMessagesProvider>
-  );
-});
+    return (
+      // One Messages object for the SDK's text and ui's (sdk-core ADR 0046).
+      <UiMessagesProvider messages={messages}>
+        <AnnouncerProvider>
+          <Root {...props} />
+        </AnnouncerProvider>
+      </UiMessagesProvider>
+    );
+  },
+);
 
 /** The editor's root, its regions in tab order, and what it says and where focus goes. */
 function Root({

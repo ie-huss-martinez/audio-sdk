@@ -110,7 +110,7 @@ export interface AudioPlan {
  *
  * @public
  */
-export const EMPTY_METADATA: AudioMetadata = Object.freeze({
+export const EMPTY_METADATA: AudioMetadata = /* @__PURE__ */ Object.freeze({
   title: "",
   artist: "",
   album: "",
@@ -123,7 +123,7 @@ export const EMPTY_METADATA: AudioMetadata = Object.freeze({
  *
  * @public
  */
-export const NO_FADE: AudioFade = Object.freeze({ frames: 0, curve: "linear" });
+export const NO_FADE: AudioFade = /* @__PURE__ */ Object.freeze({ frames: 0, curve: "linear" });
 
 /**
  * The longest track name, in Unicode code points, as JSON Schema's
