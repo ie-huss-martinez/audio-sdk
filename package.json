@@ -51,7 +51,7 @@
   "scripts": {
     "prepare": "husky",
     "changeset": "changeset",
-    "lint": "biome check .",
+    "lint": "biome check . && hm-check-hidden-unicode",
     "lint:css": "stylelint \"**/*.css\" --allow-empty-input",
     "lint:deps": "hm-lint-deps src",
     "check:single-copy": "hm-check-single-copy",

@@ -804,11 +804,16 @@ describe("the audio session", () => {
     });
 
     it("stops at maxProcessingTime, and on the caller's signal", async () => {
-      // A processor that only ever stops when it's told to.
+      // A processor that only ever stops when it's told to, or has been.
       const stuck: AudioProcessor = {
         render: (_, options = {}) =>
           new Promise((_, reject) => {
-            options.signal?.addEventListener("abort", () => reject(options.signal?.reason));
+            const { signal } = options;
+            if (signal?.aborted) {
+              reject(signal.reason);
+              return;
+            }
+            signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
           }),
         destroy: async () => {},
       };
