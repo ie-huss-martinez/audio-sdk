@@ -191,6 +191,24 @@ describe("<hm-audio-editor> (docs/adr/0005, sdk-core ADR 0040)", () => {
     await until(() => !editor.hasAttribute("data-hm-theme"), "the inherited theme");
   });
 
+  it("sets its headings' level from heading-level, treating any other value as 2 (sdk-core ADR 0058)", async () => {
+    const editor = create({ "heading-level": "4" });
+    const events = record(editor);
+    document.body.append(editor);
+    editor.file = recording();
+    await until(() => (lastPlan(events)?.tracks.length ?? 0) === 1, "the open");
+    const title = () => editor.querySelector(".hm-audio-editor-inspector-title");
+    await until(() => title()?.tagName === "H4", "an h4 title");
+    expect(editor.headingLevel).toBe(4);
+    // Text a host may write, which isn't a level: the default.
+    editor.setAttribute("heading-level", "7");
+    await until(() => title()?.tagName === "H2", "an h2 title");
+    expect(editor.headingLevel).toBe(2);
+    // The property sets it too.
+    editor.headingLevel = 3;
+    await until(() => title()?.tagName === "H3", "an h3 title");
+  });
+
   it("fires error with the code and no name, for a file it can't open", async () => {
     const editor = create();
     const events = record(editor);

@@ -1,4 +1,10 @@
-import { AnnouncerProvider, UiMessagesProvider, useAnnounce } from "@hussmartinez/ui/react";
+import {
+  AnnouncerProvider,
+  type HeadingLevel,
+  HeadingLevelProvider,
+  UiMessagesProvider,
+  useAnnounce,
+} from "@hussmartinez/ui/react";
 import {
   forwardRef,
   type ReactNode,
@@ -11,7 +17,7 @@ import type { AudioPlan } from "../core/model/plan.js";
 import type { AudioRenderResult } from "../core/ports/audio-processor.js";
 import type { AudioInsertOptions, AudioSessionExportOptions } from "../core/session/session.js";
 import { AudioExportDialog, type AudioExportDialogProps } from "./AudioExportDialog.js";
-import { type AudioHeadingLevel, EditorInspector } from "./AudioInspector.js";
+import { EditorInspector } from "./AudioInspector.js";
 import { Notices } from "./AudioNotices.js";
 import { AudioRenameDialog } from "./AudioRenameDialog.js";
 import { Stage } from "./AudioStage.js";
@@ -60,9 +66,11 @@ export interface AudioEditorProps extends Omit<AudioEditorProviderProps, "childr
   readonly theme?: "light" | "dark" | "system";
   /**
    * The level of the editor's headings, from 2 to 6, so they fit the
-   * host's outline: the inspector's, for now. Defaults to 2.
+   * host's outline: the inspector's title, its one level of heading for now
+   * (sdk-core ADR 0058). Defaults to 2. A value that isn't one of the five
+   * is treated as 2, with a development warning.
    */
-  readonly headingLevel?: AudioHeadingLevel;
+  readonly headingLevel?: HeadingLevel;
   /**
    * The name an export is downloaded under, without its extension, such as
    * the name of the file being edited. Without it, the recording's title is
@@ -117,7 +125,7 @@ interface ShellProps {
   readonly initialFile: Blob | undefined;
   readonly onChange: ((plan: AudioPlan) => void) | undefined;
   readonly theme: AudioEditorProps["theme"];
-  readonly headingLevel: AudioHeadingLevel | undefined;
+  readonly headingLevel: HeadingLevel | undefined;
   readonly fileName: string | undefined;
   readonly onExport: ((blob: Blob, result: AudioRenderResult) => void) | undefined;
   readonly className: string | undefined;
@@ -244,7 +252,10 @@ function Root({
           <Stage classNames={classNames} />
           <Transport ref={play} classNames={classNames} />
         </div>
-        <EditorInspector classNames={classNames} headingLevel={headingLevel} />
+        {/* The editor's headings take their level from here (sdk-core ADR 0058). */}
+        <HeadingLevelProvider level={headingLevel ?? 2}>
+          <EditorInspector classNames={classNames} />
+        </HeadingLevelProvider>
       </div>
       <AudioRenameDialog />
       <AudioExportDialog

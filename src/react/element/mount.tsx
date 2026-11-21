@@ -1,5 +1,6 @@
 import type { MessageOverrides } from "@hussmartinez/sdk-core";
 import type { EditorElementContext, MountedEditor } from "@hussmartinez/sdk-core/element";
+import type { HeadingLevel } from "@hussmartinez/ui";
 import { type ReactNode, type RefCallback, useEffect, useMemo, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { AudioError } from "../../core/errors/audio-error.js";
@@ -30,8 +31,12 @@ export interface AudioEditorElementProps {
   file?: Blob;
   /** The name an export is downloaded under, without its extension. */
   fileName?: string;
-  /** The level of the editor's headings, from 2 to 6. Defaults to 2. */
-  headingLevel?: 2 | 3 | 4 | 5 | 6;
+  /**
+   * The level of the editor's headings, from 2 to 6, also set as the
+   * `heading-level` attribute (sdk-core ADR 0058). Defaults to 2; another
+   * value is treated as 2.
+   */
+  headingLevel?: HeadingLevel;
   filePolicy?: AudioFilePolicyOverrides;
   /** Where the application serves the package's `dist/assets/` directory. */
   assetsUrl?: string | URL;
