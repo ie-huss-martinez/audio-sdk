@@ -1,5 +1,22 @@
 # @hussmartinez/audio-sdk
 
+## 0.9.3
+
+### Patch Changes
+
+- [#119](https://github.com/ie-huss-martinez/audio-sdk/pull/119) [`9f2d149`](https://github.com/ie-huss-martinez/audio-sdk/commit/9f2d149cda0df02f3e89648ed5ebcbb40c0e2aca) Thanks [@hussmartinez](https://github.com/hussmartinez)! - `audioErrorText` and `audioWarningText` are deprecated, and go in the next breaking release. sdk-core's `Messages` now does what they did, so call it directly:
+  
+  ```ts
+  // Before
+  showError(audioErrorText(messages, error));
+  for (const warning of snapshot.warnings) show(audioWarningText(messages, warning));
+  // After
+  showError(messages.error(error));
+  for (const warning of snapshot.warnings) show(messages.warning(warning));
+  ```
+  
+  `messages.error` looks for an error's text by its code and `details.reason` first, such as the blocked-autoplay text, then by its code. `messages.warning` gives a limit's warning or `truncated` its text. Both helpers still work, as one-line calls to these, and every text is the same.
+
 ## 0.9.2
 
 ### Patch Changes
