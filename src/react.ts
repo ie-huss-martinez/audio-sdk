@@ -14,6 +14,7 @@
  * @packageDocumentation
  */
 
+export type { HeadingLevel } from "@hussmartinez/ui/react";
 export type { AudioEditorHandle, AudioEditorProps } from "./react/AudioEditor.js";
 export { AudioEditor } from "./react/AudioEditor.js";
 export type { AudioExportDialogProps } from "./react/AudioExportDialog.js";

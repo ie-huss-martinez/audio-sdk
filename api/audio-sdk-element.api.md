@@ -6,6 +6,7 @@
 
 import { EditorElementDefine } from '@hussmartinez/sdk-core/element';
 import { FilePolicyOverrides } from '@hussmartinez/sdk-core';
+import type { HeadingLevel } from '@hussmartinez/ui';
 import type { MessageOverrides } from '@hussmartinez/sdk-core';
 import type { uiMessages } from '@hussmartinez/ui';
 
@@ -44,7 +45,7 @@ export interface AudioEditorElementProps {
     //
     // (undocumented)
     filePolicy?: AudioFilePolicyOverrides;
-    headingLevel?: 2 | 3 | 4 | 5 | 6;
+    headingLevel?: HeadingLevel;
     locale?: string;
     // Warning: (ae-forgotten-export) The symbol "AudioEditorMessageCatalogue" needs to be exported by the entry point element.d.ts
     messages?: MessageOverrides<AudioEditorMessageCatalogue>;

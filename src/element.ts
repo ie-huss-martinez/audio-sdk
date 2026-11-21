@@ -14,6 +14,7 @@
  */
 
 import { createEditorElement } from "@hussmartinez/sdk-core/element";
+import { toHeadingLevel } from "@hussmartinez/ui";
 import type { AudioExportReport } from "./react/element/listeners.js";
 import {
   type AudioEditorElementEvent,
@@ -35,9 +36,10 @@ const words = (value: string): readonly string[] => value.split(/\s+/).filter(Bo
 /**
  * Registers `<hm-audio-editor>`, or the tag you name, and returns its class
  * (docs/adr/0005, sdk-core ADR 0040), as image-sdk's element does: the
- * attributes `theme`, `locale` and `tools`; the properties `file`,
- * `fileName`, `headingLevel`, `filePolicy`, `assetsUrl`, `messages`,
- * `engine`, `processor` and `output`; the methods `open`, `insert`,
+ * attributes `theme`, `locale`, `tools` and `heading-level` (also the
+ * property `headingLevel`); the properties `file`, `fileName`,
+ * `filePolicy`, `assetsUrl`, `messages`, `engine`, `processor` and
+ * `output`; the methods `open`, `insert`,
  * `export`, `undo`, `redo`, `play`, `pause` and `seek`; and the events
  * `hm-audio-editor-change`, `-event`, `-export` and `-error`. Calling it
  * again returns the same class.
@@ -64,11 +66,12 @@ export const defineAudioEditorElement = /* @__PURE__ */ createEditorElement<
     theme: "theme",
     locale: "locale",
     tools: { property: "tools", parse: words },
+    // As text: anything but 2 to 6 is the default, 2 (sdk-core ADR 0058).
+    "heading-level": { property: "headingLevel", parse: toHeadingLevel },
   },
   properties: [
     "file",
     "fileName",
-    "headingLevel",
     "filePolicy",
     "assetsUrl",
     "messages",

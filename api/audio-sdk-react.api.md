@@ -6,6 +6,7 @@
 
 import { FilePolicyOverrides } from '@hussmartinez/sdk-core';
 import { ForwardRefExoticComponent } from 'react';
+import { HeadingLevel } from '@hussmartinez/ui/react';
 import { MessageOverrides } from '@hussmartinez/sdk-core';
 import { Messages } from '@hussmartinez/sdk-core';
 import { ReactNode } from 'react';
@@ -49,7 +50,7 @@ export interface AudioEditorProps extends Omit<AudioEditorProviderProps, "childr
     readonly className?: string;
     readonly classNames?: Readonly<Partial<Record<AudioEditorPart, string>>>;
     readonly fileName?: string;
-    readonly headingLevel?: AudioHeadingLevel;
+    readonly headingLevel?: HeadingLevel;
     readonly initialFile?: Blob;
     // Warning: (ae-forgotten-export) The symbol "AudioPlan" needs to be exported by the entry point react.d.ts
     readonly onChange?: (plan: AudioPlan) => void;
@@ -93,8 +94,8 @@ export interface AudioExportDialogProps {
     readonly onExport?: (blob: Blob, result: AudioRenderResult) => void;
 }
 
-// @public
-export type AudioHeadingLevel = 2 | 3 | 4 | 5 | 6;
+// @public @deprecated
+export type AudioHeadingLevel = HeadingLevel;
 
 // @public
 export function AudioInspector(input: AudioInspectorProps): ReactNode;
@@ -103,7 +104,7 @@ export function AudioInspector(input: AudioInspectorProps): ReactNode;
 export interface AudioInspectorProps {
     // (undocumented)
     readonly className?: string;
-    readonly headingLevel?: AudioHeadingLevel;
+    readonly headingLevel?: HeadingLevel;
 }
 
 // @public
@@ -157,6 +158,8 @@ export interface AudioTransportProps {
     // (undocumented)
     readonly className?: string;
 }
+
+export { HeadingLevel }
 
 // @public
 export function useAudioMessages(): Messages<AudioEditorMessageCatalogue>;

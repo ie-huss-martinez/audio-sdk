@@ -1,4 +1,12 @@
-import { Field, NumberField, SegmentedControl, Slider, TextField } from "@hussmartinez/ui/react";
+import {
+  Field,
+  Heading,
+  type HeadingLevel,
+  NumberField,
+  SegmentedControl,
+  Slider,
+  TextField,
+} from "@hussmartinez/ui/react";
 import { type ReactNode, useId } from "react";
 import {
   type AudioClip,
@@ -43,17 +51,22 @@ export interface AudioInspectorProps {
   readonly className?: string;
   /**
    * The level of the inspector's heading, from 2 to 6, so it fits the
-   * host's outline. Defaults to 2.
+   * host's outline (sdk-core ADR 0058). Defaults to the closest
+   * `HeadingLevelProvider`'s, as the editor sets from its own
+   * `headingLevel`, or 2.
    */
-  readonly headingLevel?: AudioHeadingLevel;
+  readonly headingLevel?: HeadingLevel;
 }
 
 /**
  * A heading level for the editor's headings, below the page's own `h1`.
  *
+ * @deprecated Use `HeadingLevel`, from `ui`, which this entry re-exports
+ * (sdk-core ADR 0058). This goes in the next breaking release.
+ *
  * @public
  */
-export type AudioHeadingLevel = 2 | 3 | 4 | 5 | 6;
+export type AudioHeadingLevel = HeadingLevel;
 
 /**
  * The editor's inspector (docs/adr/0005, docs/adr/0006): with a range
@@ -76,11 +89,12 @@ export function AudioInspector({ className, headingLevel }: AudioInspectorProps)
 export function EditorInspector({
   className,
   classNames,
-  headingLevel = 2,
+  headingLevel,
 }: {
   readonly className?: string | undefined;
   readonly classNames: PartClassNames | undefined;
-  readonly headingLevel?: AudioHeadingLevel | undefined;
+  /** The title's level; without one, the closest `HeadingLevelProvider`'s, or 2. */
+  readonly headingLevel?: HeadingLevel | undefined;
 }): ReactNode {
   const { messages, selectedClip } = useAudioEditorContext();
   const { snapshot } = useAudioSession();
@@ -90,7 +104,6 @@ export function EditorInspector({
   if (!plan) return null;
   const { selection } = snapshot;
   const placed = selectedClip === undefined ? undefined : findClip(plan, selectedClip);
-  const Heading = `h${headingLevel}` as "h2";
 
   // Every edit here goes through the tools' context, so a refusal is said
   // as the toolbar's are.
@@ -107,7 +120,7 @@ export function EditorInspector({
       {selection ? (
         // A range comes first, as it does for Delete (docs/adr/0005).
         <>
-          <Heading id={title} className="hm-audio-editor-inspector-title">
+          <Heading level={headingLevel} id={title} className="hm-audio-editor-inspector-title">
             {messages.t("inspector.selection")}
           </Heading>
           <SelectionFields
@@ -119,7 +132,7 @@ export function EditorInspector({
         </>
       ) : placed ? (
         <>
-          <Heading id={title} className="hm-audio-editor-inspector-title">
+          <Heading level={headingLevel} id={title} className="hm-audio-editor-inspector-title">
             {messages.t("inspector.clip", {
               track: trackName(messages, placed.track, plan.tracks.indexOf(placed.track)),
             })}
@@ -135,7 +148,7 @@ export function EditorInspector({
         </>
       ) : (
         <>
-          <Heading id={title} className="hm-audio-editor-inspector-title">
+          <Heading level={headingLevel} id={title} className="hm-audio-editor-inspector-title">
             {messages.t("inspector.recording")}
           </Heading>
           <RecordingFields plan={plan} messages={messages} run={run} />
