@@ -30,7 +30,7 @@ It shows a toolbar, the timeline with a lane per track (its header, waveform and
 
 **A bounded height.** `AudioEditor` fills the height of its container, and its timeline scrolls within it, so give it a bounded height: a fixed height, or a grid row such as `minmax(0, 1fr)`. Where the editor is at least 1080 px wide, the inspector sits beside the timeline; otherwise it's below the transport.
 
-**Text.** `messages` overrides any text the editor shows, by key, including ui's, and `locale` sets the language for numbers and plurals ([sdk-core ADR 0046](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0046-ui-text-through-the-sdk.md)). `audioEditorMessages`, from `@hussmartinez/audio-sdk/react`, is the English catalogue. `AudioEditorMessageOverrides`, from the main entry, `@hussmartinez/audio-sdk`, types your overrides, as the element's `messages` uses it too. `audioMessages`, from the server-safe entry, holds only error and warning text.
+**Text.** `messages` overrides any text the editor shows, by key, including ui's, and `locale` sets the language for numbers and plurals ([sdk-core ADR 0046](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0046-ui-text-through-the-sdk.md)). `audioEditorMessages`, from `@hussmartinez/audio-sdk/react`, is the English catalogue. Type your overrides as `MessageOverrides<AudioEditorMessageCatalogue>`: `MessageOverrides` from `@hussmartinez/sdk-core`, and the catalogue's type from the main entry, `@hussmartinez/audio-sdk`, which the element's `messages` uses too (sdk-core ADR 0059). `AudioEditorMessageOverrides` and `AudioEditorMessages` still work, but they're deprecated. `audioMessages`, from the server-safe entry, holds only error and warning text.
 
 | Prop | What it does |
 |---|---|

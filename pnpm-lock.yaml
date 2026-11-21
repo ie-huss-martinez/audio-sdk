@@ -420,6 +420,9 @@ importers:
       '@hussmartinez/audio-sdk':
         specifier: workspace:*
         version: link:../..
+      '@hussmartinez/sdk-core':
+        specifier: 'catalog:'
+        version: 0.4.7
       '@hussmartinez/ui':
         specifier: 'catalog:'
         version: 0.15.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)

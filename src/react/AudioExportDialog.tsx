@@ -13,7 +13,7 @@ import type { AudioRenderResult, AudioSampleFormat } from "../core/ports/audio-p
 import { exportFacts } from "../core/session/session.js";
 import { exportFileName } from "../features/export-name/export-name.js";
 import { useAudioEditorContext, useAudioSession } from "./context.js";
-import type { AudioEditorMessages } from "./editor-messages.js";
+import type { EditorMessages } from "./editor-messages.js";
 import { ElementListenersContext } from "./element/listeners.js";
 import { trackName } from "./names.js";
 import { classes } from "./parts.js";
@@ -63,7 +63,7 @@ export function clippedBy(peakDb: number): number {
 }
 
 /** The summary's sentences about the tracks: which are left out, and why. */
-function trackLines(messages: AudioEditorMessages, plan: AudioPlan): readonly string[] {
+function trackLines(messages: EditorMessages, plan: AudioPlan): readonly string[] {
   const heard = new Set(audibleTracks(plan));
   const soloing = plan.tracks.some((track) => track.soloed);
   return plan.tracks.flatMap((track, index) => {

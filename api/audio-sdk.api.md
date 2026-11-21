@@ -137,10 +137,10 @@ export type AudioDocumentRejection = AudioClipProblem | "unknown-format" | "unkn
 // @public
 export type AudioEditorMessageCatalogue = typeof audioMessages & typeof uiMessages & typeof audioEditorText;
 
-// @public
+// @public @deprecated
 export type AudioEditorMessageOverrides = MessageOverrides<AudioEditorMessageCatalogue>;
 
-// @public
+// @public @deprecated
 export type AudioEditorMessages = Messages<AudioEditorMessageCatalogue>;
 
 // @public

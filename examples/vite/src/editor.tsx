@@ -1,7 +1,8 @@
 import "@hussmartinez/ui/styles.css";
 import "@hussmartinez/audio-sdk/styles.css";
-import type { AudioEditorMessageOverrides, AudioPlan } from "@hussmartinez/audio-sdk";
+import type { AudioEditorMessageCatalogue, AudioPlan } from "@hussmartinez/audio-sdk";
 import { AudioEditor, type AudioEditorHandle } from "@hussmartinez/audio-sdk/react";
+import type { MessageOverrides } from "@hussmartinez/sdk-core";
 import { createRoot } from "react-dom/client";
 
 /** The editor, as a host renders it: ui's stylesheet first, then the SDK's (sdk-core ADR 0036). */
@@ -21,7 +22,7 @@ const mounted = new Promise<AudioEditorHandle>((resolve) => {
  * Text much longer than English, as a translation can be, for the visual
  * tests' long-text states (sdk-core ADR 0048): `?long-text`.
  */
-const LONG_TEXT: AudioEditorMessageOverrides = {
+const LONG_TEXT: MessageOverrides<AudioEditorMessageCatalogue> = {
   "editor.empty":
     "Ziehen Sie eine Audiodatei hierher oder wählen Sie eine aus. Sie bleibt jederzeit auf diesem Gerät.",
   "timeline.track": "Tonspur Nummer {index}",
@@ -56,7 +57,7 @@ const LONG_TEXT: AudioEditorMessageOverrides = {
  * `lang` and `dir` and passes these overrides. The rest stays English. The
  * Hebrew is illustrative, for layout, not a reviewed translation.
  */
-const HEBREW: AudioEditorMessageOverrides = {
+const HEBREW: MessageOverrides<AudioEditorMessageCatalogue> = {
   "timeline.summary": {
     $plural: "count",
     one: "רצועה אחת, באורך {duration}.",

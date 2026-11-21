@@ -1,14 +1,13 @@
-import { defineMessages } from "@hussmartinez/sdk-core";
+import { defineMessages, type Messages } from "@hussmartinez/sdk-core";
 import { uiMessages } from "@hussmartinez/ui";
 import type { AudioEditorMessageCatalogue } from "../messages/editor.js";
 import { audioEditorText } from "../messages/editor-en.js";
 import { audioMessages } from "../messages/en.js";
 
-export type {
-  AudioEditorMessageCatalogue,
-  AudioEditorMessageOverrides,
-  AudioEditorMessages,
-} from "../messages/editor.js";
+export type { AudioEditorMessageCatalogue } from "../messages/editor.js";
+
+/** The text the editor's parts use: `Messages` over the editor's catalogue. Internal. */
+export type EditorMessages = Messages<AudioEditorMessageCatalogue>;
 
 /**
  * The editor's English catalogue: the SDK's messages, `ui`'s for its own

@@ -19,6 +19,10 @@ export type AudioEditorMessageCatalogue = typeof audioMessages &
 /**
  * The text the editor uses.
  *
+ * @deprecated Use `Messages<AudioEditorMessageCatalogue>`, from sdk-core's
+ * `Messages`, as the family names it (sdk-core ADR 0059). This goes in the
+ * next breaking release.
+ *
  * @public
  */
 export type AudioEditorMessages = Messages<AudioEditorMessageCatalogue>;
@@ -27,6 +31,10 @@ export type AudioEditorMessages = Messages<AudioEditorMessageCatalogue>;
  * A host's overrides of the editor's text, keyed as in
  * `audioEditorMessages`, and `ui`'s keys, such as `fileDropZone.choose`, for
  * its components in the editor.
+ *
+ * @deprecated Use `MessageOverrides<AudioEditorMessageCatalogue>`, from
+ * sdk-core's `MessageOverrides`, as the family names it (sdk-core ADR
+ * 0059). This goes in the next breaking release.
  *
  * @public
  */
