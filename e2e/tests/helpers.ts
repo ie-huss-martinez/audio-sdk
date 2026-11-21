@@ -2,6 +2,15 @@ import type { Locator, Page } from "@playwright/test";
 import { wavFile } from "../../test/fixtures/pcm-files.js";
 
 /**
+ * How long a test waits for the first open of a page to show (sdk-core ADR
+ * 0057): longer than the family's 10 s for an assertion, because the first
+ * open starts the audio worker from cold and decodes, which is the slow
+ * step, and in Firefox and WebKit slower still. It stays well under the
+ * test's 60 s.
+ */
+export const FIRST_OPEN = 20_000;
+
+/**
  * A tone at 8 kHz, as WAV bytes, `seconds` long: by default quiet enough
  * never to clip, and loud enough that two together clip at 0.9.
  */

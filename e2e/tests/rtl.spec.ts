@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures.js";
-import { tone } from "./helpers.js";
+import { FIRST_OPEN, tone } from "./helpers.js";
 
 /**
  * The icons that point along time mirror in right-to-left text, in the
@@ -30,7 +30,7 @@ const MIRRORED = "matrix(-1, 0, 0, 1, 0, 0)";
 /** Each icon's name, whether ui flags it, and its computed transform. */
 async function icons(page: Page) {
   await page.evaluate((data) => window.audioEditor.open(new Uint8Array(data).buffer), [...tone(1)]);
-  await expect(page.getByRole("option")).toHaveCount(1, { timeout: 20_000 });
+  await expect(page.getByRole("option")).toHaveCount(1, { timeout: FIRST_OPEN });
   return page.locator("svg.hm-icon").evaluateAll((all) =>
     all.map((icon) => ({
       name: icon.getAttribute("data-hm-icon"),

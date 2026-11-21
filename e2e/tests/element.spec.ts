@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures.js";
-import { openByKeyboard } from "./helpers.js";
+import { FIRST_OPEN, openByKeyboard } from "./helpers.js";
 
 /**
  * `<hm-audio-editor>` on a page without React of its own (docs/adr/0005):
@@ -12,7 +12,7 @@ test("the element opens and edits a recording from the keyboard, with anonymous 
   await page.goto("/element.html");
   await openByKeyboard(page, 1, "private-interview.wav");
   const playhead = page.getByRole("slider", { name: "Playhead" });
-  await expect(playhead).toBeFocused({ timeout: 20_000 });
+  await expect(playhead).toBeFocused({ timeout: FIRST_OPEN });
 
   await page.keyboard.press("m");
   await expect
