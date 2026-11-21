@@ -6,6 +6,7 @@
 - **Amended:** 2026-11-13: the version check is sdk-core's `packageVersion` handshake ([ADR 0038](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0038-self-hosted-assets-and-worker-version.md)), instead of a `version` call in the worker's contract.
 - **Amended:** 2026-11-13: an export is two stateless calls, `wavHeader` and `renderBlock`, and the processor starts its own worker.
 - **Amended:** 2026-11-15, with playback as built: the context's rate, the start lead, the bus, the fade curves, and what happens when the context won't run.
+- **Amended:** 2026-11-21: the inlined worker loads through the package's `imports`, as `#hm-audio-inline-worker`, which the family's `hm-self-hosted` resolve condition maps to a stub that throws `WORKER_START_FAILED` (sdk-core ADR 0060). A host that self-hosts the worker can leave the inlined copy out of its build; nothing changes for one that doesn't.
 
 ## Context
 

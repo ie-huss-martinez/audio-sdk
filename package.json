@@ -40,6 +40,12 @@
     "./formats/*": "./formats/*",
     "./package.json": "./package.json"
   },
+  "imports": {
+    "#hm-audio-inline-worker": {
+      "hm-self-hosted": "./dist/lazy/no-inline-worker.js",
+      "default": "./dist/lazy/inline-worker.js"
+    }
+  },
   "files": [
     "dist",
     "formats"
@@ -106,6 +112,7 @@
     "ajv": "catalog:",
     "axe-core": "catalog:",
     "dependency-cruiser": "catalog:",
+    "esbuild": "catalog:",
     "fast-check": "catalog:",
     "husky": "catalog:",
     "lint-staged": "catalog:",

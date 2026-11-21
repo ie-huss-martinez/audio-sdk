@@ -17,7 +17,7 @@ catalog:
   "@changesets/cli": ^3.0.3
   "@biomejs/biome": ^2.6.5
   "@commitlint/cli": ^21.2.4
-  "@hussmartinez/sdk-config": ^0.11.3
+  "@hussmartinez/sdk-config": ^0.11.5
   "@hussmartinez/sdk-core": ^0.4.7
   "@hussmartinez/ui": ^0.16.0
   "@playwright/test": 1.65.1
@@ -31,6 +31,9 @@ catalog:
   dependency-cruiser: ^18.7.2
   ajv: ^8.20.0
   axe-core: ^4.11.0
+  # Bundles an application against the built package, with and without
+  # the hm-self-hosted condition, in build.test.ts (sdk-core ADR 0060).
+  esbuild: ^0.28.2
   fast-check: ^4.10.2
   husky: ^9.1.7
   lint-staged: ^17.6.0

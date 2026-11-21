@@ -2,7 +2,13 @@
   "extends": "@hussmartinez/sdk-config/tsconfig/browser",
   "compilerOptions": {
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    // The inlined worker, which package.json's imports map to its built file,
+    // or to a stub with the hm-self-hosted condition (sdk-core ADR 0060).
+    // The source is typed from the module itself.
+    "paths": {
+      "#hm-audio-inline-worker": ["./src/adapters/audio-worker/inline-worker.ts"]
+    }
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/fixtures", "src/test"]

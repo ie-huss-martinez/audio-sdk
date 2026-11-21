@@ -17,7 +17,19 @@ export const externalPackages = [
   ...Object.keys(manifest.dependencies ?? {}),
   ...Object.keys(manifest.peerDependencies ?? {}),
 ];
+/**
+ * The package's own import of its inlined worker, by its name in
+ * package.json's imports. It stays an import in the build, so the host's
+ * bundler resolves it: to the built file by default, or to a stub with the
+ * hm-self-hosted condition, which leaves the inlined worker out of a build
+ * that self-hosts it (sdk-core ADR 0060).
+ */
+export const selfHostedImports = {
+  "#hm-audio-inline-worker": "src/adapters/audio-worker/inline-worker.ts",
+} as const;
+
 const isExternal = (id: string): boolean =>
+  Object.hasOwn(selfHostedImports, id) ||
   externalPackages.some((name) => id === name || id.startsWith(`${name}/`));
 
 /** One built file per public entry point (ADR 0004). */
@@ -26,6 +38,16 @@ export const entries = {
   react: "src/react.ts",
   element: "src/element.ts",
   styles: "src/styles.css",
+} as const;
+
+/**
+ * The targets of package.json's imports, built under stable names in lazy/,
+ * where its imports map points (sdk-core ADR 0060): the inlined worker, and
+ * the stub that stands in for it.
+ */
+const lazyEntries = {
+  "lazy/inline-worker": selfHostedImports["#hm-audio-inline-worker"],
+  "lazy/no-inline-worker": "src/adapters/audio-worker/no-inline-worker.ts",
 } as const;
 
 const entryFiles = new Set(
@@ -83,7 +105,7 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: entries,
+      entry: { ...entries, ...lazyEntries },
       formats: ["es"],
     },
     // Required for a CSS file as an entry; it's then emitted as its own file.

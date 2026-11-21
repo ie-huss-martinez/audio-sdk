@@ -11,7 +11,7 @@ import type {
   AudioSampleFormat,
 } from "../core/ports/audio-processor.js";
 import type { AudioWorkerContract } from "./audio-worker/contract.js";
-import { type AudioWorkerSource, audioWorkerSource } from "./audio-worker/loader.js";
+import { type AudioWorkerSource, audioWorkerSource, startFailure } from "./audio-worker/loader.js";
 import { dataSize } from "./wav/wav-data.js";
 
 /**
@@ -189,7 +189,9 @@ export function createProcessor(environment: ProcessorEnvironment): AudioProcess
         return await render(job, options.signal, options.onProgress);
       } catch (error) {
         if (error instanceof TypeError || error instanceof RangeError) throw error;
-        throw asAudioError(error, "The recording couldn't be exported.");
+        // A worker that couldn't start for a reason of its own keeps it, such
+        // as a build that left the inlined worker out (sdk-core ADR 0060).
+        throw asAudioError(startFailure(error), "The recording couldn't be exported.");
       }
     },
     async destroy() {
