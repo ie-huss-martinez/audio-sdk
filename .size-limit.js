@@ -14,115 +14,64 @@
  *   Each is set a little above its measured size, so growth is noticed.
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, normalize } from "node:path";
+import { entryBudget, importBudget } from "@hussmartinez/sdk-config/size";
 
 /**
- * The built files an entry loads up front: the entry, and every chunk it
- * imports statically, directly or through other chunks. Counting only these,
- * rather than every shared chunk, keeps one entry's budget from paying for
- * code that only another entry loads. Chunks loaded with `import()`, in
- * `lazy/`, have budgets of their own. video-sdk's, unchanged.
+ * An application's import from the core entry, as sdk-config's
+ * `importBudget` measures it (sdk-core ADR 0056): without React, the
+ * family's packages, which have budgets of their own, and the lazy worker.
  */
-function loadedFiles(file) {
-  const seen = new Set();
-  const visit = (path) => {
-    if (seen.has(path) || !existsSync(path)) return;
-    seen.add(path);
-    const code = readFileSync(path, "utf8");
-    for (const [, specifier] of code.matchAll(/(?:from\s*|import\s+)"(\.{1,2}\/[^"]+\.js)"/g)) {
-      visit(normalize(join(dirname(path), specifier)));
-    }
-  };
-  visit(join("dist", file));
-  return [...seen];
-}
+const coreImport = (name, imports, limit) =>
+  importBudget({ name, entry: "dist/index.js", imports, limit });
 
-/** An application's import from the core entry, without sdk-core and the lazy worker. */
-const coreImport = (name, imports, limit) => ({
-  name,
-  path: "dist/index.js",
-  import: imports,
-  // The lazy worker is imported from the entry, or from a shared chunk when
-  // another entry shares the code, as ../lazy/ from there.
-  ignore: ["@hussmartinez/sdk-core", "./lazy/*", "../lazy/*"],
-  brotli: true,
-  limit,
-});
-
-/**
- * An application's import from the React entry, without React, ui and
- * sdk-core, which are the host's or have budgets of their own, and the lazy
- * worker (sdk-core ADR 0056).
- */
-const reactImport = (name, imports, limit) => ({
-  name,
-  path: "dist/react.js",
-  import: imports,
-  ignore: [
-    "react",
-    "react-dom",
-    "react/jsx-runtime",
-    "@hussmartinez/ui",
-    "@hussmartinez/ui/react",
-    "@hussmartinez/sdk-core",
-    "./lazy/*",
-    "../lazy/*",
-  ],
-  brotli: true,
-  limit,
-});
+/** An application's import from the React entry, measured the same way. */
+const reactImport = (name, imports, limit) =>
+  importBudget({ name, entry: "dist/react.js", imports, limit });
 
 export default [
-  {
-    disablePlugins: ["@size-limit/esbuild"],
-    // Measured at 23.39 kB with the multitrack plan (docs/adr/0006): the
-    // session, the reducer of tracks and time edits, the readers of both
-    // format versions with the migration of version 1's plans and commands,
-    // the mix's gathering, the engine's and the processor's page sides,
-    // playback with its playhead watcher, the adapters made together, the
-    // timecode and waveform columns, and the text of errors and warnings,
-    // by code and reason. Minified, as an
-    // application ships it, it's 17.78 kB. The React entry shares most of
-    // this code, so the build splits it into the entry and a shared chunk,
-    // which costs about 1.1 kB minified without a change of code: two
-    // files compress apart, and carry their exports' names. Before the
-    // React entry it was 21.81 kB, 16.67 kB minified. Before tracks it was 15.06 kB,
-    // and 11.53 kB minified.
+  // Measured at 23.39 kB with the multitrack plan (docs/adr/0006): the
+  // session, the reducer of tracks and time edits, the readers of both
+  // format versions with the migration of version 1's plans and commands,
+  // the mix's gathering, the engine's and the processor's page sides,
+  // playback with its playhead watcher, the adapters made together, the
+  // timecode and waveform columns, and the text of errors and warnings,
+  // by code and reason. Minified, as an
+  // application ships it, it's 17.78 kB. The React entry shares most of
+  // this code, so the build splits it into the entry and a shared chunk,
+  // which costs about 1.1 kB minified without a change of code: two
+  // files compress apart, and carry their exports' names. Before the
+  // React entry it was 21.81 kB, 16.67 kB minified. Before tracks it was 15.06 kB,
+  // and 11.53 kB minified.
+  entryBudget({
     name: "Server-safe core (.), with the shared code it loads",
-    path: loadedFiles("index.js"),
-    brotli: true,
+    entry: "dist/index.js",
     limit: "24 kB",
-  },
-  {
-    disablePlugins: ["@size-limit/esbuild"],
-    // Measured at 38.64 kB with the element beside it (docs/adr/0006, step
-    // 16), 30.08 kB minified: the element shares its code, so it loads one
-    // chunk more. It was 38.29 kB, 29.87 kB minified, with the export dialog
-    // (step 15), and 35.63 kB, 27.76 kB minified, before that:
-    // the provider, hooks, stage, notices, transport, toolbar, track
-    // headers, rename dialog, the timeline and its waveforms, the clip,
-    // range and fade tools, the inspector, the export dialog with the WAV
-    // layout it sizes files by (not the writer), and the core's shared chunk
-    // they use. It was 35.63 kB with range edits, 34.69 kB with the
-    // inspector, 32.95 kB with range selection, 30.91 kB with the clip tools,
-    // 28.70 kB with the track tools, 25.22 kB with the timeline, and
-    // 22.64 kB with the shell. React and ui are the host's, so not counted.
+  }),
+  // Measured at 38.64 kB with the element beside it (docs/adr/0006, step
+  // 16), 30.08 kB minified: the element shares its code, so it loads one
+  // chunk more. It was 38.29 kB, 29.87 kB minified, with the export dialog
+  // (step 15), and 35.63 kB, 27.76 kB minified, before that:
+  // the provider, hooks, stage, notices, transport, toolbar, track
+  // headers, rename dialog, the timeline and its waveforms, the clip,
+  // range and fade tools, the inspector, the export dialog with the WAV
+  // layout it sizes files by (not the writer), and the core's shared chunk
+  // they use. It was 35.63 kB with range edits, 34.69 kB with the
+  // inspector, 32.95 kB with range selection, 30.91 kB with the clip tools,
+  // 28.70 kB with the track tools, 25.22 kB with the timeline, and
+  // 22.64 kB with the shell. React and ui are the host's, so not counted.
+  entryBudget({
     name: "React entry (./react), with the shared code it loads",
-    path: loadedFiles("react.js"),
-    brotli: true,
+    entry: "dist/react.js",
     limit: "40 kB",
-  },
-  {
-    disablePlugins: ["@size-limit/esbuild"],
-    // The element and the React editor it mounts (docs/adr/0006, step 16):
-    // measured at 39.53 kB, 30.71 kB minified. The limit is the next 0.5 kB.
-    // Empty before the element, it was 1 kB.
+  }),
+  // The element and the React editor it mounts (docs/adr/0006, step 16):
+  // measured at 39.53 kB, 30.71 kB minified. The limit is the next 0.5 kB.
+  // Empty before the element, it was 1 kB.
+  entryBudget({
     name: "Element entry (./element), with the shared code it loads",
-    path: loadedFiles("element.js"),
-    brotli: true,
+    entry: "dist/element.js",
     limit: "40 kB",
-  },
+  }),
   {
     disablePlugins: ["@size-limit/esbuild"],
     name: "Stylesheet (./styles.css)",

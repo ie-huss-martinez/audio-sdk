@@ -99,7 +99,11 @@ describe("AudioEditor", () => {
       probe: (_file, options) =>
         new Promise((_resolve, reject) => {
           const signal = options?.signal;
-          signal?.addEventListener("abort", () => reject(abortError(signal)));
+          if (signal?.aborted) {
+            reject(abortError(signal));
+            return;
+          }
+          signal?.addEventListener("abort", () => reject(abortError(signal)), { once: true });
         }),
     };
     const container = await mount(<AudioEditor engine={engine} />);
