@@ -1,5 +1,22 @@
 # @hussmartinez/audio-sdk
 
+## 0.9.4
+
+### Patch Changes
+
+- [#121](https://github.com/ie-huss-martinez/audio-sdk/pull/121) [`f9b8385`](https://github.com/ie-huss-martinez/audio-sdk/commit/f9b83852f6ca8aa5fc6fca5b534a464afb67ca20) Thanks [@hussmartinez](https://github.com/hussmartinez)! - `AudioEditorMessages` and `AudioEditorMessageOverrides` are deprecated, and go in the next breaking release. The family names the editor's catalogue type once, `AudioEditorMessageCatalogue`, and builds the rest from sdk-core's types:
+  
+  ```ts
+  import type { AudioEditorMessageCatalogue } from "@hussmartinez/audio-sdk";
+  import type { MessageOverrides, Messages } from "@hussmartinez/sdk-core";
+  
+  // Before: AudioEditorMessageOverrides and AudioEditorMessages
+  const overrides: MessageOverrides<AudioEditorMessageCatalogue> = { "track.solo": "Solo" };
+  type EditorText = Messages<AudioEditorMessageCatalogue>;
+  ```
+  
+  They're the same types, so nothing else changes: the `messages` props of `AudioEditor`, `AudioEditorProvider` and `<hm-audio-editor>`, and `useAudioMessages()`, are now written with them.
+
 ## 0.9.3
 
 ### Patch Changes
