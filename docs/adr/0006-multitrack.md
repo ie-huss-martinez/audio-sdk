@@ -13,6 +13,7 @@
 - **Amended:** 2026-11-18, with the first editor step: a clip moves by its title strip only (`ui`'s `moveHandle="title"`), and the provider as built.
 - **Amended:** 2026-11-18, with the timeline as built (step 11).
 - **Amended:** 2026-11-18, with the track tools as built (step 12), the clip tools (step 13a), range selection (step 13b), the inspector (step 14a), `ui` 0.13 and 0.14, editing a range (step 14b), the export dialog (step 15), the element (step 16), the examples (step 17), and the screenshots (step 18).
+- **Amended:** 2026-11-21: `audioErrorText` and `audioWarningText` are deprecated one-line calls to sdk-core's `messages.error` and `messages.warning`, which took over points 9 and 12's text by reason and warning text (sdk-core ADR 0050).
 - **Supersedes in part:** [ADR 0003](0003-clip-plan-document-model.md) (the plan's shape, derived positions, the command table and version 1 of the formats) and [ADR 0005](0005-editor-shell.md) (the timeline, the selection and the order of the work). **Extends:** [ADR 0004](0004-audio-limits.md), with two limits.
 
 ## Context

@@ -61,7 +61,7 @@ export const audioMessages = /* @__PURE__ */ defineMessages({
     other: "This recording has {actual} tracks. Many tracks may be slow to play and export.",
   }),
   // Texts for one reason of a code, which take its place when the error
-  // carries that reason: see audioErrorText.
+  // carries that reason: messages.error() looks for them first.
   "errors.UNSUPPORTED_ENVIRONMENT.autoplay-blocked":
     "The browser didn't let sound start. Press Play to start it.",
   "errors.DURATION_TOO_LONG.plan-too-long":

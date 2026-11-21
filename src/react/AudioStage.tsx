@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { isAudioError } from "../core/errors/audio-error.js";
 import { planLength } from "../core/model/plan.js";
 import { formatTimecode } from "../core/model/time.js";
-import { audioErrorText } from "../messages/text.js";
 import { EditorTimeline } from "./AudioTimeline.js";
 import { useAudioEditorContext, useAudioSession } from "./context.js";
 import { classes, type PartClassNames } from "./parts.js";
@@ -53,7 +52,7 @@ export function Stage({
   const failure =
     error && !isAudioError(error, "ABORTED") ? (
       <p className="hm-audio-editor-error" role="alert">
-        {audioErrorText(messages, error)}
+        {messages.error(error)}
       </p>
     ) : null;
 
