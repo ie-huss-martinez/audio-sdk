@@ -2,6 +2,8 @@ import {
   createMessages,
   createShortcutRegistry,
   createToolRegistry,
+  type MessageOverrides,
+  type Messages,
   type ShortcutRegistry,
   type ToolRegistry,
 } from "@hussmartinez/sdk-core";
@@ -38,9 +40,9 @@ import { watchPlayhead } from "../core/session/watch-playhead.js";
 import { type AudioTool, audioTools, defaultAudioToolbar } from "../features/tools/tools.js";
 import type { AudioEditorDialog } from "../features/tools/types.js";
 import {
-  type AudioEditorMessageOverrides,
-  type AudioEditorMessages,
+  type AudioEditorMessageCatalogue,
   audioEditorMessages,
+  type EditorMessages,
 } from "./editor-messages.js";
 
 /**
@@ -63,7 +65,7 @@ export interface AudioEditorProviderProps {
    */
   readonly assetsUrl?: string | URL;
   /** Text overrides. */
-  readonly messages?: AudioEditorMessageOverrides;
+  readonly messages?: MessageOverrides<AudioEditorMessageCatalogue>;
   /** The locale numbers, sizes and durations are formatted for. Defaults to `en`. */
   readonly locale?: string;
   /** Anonymous usage events: never file names, samples or metadata. */
@@ -96,7 +98,7 @@ export interface AudioLoad {
 interface EditorContext {
   readonly session: AudioSession;
   readonly output: AudioOutput;
-  readonly messages: AudioEditorMessages;
+  readonly messages: EditorMessages;
   /** The open or insert in progress, which the editor shows with a Cancel button. */
   readonly load: AudioLoad | undefined;
   /** Opens a recording, replacing the current one. Rejects as `session.open` does. */
@@ -438,6 +440,6 @@ export function useAudioPlayhead(): number {
  *
  * @public
  */
-export function useAudioMessages(): AudioEditorMessages {
+export function useAudioMessages(): Messages<AudioEditorMessageCatalogue> {
   return useAudioEditorContext().messages;
 }

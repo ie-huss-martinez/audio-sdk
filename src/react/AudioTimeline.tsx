@@ -34,7 +34,7 @@ import {
   useAudioPlayhead,
   useAudioSession,
 } from "./context.js";
-import type { AudioEditorMessages } from "./editor-messages.js";
+import type { EditorMessages } from "./editor-messages.js";
 import { trackName } from "./names.js";
 import { classes, type PartClassNames } from "./parts.js";
 import { useAudioTools } from "./tools.js";
@@ -53,7 +53,7 @@ const EXTEND_KEYS: ReadonlySet<string> = new Set([
 
 /** A lane's accessible name: the track's, and whether it's heard. */
 function laneLabel(
-  messages: AudioEditorMessages,
+  messages: EditorMessages,
   plan: AudioPlan,
   track: AudioTrack,
   name: string,

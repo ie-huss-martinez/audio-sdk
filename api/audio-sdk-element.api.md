@@ -46,8 +46,8 @@ export interface AudioEditorElementProps {
     filePolicy?: AudioFilePolicyOverrides;
     headingLevel?: 2 | 3 | 4 | 5 | 6;
     locale?: string;
-    // Warning: (ae-forgotten-export) The symbol "AudioEditorMessageOverrides" needs to be exported by the entry point element.d.ts
-    messages?: AudioEditorMessageOverrides;
+    // Warning: (ae-forgotten-export) The symbol "AudioEditorMessageCatalogue" needs to be exported by the entry point element.d.ts
+    messages?: MessageOverrides<AudioEditorMessageCatalogue>;
     // Warning: (ae-forgotten-export) The symbol "AudioOutput" needs to be exported by the entry point element.d.ts
     //
     // (undocumented)

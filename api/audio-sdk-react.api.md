@@ -6,8 +6,8 @@
 
 import { FilePolicyOverrides } from '@hussmartinez/sdk-core';
 import { ForwardRefExoticComponent } from 'react';
-import type { MessageOverrides } from '@hussmartinez/sdk-core';
-import type { Messages } from '@hussmartinez/sdk-core';
+import { MessageOverrides } from '@hussmartinez/sdk-core';
+import { Messages } from '@hussmartinez/sdk-core';
 import { ReactNode } from 'react';
 import { RefAttributes } from 'react';
 import { SdkCoreErrorCode } from '@hussmartinez/sdk-core';
@@ -71,8 +71,7 @@ export interface AudioEditorProviderProps {
     // Warning: (ae-forgotten-export) The symbol "AudioFilePolicyOverrides" needs to be exported by the entry point react.d.ts
     readonly filePolicy?: AudioFilePolicyOverrides;
     readonly locale?: string;
-    // Warning: (ae-forgotten-export) The symbol "AudioEditorMessageOverrides" needs to be exported by the entry point react.d.ts
-    readonly messages?: AudioEditorMessageOverrides;
+    readonly messages?: MessageOverrides<AudioEditorMessageCatalogue>;
     // Warning: (ae-forgotten-export) The symbol "AudioSessionEvent" needs to be exported by the entry point react.d.ts
     readonly onEvent?: (event: AudioSessionEvent) => void;
     // Warning: (ae-forgotten-export) The symbol "AudioOutput" needs to be exported by the entry point react.d.ts
@@ -159,10 +158,8 @@ export interface AudioTransportProps {
     readonly className?: string;
 }
 
-// Warning: (ae-forgotten-export) The symbol "AudioEditorMessages" needs to be exported by the entry point react.d.ts
-//
 // @public
-export function useAudioMessages(): AudioEditorMessages;
+export function useAudioMessages(): Messages<AudioEditorMessageCatalogue>;
 
 // @public
 export function useAudioOutput(): UseAudioOutputResult;

@@ -1,8 +1,8 @@
 import type { AudioPlan, AudioTrack } from "../core/model/plan.js";
-import type { AudioEditorMessages } from "./editor-messages.js";
+import type { EditorMessages } from "./editor-messages.js";
 
 /** A track's name as people see it: "Track 2, Music", or "Track 2" without one. */
-export function trackName(messages: AudioEditorMessages, track: AudioTrack, index: number): string {
+export function trackName(messages: EditorMessages, track: AudioTrack, index: number): string {
   return track.name
     ? messages.t("timeline.track.named", { index: index + 1, name: track.name })
     : messages.t("timeline.track", { index: index + 1 });
@@ -13,7 +13,7 @@ export function trackName(messages: AudioEditorMessages, track: AudioTrack, inde
  * name, or how many.
  */
 export function tracksText(
-  messages: AudioEditorMessages,
+  messages: EditorMessages,
   plan: AudioPlan | undefined,
   tracks: readonly AudioTrack[],
 ): string {

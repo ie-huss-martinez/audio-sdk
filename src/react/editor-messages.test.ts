@@ -15,4 +15,11 @@ describe("audioEditorMessages", () => {
   it("keeps the editor's text out of the server-safe catalogue", () => {
     for (const key of Object.keys(audioEditorText)) expect(audioMessages).not.toHaveProperty(key);
   });
+
+  it("keeps interface text out of the server-safe catalogue's families of keys (sdk-core ADR 0059)", () => {
+    const misplaced = Object.keys(audioEditorText).filter(
+      (key) => key.startsWith("errors.") || key.startsWith("warnings."),
+    );
+    expect(misplaced).toEqual([]);
+  });
 });

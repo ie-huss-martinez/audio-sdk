@@ -1,4 +1,4 @@
-import { createMessages } from "@hussmartinez/sdk-core";
+import { createMessages, sdkCoreMessages } from "@hussmartinez/sdk-core";
 import { describe, expect, it } from "vitest";
 import { AudioError, type AudioErrorCode } from "../core/errors/audio-error.js";
 import { audioLimitDefinitions, audioLimits } from "../core/errors/audio-limits.js";
@@ -45,6 +45,18 @@ function violation(run: () => unknown): unknown {
 }
 
 describe("audioMessages", () => {
+  it("holds only text for what the headless API hands a host to show (sdk-core ADR 0059)", () => {
+    // sdk-core's own, and errors and warnings, by code, reason and limit:
+    // nothing else that importing only the server-safe entry can produce.
+    const outside = Object.keys(audioMessages).filter(
+      (key) =>
+        !Object.hasOwn(sdkCoreMessages, key) &&
+        !key.startsWith("errors.") &&
+        !key.startsWith("warnings."),
+    );
+    expect(outside).toEqual([]);
+  });
+
   it("has text for every AudioError code and every limit's warning", () => {
     for (const code of Object.keys(ALL_CODES)) {
       expect(audioMessages, code).toHaveProperty(`errors.${code}`);

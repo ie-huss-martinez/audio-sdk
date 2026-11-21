@@ -17,7 +17,7 @@ import { findClip, moveClips, nudgeFrames } from "../features/clips/clips.js";
 import { clipsInRange, setRangeGain } from "../features/range/edits.js";
 import { useAudioEditorContext, useAudioSession } from "./context.js";
 import { useDraft, useFollowing } from "./draft.js";
-import type { AudioEditorMessages } from "./editor-messages.js";
+import type { EditorMessages } from "./editor-messages.js";
 import { trackName, tracksText } from "./names.js";
 import { classes, type PartClassNames } from "./parts.js";
 import { parseTimecode } from "./timecode.js";
@@ -147,7 +147,7 @@ export function EditorInspector({
 
 interface FieldsProps {
   readonly plan: AudioPlan;
-  readonly messages: AudioEditorMessages;
+  readonly messages: EditorMessages;
   readonly run: (command: AudioCommand) => void;
 }
 
@@ -162,7 +162,7 @@ function Gain({
   readonly label: string;
   readonly exactLabel: string;
   readonly value: number;
-  readonly messages: AudioEditorMessages;
+  readonly messages: EditorMessages;
   readonly onCommit: (gainDb: number) => void;
 }): ReactNode {
   const [live, setLive] = useFollowing(value);
@@ -297,7 +297,7 @@ function SelectionFields({
 }: {
   readonly plan: AudioPlan;
   readonly selection: AudioSelection;
-  readonly messages: AudioEditorMessages;
+  readonly messages: EditorMessages;
   readonly setGain: (gainDb: number) => void;
 }): ReactNode {
   const rate = plan.sampleRate;
@@ -389,7 +389,7 @@ function MetadataField({
 }: {
   readonly field: keyof AudioMetadata;
   readonly value: string;
-  readonly messages: AudioEditorMessages;
+  readonly messages: EditorMessages;
   readonly run: (command: AudioCommand) => void;
 }): ReactNode {
   const [draft, setDraft, commit] = useDraft(value, (next) =>

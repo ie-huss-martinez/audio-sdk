@@ -1,3 +1,4 @@
+import type { MessageOverrides } from "@hussmartinez/sdk-core";
 import type { EditorElementContext, MountedEditor } from "@hussmartinez/sdk-core/element";
 import { type ReactNode, type RefCallback, useEffect, useMemo, useRef } from "react";
 import { createRoot } from "react-dom/client";
@@ -7,7 +8,7 @@ import type { AudioEngine } from "../../core/ports/audio-engine.js";
 import type { AudioOutput } from "../../core/ports/audio-output.js";
 import type { AudioProcessor, AudioRenderResult } from "../../core/ports/audio-processor.js";
 import type { AudioInsertOptions, AudioSessionExportOptions } from "../../core/session/session.js";
-import type { AudioEditorMessageOverrides } from "../../messages/editor.js";
+import type { AudioEditorMessageCatalogue } from "../../messages/editor.js";
 import { AudioEditor, type AudioEditorHandle } from "../AudioEditor.js";
 import { type AudioExportReport, ElementListenersContext } from "./listeners.js";
 
@@ -35,7 +36,7 @@ export interface AudioEditorElementProps {
   /** Where the application serves the package's `dist/assets/` directory. */
   assetsUrl?: string | URL;
   /** Text overrides, typed against the English catalogue. */
-  messages?: AudioEditorMessageOverrides;
+  messages?: MessageOverrides<AudioEditorMessageCatalogue>;
   engine?: AudioEngine;
   processor?: AudioProcessor;
   output?: AudioOutput;
