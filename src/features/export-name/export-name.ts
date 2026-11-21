@@ -1,4 +1,4 @@
-import { cleanFileName } from "../../core/session/source-name.js";
+import { cleanFileName } from "@hussmartinez/sdk-core";
 
 /** The extensions of the files the SDK reads and writes, which the export puts back. */
 const AUDIO_EXTENSION = /\.(wav|wave|mp3|m4a|mp4|aac|adts|flac|ogg|oga|opus|weba|webm)$/iu;

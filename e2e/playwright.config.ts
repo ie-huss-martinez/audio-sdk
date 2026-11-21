@@ -17,6 +17,8 @@ export default defineConfig({
   forbidOnly: ci,
   retries: 0,
   reporter: ci ? "line" : "list",
+  // Refuses to start outside the pinned image (#73, sdk-core ADR 0049).
+  globalSetup: "@hussmartinez/sdk-config/testing/require-image",
   globalTeardown: "./update-capabilities.ts",
   use: { baseURL: "http://localhost:4310", trace: "retain-on-failure" },
   projects: (

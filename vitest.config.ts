@@ -48,6 +48,10 @@ export default defineConfig(({ mode }) => {
             include: ["src/**/*.browser.test.{ts,tsx}", "test/**/*.browser.test.{ts,tsx}"],
             // Firefox crashes when two worlds read ariaLabelledByElements (#76).
             setupFiles: ["./test/firefox-labelled-by-guard.ts"],
+            // Refuses to start outside the pinned image, where Docker's
+            // network changes make Chromium fail at random (#73, sdk-core
+            // ADR 0049).
+            globalSetup: ["@hussmartinez/sdk-config/testing/require-image"],
             browser: {
               enabled: true,
               headless: true,
