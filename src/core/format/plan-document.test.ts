@@ -155,6 +155,15 @@ describe("migrating version 1 plans", () => {
   });
 });
 
+/**
+ * The limit of the one test here that's over the family's 30 s when the
+ * machine is busy (sdk-core ADR 0057): it checks three thousand generated
+ * version 1 commands against their migration. It took 3.4 s alone and 32 s
+ * with the whole unit suite running three times at once on a 12-core
+ * machine. The run count isn't lowered to fit the family's limit.
+ */
+const LONG = 120_000;
+
 describe("migrating version 1 commands", () => {
   /** A version 1 command run by version 1's reducer, then migrated: or the refusal. */
   const earlier = (plan: AudioPlanV1, command: AudioCommandV1) => {
@@ -223,18 +232,22 @@ describe("migrating version 1 commands", () => {
     expect(later(BASE, command)).toEqual(expected);
   });
 
-  it("does what version 1 did, or refuses what it refused, for any command", () => {
-    fc.assert(
-      fc.property(
-        planArbV1.chain((plan) => fc.tuple(fc.constant(plan), commandForV1(plan))),
-        ([plan, command]) => {
-          expect(later(plan, command)).toEqual(earlier(plan, command));
-        },
-      ),
-      { numRuns: 3_000 },
-    );
-    // 3.4 s alone, 32 s busy.
-  });
+  it(
+    "does what version 1 did, or refuses what it refused, for any command",
+    () => {
+      fc.assert(
+        fc.property(
+          planArbV1.chain((plan) => fc.tuple(fc.constant(plan), commandForV1(plan))),
+          ([plan, command]) => {
+            expect(later(plan, command)).toEqual(earlier(plan, command));
+          },
+        ),
+        { numRuns: 3_000 },
+      );
+      // 3.4 s alone, 32 s busy.
+    },
+    LONG,
+  );
 
   it("leaves a migrated plan back to back, so later version 1 commands still mean the same", () => {
     fc.assert(
