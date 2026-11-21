@@ -12,7 +12,6 @@ import { formatTimecode } from "../core/model/time.js";
 import type { AudioRenderResult, AudioSampleFormat } from "../core/ports/audio-processor.js";
 import { exportFacts } from "../core/session/session.js";
 import { exportFileName } from "../features/export-name/export-name.js";
-import { audioErrorText } from "../messages/text.js";
 import { useAudioEditorContext, useAudioSession } from "./context.js";
 import type { AudioEditorMessages } from "./editor-messages.js";
 import { ElementListenersContext } from "./element/listeners.js";
@@ -354,7 +353,7 @@ export function AudioExportDialog(props: AudioExportDialogProps): ReactNode {
               {/* A TypeError: no processor, as with a host's engine and none of its own. */}
               {error instanceof TypeError
                 ? messages.t("export.unavailable")
-                : audioErrorText(messages, error)}
+                : messages.error(error)}
             </p>
           ) : null}
         </>

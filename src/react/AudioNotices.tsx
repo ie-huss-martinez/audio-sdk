@@ -1,7 +1,6 @@
 import { CloseIcon, IconButton, useAnnounce } from "@hussmartinez/ui/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { AudioWarning } from "../core/session/session.js";
-import { audioWarningText } from "../messages/text.js";
 import { useAudioEditorContext, useAudioSession } from "./context.js";
 import { classes, type PartClassNames } from "./parts.js";
 
@@ -71,7 +70,7 @@ export function Notices({
   for (const warning of snapshot.warnings) {
     const kind = warningKind(warning);
     const texts = kinds.get(kind) ?? new Set<string>();
-    texts.add(audioWarningText(messages, warning));
+    texts.add(messages.warning(warning));
     kinds.set(kind, texts);
   }
   const items = [

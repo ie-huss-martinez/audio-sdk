@@ -2,7 +2,6 @@ import { IconButton, PauseIcon, PlayIcon, SkipBackIcon } from "@hussmartinez/ui/
 import { forwardRef, type ReactNode, useState } from "react";
 import { planLength } from "../core/model/plan.js";
 import { formatTimecode } from "../core/model/time.js";
-import { audioErrorText } from "../messages/text.js";
 import {
   useAudioEditorContext,
   useAudioOutput,
@@ -54,7 +53,7 @@ export const Transport = /* @__PURE__ */ forwardRef<
       return;
     }
     setNotice(undefined);
-    output.play().catch((error: unknown) => setNotice(audioErrorText(messages, error)));
+    output.play().catch((error: unknown) => setNotice(messages.error(error)));
   };
 
   return (

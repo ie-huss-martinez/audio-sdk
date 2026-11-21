@@ -9,7 +9,7 @@ import { FilePolicyOverrides } from '@hussmartinez/sdk-core';
 import { Limits } from '@hussmartinez/sdk-core';
 import { MAX_FILE_NAME_LENGTH } from '@hussmartinez/sdk-core';
 import type { MessageOverrides } from '@hussmartinez/sdk-core';
-import { Messages } from '@hussmartinez/sdk-core';
+import type { Messages } from '@hussmartinez/sdk-core';
 import { SdkCoreErrorCode } from '@hussmartinez/sdk-core';
 import { SdkError } from '@hussmartinez/sdk-core';
 import type { uiMessages } from '@hussmartinez/ui';
@@ -165,7 +165,7 @@ export class AudioError extends SdkError<AudioErrorCode> {
 // @public
 export type AudioErrorCode = SdkCoreErrorCode | "INVALID_AUDIO" | "UNSUPPORTED_FORMAT" | "DECODE_FAILED" | "INVALID_COMMAND" | "INVALID_DOCUMENT" | "DURATION_TOO_LONG" | "TOO_MANY_CHANNELS" | "SAMPLE_RATE_TOO_HIGH" | "SESSION_TOO_LARGE" | "TOO_MANY_CLIPS" | "TOO_MANY_TRACKS";
 
-// @public
+// @public @deprecated
 export function audioErrorText(messages: Messages<AudioMessageCatalogue>, error: unknown): string;
 
 // @public
@@ -891,7 +891,7 @@ export type AudioWarning = {
     readonly declaredFrames: number;
 };
 
-// @public
+// @public @deprecated
 export function audioWarningText(messages: Messages<AudioMessageCatalogue>, warning: AudioWarning): string;
 
 // @public
