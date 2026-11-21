@@ -17,16 +17,29 @@
 import { entryBudget, importBudget } from "@hussmartinez/sdk-config/size";
 
 /**
+ * An import budget, bundled as a host's bundler would: without this
+ * repository's tsconfig, whose paths point the package's own import of its
+ * inlined worker, #hm-audio-inline-worker, at the source for TypeScript. A
+ * host resolves it through package.json's imports, to the lazy chunk the
+ * budget leaves out (sdk-core ADR 0060).
+ */
+const forHosts = (budget) =>
+  importBudget({
+    ...budget,
+    modifyEsbuildConfig: (config) => ({ ...config, tsconfigRaw: "{}" }),
+  });
+
+/**
  * An application's import from the core entry, as sdk-config's
  * `importBudget` measures it (sdk-core ADR 0056): without React, the
  * family's packages, which have budgets of their own, and the lazy worker.
  */
 const coreImport = (name, imports, limit) =>
-  importBudget({ name, entry: "dist/index.js", imports, limit });
+  forHosts({ name, entry: "dist/index.js", imports, limit });
 
 /** An application's import from the React entry, measured the same way. */
 const reactImport = (name, imports, limit) =>
-  importBudget({ name, entry: "dist/react.js", imports, limit });
+  forHosts({ name, entry: "dist/react.js", imports, limit });
 
 export default [
   // Measured at 23.39 kB with the multitrack plan (docs/adr/0006): the
@@ -89,7 +102,7 @@ export default [
     // module, which the worker now calls rather than inlining. It was
     // 14.90 kB, 14.72 kB minified. The limit is the next 0.5 kB.
     name: "Audio worker, inlined (lazy)",
-    path: "dist/lazy/inline-worker-*.js",
+    path: "dist/lazy/inline-worker.js",
     brotli: true,
     limit: "15.5 kB",
   },
@@ -133,10 +146,14 @@ export default [
     "{ createAudioSession, createAudioEngine, createAudioProcessor, createAudioOutput, audioMessages }",
     "15 kB",
   ),
-  // Measured 2.89 kB: the editor's catalogue alone, the SDK's messages and
-  // the editor's text, ui's being the host's, with the error class and the
-  // limits' definitions the core's text keeps. Before the entry came apart
-  // (sdk-core ADR 0056) it kept nearly the whole editor: 16.64 kB here,
-  // 16.98 kB by the ADR's own measure. The limit is the next 0.5 kB.
-  reactImport("Import: audioEditorMessages (./react)", "{ audioEditorMessages }", "3 kB"),
+  // The React entry's floor, measured 3.51 kB: the editor's catalogue
+  // alone, the SDK's messages and the editor's text, ui's being the host's,
+  // with the error class and the limits' definitions the core's text keeps.
+  // sdk-config 0.11.5 bundles import budgets as an ES module, as an
+  // application's build does, which measures it 0.62 kB more than the
+  // 2.89 kB of before, with no change of code: main's build measures
+  // 3.52 kB the same way. A floor's limit is its measurement rounded up to
+  // the next 0.1 kB. Before the entry came apart (sdk-core ADR 0056) it kept
+  // nearly the whole editor: 16.64 kB, 16.98 kB by the ADR's own measure.
+  reactImport("Import: audioEditorMessages (./react)", "{ audioEditorMessages }", "3.6 kB"),
 ];

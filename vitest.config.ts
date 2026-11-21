@@ -1,10 +1,23 @@
+import { fileURLToPath } from "node:url";
 import { browserInstances } from "@hussmartinez/sdk-config/testing/browser-instances";
 import { browserTimeouts, unitTimeouts } from "@hussmartinez/sdk-config/testing/timeouts";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 import { testAssets, versionDefine } from "./tools/self-hosted-worker.js";
+import { selfHostedImports } from "./vite.config.js";
 
 const ALL_BROWSERS = ["chromium", "firefox", "webkit"] as const;
+
+/**
+ * The tests run the source: package.json's imports name the built files
+ * (sdk-core ADR 0060), so each one points at its module here.
+ */
+const selfHostedAliases = {
+  alias: Object.entries(selfHostedImports).map(([find, path]) => ({
+    find,
+    replacement: fileURLToPath(new URL(path, import.meta.url)),
+  })),
+};
 
 // Browser tests run on Chromium locally, and on all three engines in CI or
 // with --mode all-browsers (ADR 0015).
@@ -16,6 +29,7 @@ export default defineConfig(({ mode }) => {
       projects: [
         {
           define: versionDefine(),
+          resolve: selfHostedAliases,
           test: {
             name: "unit",
             // The family's limits, for a test and a hook (sdk-core ADR 0057).
@@ -30,6 +44,7 @@ export default defineConfig(({ mode }) => {
         },
         {
           define: versionDefine(),
+          resolve: selfHostedAliases,
           // Serves the self-hosted worker as the build writes it (docs/adr/0002).
           plugins: [testAssets()],
           // Bundled before the run: discovered mid-run, Vite reloads the page,

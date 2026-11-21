@@ -18,4 +18,14 @@ const forbidden = preset.forbidden.map((rule) =>
     : rule,
 );
 
-export default { ...preset, forbidden };
+/**
+ * The package's import of its inlined worker (`#hm-audio-inline-worker`)
+ * names a built file, which doesn't exist before a build. tsconfig.json's
+ * paths map it to its source, as for typecheck, so the layer rules check that
+ * edge too (sdk-core ADR 0060).
+ */
+export default {
+  ...preset,
+  forbidden,
+  options: { ...preset.options, tsConfig: { fileName: "tsconfig.json" } },
+};

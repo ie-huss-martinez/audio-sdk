@@ -4,7 +4,7 @@ import { AudioError } from "../core/errors/audio-error.js";
 import type { AudioPeaks, AudioProbe, DecodedAudio } from "../core/model/source.js";
 import type { AudioEngine } from "../core/ports/audio-engine.js";
 import type { AudioWorkerContract } from "./audio-worker/contract.js";
-import { audioWorkerSource } from "./audio-worker/loader.js";
+import { audioWorkerSource, startFailure } from "./audio-worker/loader.js";
 import type { PcmLayout } from "./pcm/layout.js";
 import { type BucketPeaks, buildPyramid, FINEST_BUCKET } from "./peaks.js";
 import { resampledLength, resampleReach, resampleWindow } from "./resample/resample.js";
@@ -150,7 +150,11 @@ export function createEngine(environment: EngineEnvironment): AudioEngine {
     try {
       return await work();
     } catch (error) {
-      throw error instanceof RangeError || error instanceof TypeError ? error : asAudioError(error);
+      // A worker that couldn't start for a reason of its own keeps it, such
+      // as a build that left the inlined worker out (sdk-core ADR 0060).
+      throw error instanceof RangeError || error instanceof TypeError
+        ? error
+        : asAudioError(startFailure(error));
     }
   }
 

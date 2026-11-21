@@ -1,6 +1,8 @@
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { build as esbuild } from "esbuild";
 import { build, type Rolldown } from "vite";
 import { afterAll, describe, expect, it } from "vitest";
 import { externalPackages } from "./vite.config.js";
@@ -143,7 +145,7 @@ const CODE_GENERATION = /(?<![\w$.])eval\s*\(|(?<![\w$.])(?:new\s+)?Function\s*\
 
 describe("the audio worker (docs/adr/0002)", () => {
   const worker = () => {
-    const found = files.find((file) => /^lazy\/inline-worker-[\w-]+\.js$/.test(file.fileName));
+    const found = files.find((file) => file.fileName === "lazy/inline-worker.js");
     if (found?.type !== "chunk") throw new Error("the inlined worker chunk wasn't built");
     return found;
   };
@@ -165,8 +167,12 @@ describe("the audio worker (docs/adr/0002)", () => {
         entry,
       ).toEqual([]);
     }
-    // The core's code may sit in a chunk it shares with the React entry.
-    expect(loaded("index.js").flatMap((each) => each.dynamicImports)).toEqual([worker().fileName]);
+    // The core's code may sit in a chunk it shares with the React entry. It
+    // loads the worker through package.json's imports, which the host's
+    // bundler resolves (sdk-core ADR 0060).
+    expect(loaded("index.js").flatMap((each) => each.dynamicImports)).toEqual([
+      "#hm-audio-inline-worker",
+    ]);
   });
 
   it("generates no code from strings, in any chunk, including the inlined worker", () => {
@@ -183,6 +189,73 @@ describe("the audio worker (docs/adr/0002)", () => {
   it("ships no worker source maps", () => {
     expect(files.filter((file) => /\.worker-[\w-]+\.js\.map$/.test(file.fileName))).toEqual([]);
     expect(worker().code).not.toMatch(/sourceMappingURL=data:/);
+  });
+});
+
+/**
+ * Writes this build into `dir` as an installed package would hold it: its
+ * JavaScript under dist/, and a package.json with its exports and imports,
+ * so `#hm-audio-inline-worker` resolves as it does for a host.
+ */
+async function writePackage(dir: string): Promise<void> {
+  for (const file of files) {
+    if (file.type !== "chunk") continue;
+    await mkdir(dirname(join(dir, "dist", file.fileName)), { recursive: true });
+    await writeFile(join(dir, "dist", file.fileName), file.code);
+  }
+  const manifest = JSON.parse(await readFile(new URL("package.json", import.meta.url), "utf8"));
+  const { name, type, exports, imports } = manifest;
+  await writeFile(join(dir, "package.json"), JSON.stringify({ name, type, exports, imports }));
+}
+
+describe("the hm-self-hosted condition (sdk-core ADR 0060)", () => {
+  /**
+   * Bundles an application that passes assetsUrl against this build, laid
+   * out as an installed package, with esbuild and `conditions`. Returns the
+   * code of every output file.
+   */
+  async function bundle(conditions: string[]): Promise<string[]> {
+    const dir = await mkdtemp(join(tmpdir(), "hm-audio-sdk-condition-"));
+    try {
+      await writePackage(join(dir, "node_modules/@hussmartinez/audio-sdk"));
+      await writeFile(
+        join(dir, "app.js"),
+        [
+          'import { createAudioAdapters } from "@hussmartinez/audio-sdk";',
+          'export const adapters = createAudioAdapters({ assetsUrl: "/audio-sdk/" });',
+        ].join("\n"),
+      );
+      const result = await esbuild({
+        absWorkingDir: dir,
+        entryPoints: ["app.js"],
+        bundle: true,
+        format: "esm",
+        splitting: true,
+        outdir: "out",
+        write: false,
+        logLevel: "silent",
+        conditions,
+        external: externalPackages,
+      });
+      return result.outputFiles.map((output) => output.text);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
+
+  /** The inlined worker: Vite turns it into a blob that revokes its own URL. */
+  const inlinedWorker = (code: string) => code.includes("URL.revokeObjectURL(import.meta.url);");
+
+  it("leaves the inlined worker out of a build that sets it", async () => {
+    const outputs = await bundle(["hm-self-hosted"]);
+    expect(outputs.filter(inlinedWorker)).toEqual([]);
+    expect(outputs.join("\n")).toContain("left the audio SDK's inlined worker out");
+  });
+
+  it("keeps it in a build that doesn't, as before", async () => {
+    const outputs = await bundle([]);
+    expect(outputs.filter(inlinedWorker)).toHaveLength(1);
+    expect(outputs.join("\n")).not.toContain("left the audio SDK's inlined worker out");
   });
 });
 

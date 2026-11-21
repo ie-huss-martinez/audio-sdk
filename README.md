@@ -134,8 +134,8 @@ editor.addEventListener("hm-audio-editor-change", (event) => save((event as Cust
 
 `<hm-audio-editor>` renders `AudioEditor` into its light DOM, for pages without React of their own; React and React DOM, the package's optional peer dependencies, are still needed. Importing the entry registers nothing: call `defineAudioEditorElement()` once, for `hm-audio-editor` or a tag you name. The stylesheet makes the element a block, which you size.
 
-- **Attributes:** `theme` (`light`, `dark` or `system`), `locale`, and `tools`, space-separated.
-- **Properties:** `file`, which opens a recording when you set it, `fileName`, `headingLevel`, `filePolicy`, `assetsUrl`, `messages`, `engine`, `processor` and `output`.
+- **Attributes:** `theme` (`light`, `dark` or `system`), `locale`, `tools`, space-separated, and `heading-level`, from 2 to 6, which is also the `headingLevel` property.
+- **Properties:** `file`, which opens a recording when you set it, `fileName`, `filePolicy`, `assetsUrl`, `messages`, `engine`, `processor` and `output`.
 - **Methods:** `open`, `insert`, `export`, `undo`, `redo`, `play`, `pause` and `seek`. `open`, `insert`, `export` and `play` wait for the editor's first render.
 - **Events:** `hm-audio-editor-change` with the plan, `hm-audio-editor-event` with the usage event, `hm-audio-editor-export` with an `AudioExportReport` after the export dialog finishes (the sample format, size, peak and clamped frames, and no file), and `hm-audio-editor-error` with a failure's `code` and `details`. None carries a file name or contents.
 
@@ -325,6 +325,30 @@ try {
 Neither mode needs `'unsafe-eval'` or `'wasm-unsafe-eval'`, and the SDK makes no network requests of its own ([ADR 0002](docs/adr/0002-workers-and-assets.md)).
 
 **Copy `dist/assets` again after every upgrade.** A self-hosted worker from another version of the SDK is refused with `WORKER_START_FAILED`, whose `details` name the file and both versions.
+
+#### Leaving the inlined worker out
+
+An app that passes `assetsUrl` never loads the inlined worker, but its bundler still emits it: a chunk of about 47 kB, 15 kB compressed, that's never used. Set the `hm-self-hosted` resolve condition in the app's bundler to leave it out. The SDK reaches the worker through its package's `imports`, and the condition maps it to a small stub instead ([sdk-core ADR 0060](https://github.com/ie-huss-martinez/sdk-core/blob/main/docs/adr/0060-leaving-inlined-workers-out-of-a-self-hosted-build.md)). The condition is the family's, so it does the same for every family SDK in the build.
+
+With Vite, which replaces its default conditions with the list you give, so keep them:
+
+```ts
+import { defaultClientConditions, defineConfig } from "vite";
+
+export default defineConfig({
+  resolve: { conditions: [...defaultClientConditions, "hm-self-hosted"] },
+});
+```
+
+With esbuild, which drops its `module` condition once you set any, so keep it:
+
+```js
+await build({ /* ... */ conditions: ["hm-self-hosted", "module"] });
+```
+
+webpack (`resolve.conditionNames: ["hm-self-hosted", "..."]`), Rollup (`nodeResolve({ exportConditions: ["hm-self-hosted"] })`) and Next.js through its webpack configuration should work the same way, but they aren't tested yet.
+
+Set the condition only in a build that passes `assetsUrl` everywhere it creates an engine or a processor: `createAudioAdapters`, `createAudioEngine`, `createAudioProcessor`, and the editor's and the element's `assetsUrl`. A worker started without it in such a build fails with `WORKER_START_FAILED`, whose `details` are `{ condition: "hm-self-hosted", missing: "assetsUrl" }`.
 
 ### Errors
 
