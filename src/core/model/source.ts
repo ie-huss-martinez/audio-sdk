@@ -1,3 +1,4 @@
+import { MAX_FILE_NAME_LENGTH } from "@hussmartinez/sdk-core";
 /**
  * The containers the probe recognises (ADR 0001).
  *
@@ -118,9 +119,10 @@ export interface AudioSourceInfo {
   readonly resampledFrom?: number;
   /**
    * The name the host gave the recording, or its file's name, to show
-   * people, cleaned as pdf-sdk ADR 0009 decides: its last path segment, with
-   * no control or bidirectional formatting characters, none that Windows
-   * refuses, no leading dots or surrounding space, in NFC, and at most
+   * people, cleaned by sdk-core's `cleanFileName` (sdk-core ADR 0051): its
+   * last path segment, well-formed, with no control or bidirectional
+   * formatting characters, none that Windows refuses, no leading dots or
+   * surrounding space, in NFC, and at most
    * {@link MAX_SOURCE_NAME_LENGTH} code points. It's never in events, the
    * plan or a document. Show it as text, never as HTML.
    */
@@ -129,9 +131,10 @@ export interface AudioSourceInfo {
 
 /**
  * The longest source name, in Unicode code points. A longer one is cut,
- * never in the middle of a character. The same as pdf-sdk's (its ADR 0009),
- * since a name may become a download's.
+ * never in the middle of a character. It's sdk-core's
+ * `MAX_FILE_NAME_LENGTH`, the family's one cap (sdk-core ADR 0051), since a
+ * name may become a download's.
  *
  * @public
  */
-export const MAX_SOURCE_NAME_LENGTH = 128;
+export const MAX_SOURCE_NAME_LENGTH: typeof MAX_FILE_NAME_LENGTH = MAX_FILE_NAME_LENGTH;

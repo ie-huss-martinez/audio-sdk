@@ -7,6 +7,7 @@
 import { FilePolicy } from '@hussmartinez/sdk-core';
 import { FilePolicyOverrides } from '@hussmartinez/sdk-core';
 import { Limits } from '@hussmartinez/sdk-core';
+import { MAX_FILE_NAME_LENGTH } from '@hussmartinez/sdk-core';
 import type { MessageOverrides } from '@hussmartinez/sdk-core';
 import { Messages } from '@hussmartinez/sdk-core';
 import { SdkCoreErrorCode } from '@hussmartinez/sdk-core';
@@ -957,7 +958,7 @@ export const MAX_GAIN_DB = 120;
 export const MAX_METADATA_LENGTH = 1000;
 
 // @public
-export const MAX_SOURCE_NAME_LENGTH = 128;
+export const MAX_SOURCE_NAME_LENGTH: typeof MAX_FILE_NAME_LENGTH;
 
 // @public
 export const MAX_TRACK_NAME_LENGTH = 100;

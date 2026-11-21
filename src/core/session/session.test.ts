@@ -420,6 +420,11 @@ describe("the audio session", () => {
     expect(snapshot().sources[4]?.name).toBe("take2.wav");
     await session.insert(recording(10));
     expect(snapshot().sources[5]).not.toHaveProperty("name");
+    // Half a surrogate pair isn't text, so it goes; a whole pair stays.
+    await session.insert(recording(10), { name: "voice\uD83D.wav" });
+    expect(snapshot().sources[6]?.name).toBe("voice.wav");
+    await session.insert(recording(10), { name: "\uDE00take \u{1F399}.wav" });
+    expect(snapshot().sources[7]?.name).toBe("take \u{1F399}.wav");
     expect(JSON.stringify(events)).not.toContain("interview");
     expect(JSON.stringify(events)).not.toContain("Music");
     expect(JSON.stringify(snapshot().plan)).not.toContain("interview");

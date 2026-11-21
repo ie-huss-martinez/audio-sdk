@@ -31,4 +31,9 @@ describe("the export's file name", () => {
     expect(exportFileName(undefined, 'Take 1: "the studio"')).toBe("Take 1 the studio");
     expect([...exportFileName(undefined, "\u{1F3B5}".repeat(200))]).toHaveLength(128);
   });
+
+  it("drops half a surrogate pair, which isn't text, and keeps a whole one", () => {
+    expect(exportFileName("take\uD83D.wav", "")).toBe("take");
+    expect(exportFileName(undefined, "\uDE00Song \u{1F3B5}")).toBe("Song \u{1F3B5}");
+  });
 });

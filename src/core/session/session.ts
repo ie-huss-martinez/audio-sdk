@@ -1,6 +1,7 @@
 import {
   applyCommands,
   checkFile,
+  cleanFileName,
   createHistory,
   createStore,
   type HistoryStep,
@@ -33,7 +34,6 @@ import type {
   AudioSampleFormat,
 } from "../ports/audio-processor.js";
 import type { AudioProgressOptions } from "../ports/options.js";
-import { cleanFileName } from "./source-name.js";
 
 /** Bytes per decoded sample: sources are held as 32-bit floats (docs/adr/0004). */
 const BYTES_PER_SAMPLE = 4;
