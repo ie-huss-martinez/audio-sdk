@@ -25,11 +25,14 @@ const MIGRATIONS = new URL("../../conformance/hm-audio-command-migration.json", 
 const MIXES = new URL("../../conformance/hm-audio-mix.json", import.meta.url);
 
 /**
- * Timeouts for the property tests, which run thousands of cases. Measured
- * with the designed run counts on a 12-core machine: alone, and with the
- * whole unit suite running three times at once, which is busier than CI
- * and slows them about tenfold. Each timeout is over twice its busy time.
- * The run counts aren't lowered to fit a timeout.
+ * The limit of the two tests here that are over the family's 30 s when the
+ * machine is busy (sdk-core ADR 0057): regenerating every checked-in case,
+ * 1.8 s on an idle 12-core machine, and the schemas against the reducer on
+ * thousands of generated commands, 1.6 s. At the 16 times the ADR allows
+ * for, they'd take 29 and 26 s, too close to 30 s. Busy, with the whole
+ * unit suite running three times at once, they took about ten times their
+ * idle time. The run counts aren't lowered to fit the family's limit. The
+ * other tests here take under 0.3 s, and use it.
  */
 const SLOW = 120_000;
 
@@ -179,42 +182,38 @@ describe("version 2's schemas agree with the readers", () => {
     SLOW / 2,
   );
 
-  it(
-    "never let the reader accept a document the schema refuses",
-    () => {
-      const document = planArb.map((state) => toAudioPlanDocument(state, sources));
-      /** One of the first track's fields, or its first clip's, replaced. */
-      const deeper = fc
-        .tuple(document, fc.jsonValue({ maxDepth: 1 }), fc.string(), fc.boolean())
-        .map(([value, replacement, name, inClip]) => {
-          const copy = JSON.parse(JSON.stringify(value)) as { tracks: Record<string, unknown>[] };
-          const [first] = copy.tracks;
-          const [clip] = (first?.["clips"] ?? []) as Record<string, unknown>[];
-          const target = inClip && clip ? clip : first;
-          if (target) {
-            Object.defineProperty(target, name, {
-              value: replacement,
-              enumerable: true,
-              writable: true,
-              configurable: true,
-            });
-          }
-          return copy;
-        });
-      fc.assert(
-        fc.property(fc.oneof(mutated(document), deeper), (value) => {
-          let accepted = true;
-          try {
-            readAndWrite(value);
-          } catch {
-            accepted = false;
-          }
-          if (accepted) expect(planValid(value)).toBe(true);
-        }),
-        { numRuns: 3_000 },
-      );
-      // 1.1 s alone, 2.1 s busy.
-    },
-    SLOW / 4,
-  );
+  it("never let the reader accept a document the schema refuses", () => {
+    const document = planArb.map((state) => toAudioPlanDocument(state, sources));
+    /** One of the first track's fields, or its first clip's, replaced. */
+    const deeper = fc
+      .tuple(document, fc.jsonValue({ maxDepth: 1 }), fc.string(), fc.boolean())
+      .map(([value, replacement, name, inClip]) => {
+        const copy = JSON.parse(JSON.stringify(value)) as { tracks: Record<string, unknown>[] };
+        const [first] = copy.tracks;
+        const [clip] = (first?.["clips"] ?? []) as Record<string, unknown>[];
+        const target = inClip && clip ? clip : first;
+        if (target) {
+          Object.defineProperty(target, name, {
+            value: replacement,
+            enumerable: true,
+            writable: true,
+            configurable: true,
+          });
+        }
+        return copy;
+      });
+    fc.assert(
+      fc.property(fc.oneof(mutated(document), deeper), (value) => {
+        let accepted = true;
+        try {
+          readAndWrite(value);
+        } catch {
+          accepted = false;
+        }
+        if (accepted) expect(planValid(value)).toBe(true);
+      }),
+      { numRuns: 3_000 },
+    );
+    // 1.1 s alone, 2.1 s busy.
+  });
 });

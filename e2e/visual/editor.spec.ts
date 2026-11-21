@@ -1,7 +1,7 @@
 import { applyVisualVariant, visualVariants } from "@hussmartinez/sdk-config/testing/visual";
 import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures.js";
-import { tone } from "../tests/helpers.js";
+import { FIRST_OPEN, tone } from "../tests/helpers.js";
 
 /**
  * The editor's designed states, as screenshots (sdk-core ADR 0048). Each is
@@ -40,7 +40,7 @@ const insert = async (page: Page, bytes: Buffer) => {
   await page.evaluate((data) => window.audioEditor.insert(new Uint8Array(data).buffer), [...bytes]);
 };
 const clipsShown = (page: Page, count: number) =>
-  expect(page.getByRole("option")).toHaveCount(count, { timeout: 20_000 });
+  expect(page.getByRole("option")).toHaveCount(count, { timeout: FIRST_OPEN });
 
 /** Two tracks: a 2 s tone, and a 1 s one under it, muted. */
 const twoTracks = async (page: Page, amplitude?: number) => {
@@ -68,7 +68,9 @@ const EDITOR: Readonly<Record<string, State>> = {
   },
   open: async (page) => {
     await open(page, tone(2));
-    await expect(page.getByRole("slider", { name: "Playhead" })).toBeFocused({ timeout: 20_000 });
+    await expect(page.getByRole("slider", { name: "Playhead" })).toBeFocused({
+      timeout: FIRST_OPEN,
+    });
   },
   tracks,
   selection: async (page) => {
@@ -102,12 +104,14 @@ const EDITOR: Readonly<Record<string, State>> = {
     await page.getByRole("button", { name: "Export", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Export" });
     await dialog.getByRole("button", { name: "Export", exact: true }).click();
-    await expect(dialog.getByRole("button", { name: "Download" })).toBeFocused({ timeout: 20_000 });
+    await expect(dialog.getByRole("button", { name: "Download" })).toBeFocused({
+      timeout: FIRST_OPEN,
+    });
     await expect(dialog.getByText(/The mix went .* dB over full scale/)).toBeVisible();
   },
   error: async (page) => {
     await open(page, Buffer.from([1, 2, 3, 4])).catch(() => {});
-    await expect(page.locator(".hm-audio-editor-error")).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator(".hm-audio-editor-error")).toBeVisible({ timeout: FIRST_OPEN });
   },
 };
 

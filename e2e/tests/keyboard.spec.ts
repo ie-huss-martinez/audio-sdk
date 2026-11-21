@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../fixtures.js";
-import { arrowTo, openByKeyboard, tabTo } from "./helpers.js";
+import { arrowTo, FIRST_OPEN, openByKeyboard, tabTo } from "./helpers.js";
 
 /**
  * The keyboard-only path through the editor (docs/adr/0005, "Tests"): open
@@ -37,7 +37,7 @@ test("edits and exports with the keyboard alone, with focus where it belongs", a
 
   // Open through the drop zone's button: focus goes to the playhead.
   await openByKeyboard(page, 3);
-  await expect(playhead).toBeFocused({ timeout: 20_000 });
+  await expect(playhead).toBeFocused({ timeout: FIRST_OPEN });
   expect((await clips(page)).map((clip) => clip.end)).toEqual([24_000]);
 
   // Move the playhead, and select from 1 s to 2 s with I and O.

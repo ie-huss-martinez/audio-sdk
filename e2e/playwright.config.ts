@@ -1,4 +1,5 @@
 import { browserTestImageProblem } from "@hussmartinez/sdk-config/testing/require-image";
+import { endToEndTimeouts } from "@hussmartinez/sdk-config/testing/timeouts";
 import { defineConfig, devices } from "@playwright/test";
 
 const ci = Boolean(process.env["CI"]);
@@ -18,6 +19,8 @@ const outsideImage = browserTestImageProblem(process.env) !== undefined;
  * the other browser tests.
  */
 export default defineConfig({
+  // The family's limits: 60 s a test, 10 s a waiting assertion (sdk-core ADR 0057).
+  ...endToEndTimeouts,
   testDir: "tests",
   forbidOnly: ci,
   retries: 0,
